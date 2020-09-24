@@ -21,16 +21,10 @@ version = "0.9.0"
 [dependencies.gdk]
 version = "0.13.0"
 
-[dependencies.async-tls]
-version = "0.9.0"
-default-features = false
-features = ["client"]
-
 [dependencies]
 async-std = {version = "1.6.2", features = ["unstable", "attributes"]}
 url = "2.1.1"
 thiserror = "1.0.20"
-bytes = "0.5.6"
 futures = "0.3.5"
 regex = "1.3.9"
 once_cell = "1.4.0"
