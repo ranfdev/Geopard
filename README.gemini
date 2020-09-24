@@ -19,6 +19,9 @@ Geopard is a gtk3 gemini client
 Under the hood, it uses gtk3 and rust. Everything related to IO is asynchronous.
 To do that, it makes use of rust async/await capabilities and the async-std crate.
 
+# How to change settings
+You should find the configuration file in ~/.config/geopard/config.toml
+
 ## How to build
 ### Build with Nix
 If you have the 

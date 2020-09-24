@@ -15,12 +15,19 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use url::Url;
 
+mod config;
 mod gemini_module;
 use gemini_module::{Client, ClientBuilder};
 
 static USER_DATA_PATH: Lazy<std::path::PathBuf> = Lazy::new(|| {
     glib::get_user_data_dir()
-        .expect("No user data dir path")
+        .expect("No user data dir")
+        .join("geopard")
+});
+
+static USER_CONFIG_PATH: Lazy<std::path::PathBuf> = Lazy::new(|| {
+    glib::get_user_config_dir()
+        .expect("No user config dir")
         .join("geopard")
 });
 
@@ -29,6 +36,8 @@ static FAVORITE_PATH: Lazy<std::path::PathBuf> =
 
 static DOWNLOAD_PATH: Lazy<std::path::PathBuf> =
     Lazy::new(|| glib::get_user_special_dir(glib::UserDirectory::Downloads).unwrap());
+
+static SETTINGS_PATH: Lazy<std::path::PathBuf> = Lazy::new(|| USER_CONFIG_PATH.join("config.toml"));
 
 static HISTORY_PATH: Lazy<std::path::PathBuf> = Lazy::new(|| USER_DATA_PATH.join("history.gemini"));
 
@@ -40,6 +49,7 @@ should remove bookmarks.
 ## Default bookmarks:
 => gemini://gemini.circumlunar.space/ Gemini project
 => gemini://rawtext.club:1965/~sloum/spacewalk.gmi Spacewalk aggregator
+=> about:help About geopard + help
 
 ## Custom bookmarks:
 ";
@@ -94,23 +104,6 @@ impl std::fmt::LowerHex for Color {
     }
 }
 
-//#[derive(thiserror::Error, Debug)]
-//enum Error {
-//    #[error("{self:?}")]
-//    PathError(#[from] url::ParseError),
-//    #[error("{self:?}")]
-//    IOError(#[from] std::io::Error),
-//    #[error("{self:?}")]
-//    FetchFailed(#[from] gemini_module::Error),
-//    #[error("{self:?}")]
-//    BadStatus {
-//        url: Url,
-//        status: gemini_module::Status,
-//        meta: String,
-//        description: String,
-//    },
-//}
-
 type HistoryItem = Url; // I want to add some cache to every HistoryItem.
                         // For now I'm saving just the url
 
@@ -132,10 +125,26 @@ struct AppWindow {
     add_bookmark_btn: gtk::Button,
     show_bookmarks_btn: gtk::Button,
     text_view: gtk::TextView,
+    config: config::Config,
     current_req: Option<futures::future::RemoteHandle<()>>,
 }
 impl AppWindow {
     pub fn new(app: &gtk::Application) -> gtk::ApplicationWindow {
+        Self::create_base_files().unwrap();
+        let config: config::Config = toml::from_str(
+            &std::fs::read_to_string(&*SETTINGS_PATH)
+                .expect(&format!("Failed reading config from {:?}", &*SETTINGS_PATH)),
+        )
+        .expect("Failed parsing config");
+        dbg!(&config);
+
+        Self::add_stylesheet(&format!(
+            r#"textview {{
+            font: {};
+        }}"#,
+            config.fonts.normal
+        ));
+
         let window = gtk::ApplicationWindow::new(app);
         let view = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let header_bar = gtk::HeaderBar::new();
@@ -186,11 +195,13 @@ impl AppWindow {
 
         view.add(&scroll_win);
 
+
         let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_HIGH);
 
         let mut this = Self {
             url_bar,
             back_btn,
+            config,
             add_bookmark_btn,
             show_bookmarks_btn,
             text_view,
@@ -200,7 +211,6 @@ impl AppWindow {
             current_req: None,
         };
 
-        this.create_base_files().unwrap();
         this.bind_signals();
 
         receiver.attach(None, move |msg| this.handle_msg(msg));
@@ -208,12 +218,19 @@ impl AppWindow {
         let bookmarks_url = format!("file://{}", FAVORITE_PATH.to_str().unwrap());
         sender.send(AppWindowMsg::Open(bookmarks_url)).unwrap();
 
+
         window
     }
 
-    fn create_base_files(&self) -> anyhow::Result<()> {
+    fn create_base_files() -> anyhow::Result<()> {
         if !USER_DATA_PATH.exists() {
-            std::fs::create_dir(&*USER_DATA_PATH).context("Failed to create geopard data dir")?;
+            std::fs::create_dir_all(&*USER_DATA_PATH)
+                .context("Failed to create geopard data dir")?;
+        }
+
+        if !USER_CONFIG_PATH.exists() {
+            std::fs::create_dir_all(&*USER_CONFIG_PATH)
+                .context("Failed to create geopard config dir")?;
         }
 
         if !FAVORITE_PATH.exists() {
@@ -224,6 +241,12 @@ impl AppWindow {
 
         if !HISTORY_PATH.exists() {
             std::fs::File::create(&*HISTORY_PATH).context("Failed to create history.gemini")?;
+        }
+
+        if !SETTINGS_PATH.exists() {
+            std::fs::File::create(&*SETTINGS_PATH).context("Failed to create config.toml")?;
+            std::fs::write(&*SETTINGS_PATH, config::EXAMPLE)
+                .context("Failed writing example config")?;
         }
 
         Ok(())
@@ -288,42 +311,9 @@ impl AppWindow {
                 url.host().hash(&mut hasher);
                 let hash = hasher.finish();
 
-                let color1 = Color(
-                    (hash & 255) as u8,
-                    (hash >> 8 & 255) as u8,
-                    (hash >> 16 & 255) as u8,
-                );
-
-                let hash = hash >> 24;
-                let color2 = Color(
-                    (hash & 255) as u8,
-                    (hash >> 8 & 255) as u8,
-                    (hash >> 16 & 255) as u8,
-                );
-
-                let css_string = format!(
-                    "
-                    headerbar {{
-                        transition: 500ms;
-                        background: linear-gradient(#{:x}, #{:x});
-                    }}
-                    text {{
-                        transition: 500ms;
-                        background: rgba({},{},{}, 0.05);
-                    }}
-                    ",
-                    color1, color2, color2.0, color2.1, color2.2
-                );
-                let provider = gtk::CssProvider::new();
-                provider.load_from_data(css_string.as_bytes()).unwrap();
-
-                // TODO: Adding a provider and keeping it in memory forever
-                // is a memory leak. Fortunately, it's small
-                gtk::StyleContext::add_provider_for_screen(
-                    &gdk::Screen::get_default().unwrap(),
-                    &provider,
-                    1000,
-                );
+                if self.config.colors {
+                    self.set_special_color_from_hash(hash);
+                }
 
                 println!("HASH IS {:x}", hash);
                 self.url_bar.set_text(url.as_str());
@@ -342,6 +332,49 @@ impl AppWindow {
             }
         }
         glib::Continue(true)
+    }
+    fn set_special_color_from_hash(&self, hash: u64) {
+        let color1 = Color(
+            (hash & 255) as u8,
+            (hash >> 8 & 255) as u8,
+            (hash >> 16 & 255) as u8,
+        );
+
+        let hash = hash >> 24;
+        let color2 = Color(
+            (hash & 255) as u8,
+            (hash >> 8 & 255) as u8,
+            (hash >> 16 & 255) as u8,
+        );
+
+        let stylesheet = format!(
+            "
+                    headerbar {{
+                        transition: 500ms;
+                        background: linear-gradient(#{:x}, #{:x});
+                    }}
+                    text {{
+                        transition: 500ms;
+                        background: rgba({},{},{}, 0.05);
+                    }}
+                    ",
+            color1, color2, color2.0, color2.1, color2.2
+        );
+        Self::add_stylesheet(&stylesheet);
+    }
+    fn add_stylesheet(stylesheet: &str) {
+        // TODO: Adding a provider and keeping it in memory forever
+        // is a memory leak. Fortunately, it's small
+
+        let provider = gtk::CssProvider::new();
+        provider
+            .load_from_data(stylesheet.as_bytes())
+            .expect("Failed loading stylesheet");
+        gtk::StyleContext::add_provider_for_screen(
+            &gdk::Screen::get_default().unwrap(),
+            &provider,
+            1000,
+        );
     }
     fn back(&mut self) {
         if self.history.len() > 1 {
