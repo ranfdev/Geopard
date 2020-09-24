@@ -17,5 +17,6 @@ pkgs.mkShell {
     glib
     gtk3
     openssl
+    pkg-config
   ];
 }
