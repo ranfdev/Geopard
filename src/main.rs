@@ -138,12 +138,7 @@ impl AppWindow {
         .expect("Failed parsing config");
         dbg!(&config);
 
-        Self::add_stylesheet(&format!(
-            r#"textview {{
-            font: {};
-        }}"#,
-            config.fonts.normal
-        ));
+        Self::add_stylesheet(&config.custom_css);
 
         let window = gtk::ApplicationWindow::new(app);
         let view = gtk::Box::new(gtk::Orientation::Vertical, 0);
