@@ -368,7 +368,7 @@ impl AppWindow {
         gtk::StyleContext::add_provider_for_screen(
             &gdk::Screen::get_default().unwrap(),
             &provider,
-            1000,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
     }
     fn back(&mut self) {
