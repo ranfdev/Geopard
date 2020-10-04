@@ -1,7 +1,7 @@
 use anyhow::{bail, Context, Error};
 use async_std::fs;
 use async_std::io::prelude::*;
-use async_std::io::{BufRead, BufReader};
+use async_std::io::{BufRead, BufReader, Cursor};
 use async_std::prelude::*;
 use async_trait::async_trait;
 use futures::task::LocalSpawnExt;
@@ -9,15 +9,14 @@ use gio::prelude::*;
 use gtk::prelude::*;
 use gtk::Application;
 use once_cell::sync::Lazy;
-use regex::Regex;
 use std::borrow::Cow;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use url::Url;
 
+mod common;
 mod config;
-mod gemini_module;
-use gemini_module::{Client, ClientBuilder};
+mod gemini;
 
 static USER_DATA_PATH: Lazy<std::path::PathBuf> = Lazy::new(|| {
     glib::get_user_data_dir()
@@ -56,8 +55,11 @@ should remove bookmarks.
 
 static ABOUT_PAGE: &str = std::include_str!("../README.gemini");
 
-static R_GEMINI_LINK: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^=>\s*(?P<href>\S*)\s*(?P<label>.*)").unwrap());
+const MARGIN: i32 = 20;
+
+pub trait TextRender<T> {
+    fn render(&mut self, token: T);
+}
 
 fn glibctx() -> glib::MainContext {
     glib::MainContext::default()
@@ -79,14 +81,16 @@ impl<T: BufRead + Unpin> LossyTextRead for T {
         // panic handling, which I don't understand currently. Whatever...
         unsafe {
             let mut vec_buf = buf.as_mut_vec();
-            let n = self.read_until(b'\n', &mut vec_buf).await?;
+            let mut n = self.read_until(b'\n', &mut vec_buf).await?;
 
             let correct_string = String::from_utf8_lossy(&vec_buf);
             if let Cow::Owned(valid_utf8_string) = correct_string {
                 // Yes, I know performance this requires useless copying.
                 // This code will only be executed when invalid utf8 is found, so i
                 // consider this as good enough
-                buf.push_str(&valid_utf8_string);
+                buf.truncate(buf.len() - n); // Remove bad non-utf8 data
+                buf.push_str(&valid_utf8_string); // Add correct utf8 data instead
+                n = valid_utf8_string.len();
             }
             Ok(n)
         }
@@ -104,13 +108,29 @@ impl std::fmt::LowerHex for Color {
     }
 }
 
-type HistoryItem = Url; // I want to add some cache to every HistoryItem.
-                        // For now I'm saving just the url
+#[derive(Debug, PartialEq)]
+pub enum Format {
+    Gemini,
+    Gopher,
+}
 
-enum AppWindowMsg {
+#[derive(Debug, PartialEq)]
+pub struct Cache {
+    data: Vec<u8>,
+    format: Format,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct HistoryItem {
+    url: url::Url,
+    cache: Option<Cache>,
+}
+
+pub enum AppWindowMsg {
     Open(String),
     LinkClicked(String),
-    PushHistory(Url),
+    PushHistory(HistoryItem),
+    ReplaceHistory(HistoryItem),
     BookmarkCurrent,
     UpdateUrlBar,
     Back,
@@ -118,14 +138,13 @@ enum AppWindowMsg {
 
 struct AppWindow {
     history: Vec<HistoryItem>,
-    client: Client,
+    client: gemini::Client,
     sender: glib::Sender<AppWindowMsg>,
     url_bar: gtk::SearchEntry,
     back_btn: gtk::Button,
     add_bookmark_btn: gtk::Button,
     show_bookmarks_btn: gtk::Button,
-    text_view: gtk::TextView,
-    config: config::Config,
+    page_ctx: common::Ctx,
     current_req: Option<futures::future::RemoteHandle<()>>,
 }
 impl AppWindow {
@@ -137,8 +156,6 @@ impl AppWindow {
         )
         .expect("Failed parsing config");
         dbg!(&config);
-
-        Self::add_stylesheet(&config.custom_css);
 
         let window = gtk::ApplicationWindow::new(app);
         let view = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -176,10 +193,10 @@ impl AppWindow {
         scroll_win.set_vexpand(true);
 
         let text_view = gtk::TextViewBuilder::new()
-            .top_margin(20)
-            .left_margin(20)
-            .right_margin(20)
-            .bottom_margin(20)
+            .top_margin(MARGIN)
+            .left_margin(MARGIN)
+            .right_margin(MARGIN)
+            .bottom_margin(MARGIN)
             .indent(2)
             .editable(false)
             .cursor_visible(false)
@@ -188,20 +205,20 @@ impl AppWindow {
 
         scroll_win.add(&text_view);
 
-        view.add(&scroll_win);
+        let page_ctx = common::Ctx::new(text_view, config);
 
+        view.add(&scroll_win);
 
         let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_HIGH);
 
         let mut this = Self {
             url_bar,
+            page_ctx,
             back_btn,
-            config,
             add_bookmark_btn,
             show_bookmarks_btn,
-            text_view,
             history: vec![],
-            client: ClientBuilder::new().redirect(true).build(),
+            client: gemini::ClientBuilder::new().redirect(true).build(),
             sender: sender.clone(),
             current_req: None,
         };
@@ -212,7 +229,6 @@ impl AppWindow {
 
         let bookmarks_url = format!("file://{}", FAVORITE_PATH.to_str().unwrap());
         sender.send(AppWindowMsg::Open(bookmarks_url)).unwrap();
-
 
         window
     }
@@ -240,7 +256,7 @@ impl AppWindow {
 
         if !SETTINGS_PATH.exists() {
             std::fs::File::create(&*SETTINGS_PATH).context("Failed to create config.toml")?;
-            std::fs::write(&*SETTINGS_PATH, config::EXAMPLE)
+            std::fs::write(&*SETTINGS_PATH, toml::to_string(&*config::DEFAULT_CONFIG).unwrap())
                 .context("Failed writing example config")?;
         }
 
@@ -268,7 +284,7 @@ impl AppWindow {
         }
     }
     fn parse_link(&self, link: &str) -> Result<Url, url::ParseError> {
-        let current_url = self.history.last().unwrap().clone();
+        let current_url = self.history.last().unwrap().url.clone();
         let mut link_url = Url::options().base_url(Some(&current_url)).parse(link)?;
 
         Self::complete_url(&mut link_url);
@@ -282,8 +298,8 @@ impl AppWindow {
                 match url {
                     Ok(url) => self.open_url(url),
                     Err(e) => {
-                        Self::clear(&self.text_view);
-                        Self::display_error(e.into(), self.text_view.clone());
+                        Self::clear(&self.page_ctx);
+                        Self::display_error(self.page_ctx.clone(), e.into());
                     }
                 }
             }
@@ -292,21 +308,25 @@ impl AppWindow {
                 match url {
                     Ok(url) => self.open_url(url),
                     Err(e) => {
-                        Self::clear(&self.text_view);
-                        Self::display_error(e.into(), self.text_view.clone());
+                        Self::clear(&self.page_ctx);
+                        Self::display_error(self.page_ctx.clone(), e.into());
                     }
                 }
             }
-            PushHistory(url) => {
-                self.history.push(url);
+            PushHistory(item) => {
+                self.history.push(item);
+            }
+            ReplaceHistory(item) => {
+                self.history.pop();
+                self.history.push(item);
             }
             UpdateUrlBar => {
-                let url = &self.history.last().unwrap();
+                let HistoryItem { url, cache: _ } = &self.history.last().unwrap();
                 let mut hasher = DefaultHasher::new();
                 url.host().hash(&mut hasher);
                 let hash = hasher.finish();
 
-                if self.config.colors {
+                if self.page_ctx.config.colors {
                     self.set_special_color_from_hash(hash);
                 }
 
@@ -317,12 +337,12 @@ impl AppWindow {
                 self.back();
             }
             BookmarkCurrent => {
-                let url = self.history.last().unwrap().to_string();
-                let text_view = self.text_view.clone();
+                let url = self.history.last().unwrap().url.to_string();
+                let ctx = self.page_ctx.clone();
                 glibctx().spawn_local(async move {
                     Self::favorite(&url)
                         .await
-                        .unwrap_or_else(|e| Self::display_error(e, text_view));
+                        .unwrap_or_else(|e| Self::display_error(ctx, e));
                 });
             }
         }
@@ -372,39 +392,61 @@ impl AppWindow {
         );
     }
     fn back(&mut self) {
+        dbg!(self.history.iter().map(|item| item.url.clone()).collect::<Vec<Url>>());
         if self.history.len() > 1 {
             // remove current url
             self.history.pop();
         }
-        if let Some(url) = self.history.pop() {
-            self.open_url(url.clone());
-        } else {
-            println!("Can't go back, history empty");
+        match self.history.last() {
+            Some(HistoryItem {
+                url: _,
+                cache: Some(cache),
+            }) => self.open_cached(cache),
+            Some(HistoryItem { url, cache: None }) => {
+                let url = url.clone();
+                self.history.pop();
+                self.open_url(url.clone())
+            }
+            _ => println!("Can't go back, end of history"),
         }
     }
-    fn buffer(text_view: &gtk::TextView) -> gtk::TextBuffer {
-        match text_view.get_buffer() {
-            Some(b) => b,
-            None => Self::clear(&text_view),
-        }
+    fn open_cached(&self, cache: &Cache) {
+        let sender = self.sender.clone();
+        sender.send(AppWindowMsg::UpdateUrlBar).unwrap();
+        let ctx = self.page_ctx.clone();
+
+        Self::clear(&self.page_ctx);
+        glibctx().block_on(async move {
+            if let Cache {
+                data,
+                format: Format::Gemini,
+            } = cache
+            {
+                let reader = BufReader::new(Cursor::new(&data));
+                Self::display_gemini(ctx, reader)
+                    .await
+                    .unwrap();
+            }
+        })
     }
+
     fn display_input(
+        ctx: common::Ctx,
         url: Url,
         msg: &str,
-        text_view: gtk::TextView,
         sender: glib::Sender<AppWindowMsg>,
     ) {
-        let text_buffer = Self::buffer(&text_view);
+        let text_buffer = &ctx.text_buffer;
 
         let mut iter = text_buffer.get_end_iter();
-        text_buffer.insert(&mut iter, &msg);
-        text_buffer.insert(&mut iter, "\n");
+        ctx.insert_paragraph(&mut iter, &msg);
+        ctx.insert_paragraph(&mut iter, "\n");
 
         let anchor = text_buffer
             .create_child_anchor(&mut text_buffer.get_end_iter())
             .unwrap();
         let text_input = gtk::Entry::new();
-        text_view.add_child_at_anchor(&text_input, &anchor);
+        ctx.text_view.add_child_at_anchor(&text_input, &anchor);
         text_input.show();
 
         text_input.connect_activate(move |text_input| {
@@ -415,20 +457,21 @@ impl AppWindow {
         });
     }
     async fn open_file_url(
+        ctx: common::Ctx,
         url: Url,
-        text_view: gtk::TextView,
-        sender: glib::Sender<AppWindowMsg>,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<Cache>> {
         let path = url.to_file_path().unwrap();
         let file = fs::File::open(&path).await?;
         let lines = BufReader::new(file);
-        let sender_clone = sender.clone();
         match path.extension().map(|x| x.to_str()) {
             Some(Some("gmi")) | Some(Some("gemini")) => {
-                Self::display_gemini(lines, text_view.clone(), sender_clone).await
+                Self::display_gemini(ctx, lines).await?;
             }
-            _ => Self::display_text(lines, text_view.clone()).await,
+            _ => {
+                Self::display_text(ctx, lines).await?;
+            }
         }
+        Ok(None)
     }
     fn open_url(&mut self, url: Url) {
         // Drop (and stop) old request asap
@@ -436,44 +479,58 @@ impl AppWindow {
 
         println!("Good url: {}", url);
         let sender = self.sender.clone();
-        let text_view = self.text_view.clone();
         let client = self.client.clone();
         let url_bar = self.url_bar.clone();
+        let ctx = self.page_ctx.clone();
 
-        sender.send(AppWindowMsg::PushHistory(url.clone())).unwrap();
+        sender
+            .send(AppWindowMsg::PushHistory(HistoryItem {
+                url: url.clone(),
+                cache: None,
+            }))
+            .unwrap();
         sender.send(AppWindowMsg::UpdateUrlBar).unwrap();
 
-        Self::clear(&text_view);
+        Self::clear(&ctx);
+
+        let ctx_clone = ctx.clone();
         let handler = glibctx().spawn_local_with_handle(async move {
-            match url.scheme() {
+            let sender_clone = sender.clone();
+            let url = url.clone();
+            let cache = match url.scheme() {
                 "about" => {
                     let lines = BufReader::new(ABOUT_PAGE.as_bytes());
-                    let sender_clone = sender.clone();
-                    Self::display_gemini(lines, text_view.clone(), sender_clone).await
+                    Self::display_gemini(ctx_clone, lines)
+                        .await
+                        .map(|_| None)
                 }
                 "file" => {
                     Self::while_loading(
                         &url_bar,
-                        Self::open_file_url(url, text_view.clone(), sender),
+                        Self::open_file_url(ctx_clone, url.clone()),
                     )
                     .await
                 }
                 "gemini" => {
-                    let sender_clone = sender.clone();
-                    let text_view_clone = text_view.clone();
                     Self::while_loading(
                         &url_bar,
-                        Self::open_gemini_url(url, client, text_view_clone, sender_clone.clone()),
+                        Self::open_gemini_url(ctx_clone, url.clone(), client, sender_clone.clone()),
                     )
                     .await
                 }
                 _ => {
                     println!("Scheme not supported");
-                    Self::display_url_confirmation(url, text_view.clone());
-                    Ok(())
+                    Self::display_url_confirmation(ctx_clone, url.clone());
+                    Ok(None)
                 }
             }
-            .unwrap_or_else(|e| Self::display_error(e, text_view));
+            .unwrap_or_else(|e| {
+                Self::display_error(ctx, e);
+                None
+            });
+            sender
+                .send(AppWindowMsg::ReplaceHistory(HistoryItem { url, cache }))
+                .unwrap();
         });
         self.current_req = Some(handler.unwrap());
     }
@@ -489,36 +546,40 @@ impl AppWindow {
     }
 
     async fn open_gemini_url(
+        ctx: common::Ctx,
         url: Url,
-        client: gemini_module::Client,
-        text_view: gtk::TextView,
+        client: gemini::Client,
         sender: glib::Sender<AppWindowMsg>,
-    ) -> anyhow::Result<()> {
-        let res: gemini_module::Response = client
+    ) -> anyhow::Result<Option<Cache>> {
+        let res: gemini::Response = client
             .fetch(url.as_str())
             .await
             .map_err(|e| Error::from(e))?;
-        use gemini_module::Status::*;
-        let sender_clone = sender.clone();
+
+        use gemini::Status::*;
         let meta = res.meta().to_owned();
         let status = res.status();
         let result = match status {
             Input(_) => {
-                Self::display_input(url.clone(), &meta, text_view, sender);
-                Ok(())
+                Self::display_input(ctx, url.clone(), &meta, sender);
+                Ok(None)
             }
             Success(_) => {
                 let body = res.body().unwrap();
                 let buffered = BufReader::new(body);
                 if meta.find("text/gemini").is_some() {
-                    Self::display_gemini(buffered, text_view.clone(), sender_clone).await
+                    Self::display_gemini(ctx, buffered)
+                        .await
+                        .map(|c| Some(c))
                 } else if meta.find("text").is_some() {
-                    Self::display_text(buffered, text_view.clone()).await
+                    Self::display_text(ctx, buffered)
+                        .await
+                        .map(|_| None)
                 } else {
-                    Self::display_download(url.clone(), buffered, text_view.clone()).await
+                    Self::display_download(ctx, url.clone(), buffered)
+                        .await
+                        .map(|_| None)
                 }
-                .unwrap_or_else(|e| Self::display_error(e, text_view));
-                Ok(())
             }
             Redirect(_) => bail!("Redirected more than 5 times"),
             TempFail(_) => bail!("Temporary server failure"),
@@ -556,28 +617,26 @@ impl AppWindow {
         }
     }
     async fn display_download<T: Read + Unpin>(
+        mut ctx: common::Ctx,
         url: Url,
         mut stream: T,
-        text_view: gtk::TextView,
     ) -> anyhow::Result<()> {
-        let text_buffer = Self::buffer(&text_view);
-
         let d_path = Self::get_download_path(&url)?;
 
         let mut buffer = Vec::with_capacity(8192);
         buffer.extend_from_slice(&[0; 8192]);
 
         let mut read = 0;
-        let mut text_iter = text_buffer.get_end_iter();
-        text_buffer.insert(
+        let mut text_iter = ctx.text_buffer.get_end_iter();
+        ctx.insert_paragraph(
             &mut text_iter,
             &format!("Writing to {:?}\n", d_path.as_os_str()),
         );
-        text_buffer.insert(
+        ctx.insert_paragraph(
             &mut text_iter,
             "To interrupt the download, leave this page\n",
         );
-        text_buffer.insert(&mut text_iter, "Downloaded\t Kb\n");
+        ctx.insert_paragraph(&mut text_iter, "Downloaded\t Kb\n");
 
         let mut file = fs::File::create(&d_path).await?;
         loop {
@@ -586,11 +645,11 @@ impl AppWindow {
                 Ok(n) => {
                     file.write_all(&buffer[..n]).await?;
                     read += n;
-                    println!("Lines {}", text_buffer.get_line_count());
+                    println!("Lines {}", ctx.text_buffer.get_line_count());
                     let mut old_line_iter =
-                        text_buffer.get_iter_at_line(text_buffer.get_line_count() - 2);
-                    text_buffer.delete(&mut old_line_iter, &mut text_buffer.get_end_iter());
-                    text_buffer.insert(
+                        ctx.text_buffer.get_iter_at_line(ctx.text_buffer.get_line_count() - 2);
+                    ctx.text_buffer.delete(&mut old_line_iter, &mut ctx.text_buffer.get_end_iter());
+                    ctx.insert_paragraph(
                         &mut old_line_iter,
                         &format!("Downloaded\t {}\n", read / 1000),
                     );
@@ -603,143 +662,69 @@ impl AppWindow {
                 }
             }
         }
-        let mut text_iter = text_buffer.get_end_iter();
-        text_buffer.insert(&mut text_iter, "Download finished!\n");
-        let anchor = text_buffer.create_child_anchor(&mut text_iter).unwrap();
+        let mut text_iter = ctx.text_buffer.get_end_iter();
+        ctx.insert_paragraph(&mut text_iter, "Download finished!\n");
         let downloaded_file_url = format!("file://{}", d_path.as_os_str().to_str().unwrap());
-        let btn =
-            gtk::LinkButton::with_label(&downloaded_file_url, Some("Open with default program"));
-        text_view.add_child_at_anchor(&btn, &anchor);
-        btn.show();
+        ctx.insert_external_link(&mut text_iter, &downloaded_file_url, Some("Open with default program"));
 
         Ok(())
     }
-    fn display_url_confirmation(url: Url, text_view: gtk::TextView) {
-        let text_buffer = Self::buffer(&text_view);
-        let mut text_iter = text_buffer.get_end_iter();
-        text_buffer.insert(
+    fn display_url_confirmation(mut ctx: common::Ctx, url: Url) {
+        let mut text_iter = ctx.text_buffer.get_end_iter();
+        ctx.insert_paragraph(
             &mut text_iter,
             "Geopard doesn't support this url scheme. 
 If you want to open the following link in an external application,
 click on the link below\n",
         );
 
-        let btn = gtk::LinkButton::new(url.as_ref());
-        let anchor = text_buffer.create_child_anchor(&mut text_iter).unwrap();
-        text_view.add_child_at_anchor(&btn, &anchor);
-        btn.show();
-    }
-    fn insert_head(text_buffer: &gtk::TextBuffer, mut text_iter: &mut gtk::TextIter, line: &str) {
-        let n = line.chars().filter(|c| *c == '#').count();
-        let line = line.trim_start_matches('#').trim_start();
-        let line = glib::markup_escape_text(&line);
-        let size = match n {
-            1 => "xx-large",
-            2 => "x-large",
-            3 => "large",
-            _ => "medium",
-        };
-        text_buffer.insert_markup(
-            &mut text_iter,
-            &format!(r#"<span weight="800" size="{}">{}</span>"#, size, &line),
-        );
-    }
-
-    fn insert_citation(
-        text_buffer: &gtk::TextBuffer,
-        mut text_iter: &mut gtk::TextIter,
-        line: &str,
-    ) {
-        let line = glib::markup_escape_text(&line);
-        text_buffer.insert_markup(&mut text_iter, &format!(r#"<i>{}</i>"#, &line));
-    }
-
-    fn insert_pre(text_buffer: &gtk::TextBuffer, mut text_iter: &mut gtk::TextIter, line: &str) {
-        let line = glib::markup_escape_text(&line);
-        text_buffer.insert_markup(
-            &mut text_iter,
-            &format!(r#"<span font_family="monospace">{}</span>"#, line),
-        );
+        ctx.insert_external_link(&mut text_iter, url.as_str(), Some(url.as_str()));
     }
 
     async fn display_gemini<T: BufRead + Unpin>(
+        ctx: common::Ctx,
         mut reader: T,
-        text_view: gtk::TextView,
-        sender: glib::Sender<AppWindowMsg>,
-    ) -> anyhow::Result<()> {
-        println!("Displaying gemini text");
-        let text_buffer = Self::buffer(&text_view);
-        let sender_clone = sender.clone();
-        let mut line = String::with_capacity(1024);
-        let mut text_iter = text_buffer.get_end_iter();
+    ) -> anyhow::Result<Cache> {
+        let mut parser = gemini::Parser::new();
+        let mut render_engine = gemini::Renderer::new(ctx);
 
-        let mut inside_pre = false;
+        let mut data = String::with_capacity(1024);
+        let mut total = 0;
+        let mut n;
         loop {
-            line.clear();
-            let n = reader.read_line_lossy(&mut line).await?;
+            n = reader.read_line_lossy(&mut data).await?;
             if n == 0 {
-                break Ok(());
+                break;
             }
-
-            if line.starts_with("```") {
-                inside_pre = !inside_pre;
-            } else if inside_pre {
-                Self::insert_pre(&text_buffer, &mut text_iter, &line);
-            } else if line.starts_with("#") {
-                Self::insert_head(&text_buffer, &mut text_iter, &line);
-            } else if line.starts_with(">") {
-                Self::insert_citation(&text_buffer, &mut text_iter, &line);
-            } else if let Some(captures) = R_GEMINI_LINK.captures(&line) {
-                // Insert LinkButton
-                let btn = match (captures.name("href"), captures.name("label")) {
-                    (Some(m_href), Some(m_label)) if !m_label.as_str().is_empty() => {
-                        gtk::LinkButton::with_label(m_href.as_str(), Some(m_label.as_str()))
-                    }
-                    (Some(m_href), _) => {
-                        gtk::LinkButton::with_label(m_href.as_str(), Some(m_href.as_str()))
-                    }
-                    _ => gtk::LinkButton::with_label("", Some(&line)),
-                };
-
-                let sender_clone = sender_clone.clone();
-                btn.connect_activate_link(move |btn| {
-                    let btn_url = btn.get_uri();
-                    if let Some(url) = btn_url {
-                        sender_clone
-                            .send(AppWindowMsg::LinkClicked(url.to_string()))
-                            .unwrap();
-                    }
-                    gtk::Inhibit(true)
-                });
-                let anchor = text_buffer.create_child_anchor(&mut text_iter).unwrap();
-                text_view.add_child_at_anchor(&btn, &anchor);
-                btn.show();
-                text_buffer.insert(&mut text_iter, "\n");
-            } else {
-                text_buffer.insert(&mut text_iter, &line);
-            }
+            let line = &data[total..];
+            let token = parser.parse_line(line);
+            total += n;
+            render_engine.render(token);
         }
+        Ok(Cache {
+            data: data.into_bytes(),
+            format: Format::Gemini,
+        })
     }
-    fn display_error(error: anyhow::Error, text_view: gtk::TextView) {
+
+    fn display_error(ctx: common::Ctx, error: anyhow::Error) {
         println!("{:?}", error);
         glibctx().spawn_local(async move {
             let error_text = format!("Geopard experienced an error:\n {}", error);
             let buffered = BufReader::new(error_text.as_bytes());
-            Self::display_text(buffered, text_view.clone())
+            Self::display_text(ctx, buffered)
                 .await
                 .expect("Error while showing error in the text_view. This can't happen");
         })
     }
-    fn clear(text_view: &gtk::TextView) -> gtk::TextBuffer {
-        let text_buffer = gtk::TextBuffer::new::<gtk::TextTagTable>(None);
-        text_view.set_buffer(Some(&text_buffer));
-        text_buffer
+    fn clear(ctx: &common::Ctx) {
+        let b = &ctx.text_buffer;
+        b.delete(&mut b.get_start_iter(), &mut b.get_end_iter());
     }
     async fn display_text(
+        ctx: common::Ctx,
         mut stream: impl BufRead + Unpin,
-        text_view: gtk::TextView,
     ) -> anyhow::Result<()> {
-        let text_buffer = Self::buffer(&text_view);
         let mut line = String::with_capacity(1024);
         loop {
             line.clear();
@@ -747,9 +732,9 @@ click on the link below\n",
             if n == 0 {
                 break Ok(());
             }
-            let mut text_iter = text_buffer.get_end_iter();
-            text_buffer.insert(&mut text_iter, &line);
-            text_buffer.insert(&mut text_buffer.get_end_iter(), "\n");
+            let mut text_iter = ctx.text_buffer.get_end_iter();
+            ctx.insert_paragraph(&mut text_iter, &line);
+            ctx.insert_paragraph(&mut text_iter, "\n");
         }
     }
     fn bind_signals(&self) {
@@ -782,6 +767,42 @@ click on the link below\n",
         self.show_bookmarks_btn.connect_clicked(move |_| {
             let page_to_open = format!("file://{}", FAVORITE_PATH.to_str().unwrap());
             sender_clone.send(AppWindowMsg::Open(page_to_open)).unwrap();
+        });
+
+        let sender_clone = sender.clone();
+        let page_ctx = self.page_ctx.clone();
+        self.page_ctx.text_view.connect_event_after(move |text_view, e| {
+            if e.get_event_type() != gdk::EventType::ButtonRelease
+                && e.get_event_type() != gdk::EventType::TouchEnd
+            {
+                return;
+            }
+
+            if text_view.get_buffer().unwrap().get_has_selection() {
+                return;
+            }
+            
+
+            let (x, y) = e.get_coords().unwrap();
+            let (x, y) = text_view.window_to_buffer_coords(gtk::TextWindowType::Widget, x as i32, y as i32);
+            let url = text_view
+                .get_iter_at_location(x as i32, y as i32)
+                .and_then(|iter| {
+                    for tag in iter.get_tags() {
+                        if tag.get_property_name().map(|s| s.to_string()).as_deref() == Some("a") {
+                            dbg!("clicked link at line ", &iter.get_line());
+                            return page_ctx.links.borrow().get(&iter.get_line()).map(|s| s.to_owned());
+                        }
+                    }
+                    None
+                });
+
+            use common::LinkHandler;
+            match url {
+                Some(LinkHandler::Internal(url)) => sender_clone.send(AppWindowMsg::LinkClicked(url)).unwrap(),
+                Some(LinkHandler::External(url)) => gtk::show_uri(None, url.as_str(), 0).unwrap(),
+                _ => {}
+            }
         });
     }
 }
