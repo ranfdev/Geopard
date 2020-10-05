@@ -5,9 +5,11 @@ Geopard is a gtk3 gemini client
 - Colors! 
   The browser will have a different color for each domain you visit.
 
-- Fast (async core).
+- Fast (async core + caching).
   Streams content by default. That means you can open pages even when you have
   connection speeds of Kb/s.
+  It also caches pages in the history, so you can go back in an instant
+        
 
 - Can download binary files.
   The download will start as soon as you open the corresponding link.
