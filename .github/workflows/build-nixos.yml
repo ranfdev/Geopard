@@ -1,0 +1,14 @@
+name: "NixOS test"
+on:
+  pull_request:
+  push:
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2.3.1
+    - uses: cachix/install-nix-action@v11
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+    - run: nix-build nix/default.nix
+    - run: nix-shell --run "echo OK"
