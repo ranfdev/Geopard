@@ -1,0 +1,47 @@
+{
+    "app-id" : "com.ranfdev.Geopard",
+    "runtime" : "org.gnome.Platform",
+    "runtime-version" : "3.36",
+    "sdk" : "org.gnome.Sdk",
+    "sdk-extensions" : [
+        "org.freedesktop.Sdk.Extension.rust-stable"
+    ],
+    "command" : "geopard",
+    "tags" : [
+        "stable"
+    ],
+    "desktop-file-name-suffix" : " (Devel)",
+    "finish-args" : [
+        "--socket=fallback-x11",
+        "--socket=wayland",
+        "--device=dri",
+        "--share=network"
+    ],
+    "build-options" : {
+        "append-path" : "/usr/lib/sdk/rust-stable/bin",
+        "build-args" : [
+            "--share=network"
+        ],
+        "env" : {
+            "RUSTFLAGS" : "--remap-path-prefix =../",
+            "CARGO_HOME" : "/run/build/Geopard/cargo"
+        }
+    },
+    "modules" : [
+        {
+            "name" : "Geopard",
+            "buildsystem" : "meson",
+            "config-opts" : [
+                "-Dprofile=development"
+            ],
+            "sources" : [
+                {
+                    "type" : "git",
+                    "url" : "../",
+                    "branch" : "test-github-actions"
+                }
+            ]
+        }
+    ]
+}
+
