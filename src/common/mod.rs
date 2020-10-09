@@ -2,8 +2,30 @@ use gtk::prelude::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::RefCell;
-
+use async_trait::async_trait;
+use std::borrow::Cow;
 use crate::config::Fonts;
+use async_std::io::BufRead;
+use async_std::io::prelude::*;
+
+pub trait TextRender<T> {
+    fn render(&mut self, token: T);
+}
+
+pub fn glibctx() -> glib::MainContext {
+    glib::MainContext::default()
+}
+
+pub struct Color(pub u8, pub u8, pub u8);
+
+impl std::fmt::LowerHex for Color {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:02x}", self.0)?;
+        write!(f, "{:02x}", self.1)?;
+        write!(f, "{:02x}", self.2)?;
+        Ok(())
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum LinkHandler {
@@ -199,5 +221,38 @@ impl Ctx {
             &self.text_buffer.get_iter_at_offset(start),
             &text_iter,
         );
+    }
+}
+
+#[async_trait(?Send)]
+pub trait LossyTextRead {
+    async fn read_line_lossy(&mut self, mut buf: &mut String) -> std::io::Result<usize>;
+}
+
+#[async_trait(?Send)]
+impl<T: BufRead + Unpin> LossyTextRead for T {
+    async fn read_line_lossy(&mut self, buf: &mut String) -> std::io::Result<usize> {
+        // This is safe because we treat buf as a mut Vec to read the data, BUT,
+        // we check if it's valid utf8 using String::from_utf8_lossy.
+        // If it's not valid utf8, we swap our buf with the newly allocated and
+        // safe string returned from String::from_utf8_lossy
+        //
+        // In the implementation of BufReader::read_line, they talk about some things about
+        // panic handling, which I don't understand currently. Whatever...
+        unsafe {
+            let mut vec_buf = buf.as_mut_vec();
+            let mut n = self.read_until(b'\n', &mut vec_buf).await?;
+
+            let correct_string = String::from_utf8_lossy(&vec_buf);
+            if let Cow::Owned(valid_utf8_string) = correct_string {
+                // Yes, I know performance this requires useless copying.
+                // This code will only be executed when invalid utf8 is found, so i
+                // consider this as good enough
+                buf.truncate(buf.len() - n); // Remove bad non-utf8 data
+                buf.push_str(&valid_utf8_string); // Add correct utf8 data instead
+                n = valid_utf8_string.len();
+            }
+            Ok(n)
+        }
     }
 }
