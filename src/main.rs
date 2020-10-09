@@ -357,6 +357,7 @@ impl AppWindow {
         );
     }
     fn back(&mut self) {
+        self.stop_old();
         dbg!(self
             .history
             .iter()
@@ -432,9 +433,13 @@ impl AppWindow {
         }
         Ok(None)
     }
-    fn open_url(&mut self, url: Url) {
+    fn stop_old(&mut self) {
         // Drop (and stop) old request asap
-        self.current_req = None;
+        self.current_req.take();
+        self.url_bar.set_progress_fraction(0.0);
+    }
+    fn open_url(&mut self, url: Url) {
+        self.stop_old();
 
         println!("Good url: {}", url);
         let sender = self.sender.clone();
