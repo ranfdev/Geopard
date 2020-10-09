@@ -1,11 +1,11 @@
+use crate::config::Fonts;
+use async_trait::async_trait;
+use futures::prelude::*;
 use gtk::prelude::*;
+use std::borrow::Cow;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::cell::RefCell;
-use async_trait::async_trait;
-use std::borrow::Cow;
-use crate::config::Fonts;
-use futures::prelude::*;
 
 pub trait TextRender<T> {
     fn render(&mut self, token: T);
@@ -29,7 +29,7 @@ impl std::fmt::LowerHex for Color {
 #[derive(Debug, Clone)]
 pub enum LinkHandler {
     Internal(String),
-    External(String)
+    External(String),
 }
 
 #[derive(Debug, Clone)]
@@ -42,15 +42,15 @@ pub struct Ctx {
 impl Ctx {
     pub fn new(text_view: gtk::TextView, config: crate::config::Config) -> Self {
         let text_buffer = gtk::TextBuffer::new::<gtk::TextTagTable>(None);
-            text_view.set_buffer(Some(&text_buffer));
-            println!("SET NEW BUFFER");
+        text_view.set_buffer(Some(&text_buffer));
+        println!("SET NEW BUFFER");
 
         let links = Rc::new(RefCell::new(HashMap::new()));
         let this = Self {
             text_view,
             text_buffer,
             config,
-            links
+            links,
         };
         this.init_tags();
         this
@@ -192,10 +192,17 @@ impl Ctx {
             &text_iter,
         );
     }
-    pub fn insert_internal_link(&mut self, mut text_iter: &mut gtk::TextIter, url: &str, label: Option<&str>) {
+    pub fn insert_internal_link(
+        &mut self,
+        mut text_iter: &mut gtk::TextIter,
+        url: &str,
+        label: Option<&str>,
+    ) {
         let label = label.unwrap_or(url);
         let link_handler = LinkHandler::Internal(url.to_owned());
-        self.links.borrow_mut().insert(text_iter.get_line(), link_handler);
+        self.links
+            .borrow_mut()
+            .insert(text_iter.get_line(), link_handler);
 
         let start = text_iter.get_offset();
         self.insert_paragraph(&mut text_iter, &label);
@@ -207,10 +214,17 @@ impl Ctx {
         );
     }
 
-    pub fn insert_external_link(&mut self, mut text_iter: &mut gtk::TextIter, url: &str, label: Option<&str>) {
+    pub fn insert_external_link(
+        &mut self,
+        mut text_iter: &mut gtk::TextIter,
+        url: &str,
+        label: Option<&str>,
+    ) {
         let label = label.unwrap_or(url);
         let link_handler = LinkHandler::External(url.to_owned());
-        self.links.borrow_mut().insert(text_iter.get_line(), link_handler);
+        self.links
+            .borrow_mut()
+            .insert(text_iter.get_line(), link_handler);
 
         let start = text_iter.get_offset();
         self.insert_paragraph(&mut text_iter, &label);

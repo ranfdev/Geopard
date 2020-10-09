@@ -1,5 +1,5 @@
-use serde::{Serialize, Deserialize};
 use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
 
 pub const DEFAULT_CONFIG: Lazy<Config> = Lazy::new(|| Config {
     colors: true,
@@ -7,8 +7,8 @@ pub const DEFAULT_CONFIG: Lazy<Config> = Lazy::new(|| Config {
         paragraph: Some(Fonts::default_paragraph()),
         preformatted: Some(Fonts::default_preformatted()),
         heading: Some(Fonts::default_heading()),
-        quote: Some(Fonts::default_quote())
-    }
+        quote: Some(Fonts::default_quote()),
+    },
 });
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

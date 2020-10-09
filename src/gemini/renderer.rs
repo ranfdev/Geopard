@@ -9,9 +9,7 @@ pub struct Renderer {
 
 impl Renderer {
     pub fn new(ctx: Ctx) -> Self {
-        Self {
-            ctx
-        }
+        Self { ctx }
     }
 }
 

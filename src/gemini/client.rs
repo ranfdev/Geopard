@@ -1,6 +1,6 @@
-use async_net::{TcpStream, AsyncToSocketAddrs};
-use futures::prelude::*;
+use async_net::TcpStream;
 use futures::io::Cursor;
+use futures::prelude::*;
 use std::convert::TryFrom;
 use url::Url;
 
@@ -155,7 +155,11 @@ impl Client {
         };
 
         let host = url.host_str().ok_or(Error::InvalidHost)?;
-        let addr = async_net::resolve((host, port)).await?.into_iter().next().ok_or(Error::InvalidHost)?;
+        let addr = async_net::resolve((host, port))
+            .await?
+            .into_iter()
+            .next()
+            .ok_or(Error::InvalidHost)?;
         let tcp_s = TcpStream::connect(addr).await?;
         let mut tls_s = async_native_tls::TlsConnector::new()
             .danger_accept_invalid_certs(true)
