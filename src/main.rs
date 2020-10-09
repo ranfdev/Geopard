@@ -1,8 +1,7 @@
 use anyhow::{bail, Context, Error};
-use async_std::fs;
-use async_std::io::prelude::*;
-use async_std::prelude::*;
-use async_std::io::{BufRead, BufReader, Cursor};
+use async_fs::File;
+use futures::io::{BufReader, Cursor};
+use futures::prelude::*;
 use futures::task::LocalSpawnExt;
 use gio::prelude::*;
 use gtk::prelude::*;
@@ -16,7 +15,7 @@ mod common;
 mod config;
 mod gemini;
 
-use common::{TextRender, LossyTextRead, glibctx, Color};
+use common::{glibctx, Color, LossyTextRead, TextRender};
 
 static USER_DATA_PATH: Lazy<std::path::PathBuf> = Lazy::new(|| {
     glib::get_user_data_dir()
@@ -98,12 +97,16 @@ struct AppWindow {
 }
 impl AppWindow {
     pub fn new(app: &gtk::Application) -> gtk::ApplicationWindow {
-        Self::create_base_files().unwrap();
-        let config: config::Config = toml::from_str(
-            &std::fs::read_to_string(&*SETTINGS_PATH)
-                .expect(&format!("Failed reading config from {:?}", &*SETTINGS_PATH)),
-        )
-        .expect("Failed parsing config");
+        let config = futures::executor::block_on(async {
+            Self::create_base_files().await.unwrap();
+            let config: config::Config = toml::from_str(
+                &async_fs::read_to_string(&*SETTINGS_PATH)
+                    .await
+                    .expect(&format!("Failed reading config from {:?}", &*SETTINGS_PATH)),
+            )
+            .expect("Failed parsing config");
+            config
+        });
         dbg!(&config);
 
         let window = gtk::ApplicationWindow::new(app);
@@ -182,37 +185,50 @@ impl AppWindow {
         window
     }
 
-    fn create_base_files() -> anyhow::Result<()> {
+    async fn create_base_files() -> anyhow::Result<()> {
         if !USER_DATA_PATH.exists() {
-            std::fs::create_dir_all(&*USER_DATA_PATH)
+            async_fs::create_dir_all(&*USER_DATA_PATH)
+                .await
                 .context("Failed to create geopard data dir")?;
         }
 
         if !USER_CONFIG_PATH.exists() {
-            std::fs::create_dir_all(&*USER_CONFIG_PATH)
+            async_fs::create_dir_all(&*USER_CONFIG_PATH)
+                .await
                 .context("Failed to create geopard config dir")?;
         }
 
         if !FAVORITE_PATH.exists() {
-            std::fs::File::create(&*FAVORITE_PATH).context("Failed to create favorite.gemini")?;
-            std::fs::write(&*FAVORITE_PATH, DEFAULT_FAVORITES)
+            File::create(&*FAVORITE_PATH)
+                .await
+                .context("Failed to create favorite.gemini")?;
+            async_fs::write(&*FAVORITE_PATH, DEFAULT_FAVORITES)
+                .await
                 .context("Failed writing default bookmarks")?;
         }
 
         if !HISTORY_PATH.exists() {
-            std::fs::File::create(&*HISTORY_PATH).context("Failed to create history.gemini")?;
+            File::create(&*HISTORY_PATH)
+                .await
+                .context("Failed to create history.gemini")?;
         }
 
         if !SETTINGS_PATH.exists() {
-            std::fs::File::create(&*SETTINGS_PATH).context("Failed to create config.toml")?;
-            std::fs::write(&*SETTINGS_PATH, toml::to_string(&*config::DEFAULT_CONFIG).unwrap())
-                .context("Failed writing example config")?;
+            File::create(&*SETTINGS_PATH)
+                .await
+                .context("Failed to create config.toml")?;
+            async_fs::write(
+                &*SETTINGS_PATH,
+                toml::to_string(&*config::DEFAULT_CONFIG).unwrap(),
+            )
+            .await
+            .context("Failed writing example config")?;
         }
 
         Ok(())
     }
     async fn favorite(url: &str) -> anyhow::Result<()> {
-        let mut file = fs::OpenOptions::new()
+        let mut file = async_fs::OpenOptions::new()
             .write(true)
             .append(true)
             .open(&*FAVORITE_PATH)
@@ -341,7 +357,11 @@ impl AppWindow {
         );
     }
     fn back(&mut self) {
-        dbg!(self.history.iter().map(|item| item.url.clone()).collect::<Vec<Url>>());
+        dbg!(self
+            .history
+            .iter()
+            .map(|item| item.url.clone())
+            .collect::<Vec<Url>>());
         if self.history.len() > 1 {
             // remove current url
             self.history.pop();
@@ -372,19 +392,12 @@ impl AppWindow {
             } = cache
             {
                 let reader = BufReader::new(Cursor::new(&data));
-                Self::display_gemini(ctx, reader)
-                    .await
-                    .unwrap();
+                Self::display_gemini(ctx, reader).await.unwrap();
             }
         })
     }
 
-    fn display_input(
-        ctx: common::Ctx,
-        url: Url,
-        msg: &str,
-        sender: glib::Sender<AppWindowMsg>,
-    ) {
+    fn display_input(ctx: common::Ctx, url: Url, msg: &str, sender: glib::Sender<AppWindowMsg>) {
         let text_buffer = &ctx.text_buffer;
 
         let mut iter = text_buffer.get_end_iter();
@@ -405,12 +418,9 @@ impl AppWindow {
             sender.send(AppWindowMsg::Open(url.to_string())).unwrap();
         });
     }
-    async fn open_file_url(
-        ctx: common::Ctx,
-        url: Url,
-    ) -> anyhow::Result<Option<Cache>> {
+    async fn open_file_url(ctx: common::Ctx, url: Url) -> anyhow::Result<Option<Cache>> {
         let path = url.to_file_path().unwrap();
-        let file = fs::File::open(&path).await?;
+        let file = File::open(&path).await?;
         let lines = BufReader::new(file);
         match path.extension().map(|x| x.to_str()) {
             Some(Some("gmi")) | Some(Some("gemini")) => {
@@ -449,16 +459,10 @@ impl AppWindow {
             let cache = match url.scheme() {
                 "about" => {
                     let lines = BufReader::new(ABOUT_PAGE.as_bytes());
-                    Self::display_gemini(ctx_clone, lines)
-                        .await
-                        .map(|_| None)
+                    Self::display_gemini(ctx_clone, lines).await.map(|_| None)
                 }
                 "file" => {
-                    Self::while_loading(
-                        &url_bar,
-                        Self::open_file_url(ctx_clone, url.clone()),
-                    )
-                    .await
+                    Self::while_loading(&url_bar, Self::open_file_url(ctx_clone, url.clone())).await
                 }
                 "gemini" => {
                     Self::while_loading(
@@ -517,13 +521,9 @@ impl AppWindow {
                 let body = res.body().unwrap();
                 let buffered = BufReader::new(body);
                 if meta.find("text/gemini").is_some() {
-                    Self::display_gemini(ctx, buffered)
-                        .await
-                        .map(|c| Some(c))
+                    Self::display_gemini(ctx, buffered).await.map(|c| Some(c))
                 } else if meta.find("text").is_some() {
-                    Self::display_text(ctx, buffered)
-                        .await
-                        .map(|_| None)
+                    Self::display_text(ctx, buffered).await.map(|_| None)
                 } else {
                     Self::display_download(ctx, url.clone(), buffered)
                         .await
@@ -565,7 +565,7 @@ impl AppWindow {
             }
         }
     }
-    async fn display_download<T: Read + Unpin>(
+    async fn display_download<T: AsyncRead + Unpin>(
         mut ctx: common::Ctx,
         url: Url,
         mut stream: T,
@@ -587,7 +587,7 @@ impl AppWindow {
         );
         ctx.insert_paragraph(&mut text_iter, "Downloaded\t Kb\n");
 
-        let mut file = fs::File::create(&d_path).await?;
+        let mut file = File::create(&d_path).await?;
         loop {
             match stream.read(&mut buffer).await {
                 Ok(0) => break,
@@ -595,9 +595,11 @@ impl AppWindow {
                     file.write_all(&buffer[..n]).await?;
                     read += n;
                     println!("Lines {}", ctx.text_buffer.get_line_count());
-                    let mut old_line_iter =
-                        ctx.text_buffer.get_iter_at_line(ctx.text_buffer.get_line_count() - 2);
-                    ctx.text_buffer.delete(&mut old_line_iter, &mut ctx.text_buffer.get_end_iter());
+                    let mut old_line_iter = ctx
+                        .text_buffer
+                        .get_iter_at_line(ctx.text_buffer.get_line_count() - 2);
+                    ctx.text_buffer
+                        .delete(&mut old_line_iter, &mut ctx.text_buffer.get_end_iter());
                     ctx.insert_paragraph(
                         &mut old_line_iter,
                         &format!("Downloaded\t {}\n", read / 1000),
@@ -614,7 +616,11 @@ impl AppWindow {
         let mut text_iter = ctx.text_buffer.get_end_iter();
         ctx.insert_paragraph(&mut text_iter, "Download finished!\n");
         let downloaded_file_url = format!("file://{}", d_path.as_os_str().to_str().unwrap());
-        ctx.insert_external_link(&mut text_iter, &downloaded_file_url, Some("Open with default program"));
+        ctx.insert_external_link(
+            &mut text_iter,
+            &downloaded_file_url,
+            Some("Open with default program"),
+        );
 
         Ok(())
     }
@@ -630,7 +636,7 @@ click on the link below\n",
         ctx.insert_external_link(&mut text_iter, url.as_str(), Some(url.as_str()));
     }
 
-    async fn display_gemini<T: BufRead + Unpin>(
+    async fn display_gemini<T: AsyncBufRead + Unpin>(
         ctx: common::Ctx,
         mut reader: T,
     ) -> anyhow::Result<Cache> {
@@ -672,7 +678,7 @@ click on the link below\n",
     }
     async fn display_text(
         ctx: common::Ctx,
-        mut stream: impl BufRead + Unpin,
+        mut stream: impl AsyncBufRead + Unpin,
     ) -> anyhow::Result<()> {
         let mut line = String::with_capacity(1024);
         loop {
@@ -720,39 +726,54 @@ click on the link below\n",
 
         let sender_clone = sender.clone();
         let page_ctx = self.page_ctx.clone();
-        self.page_ctx.text_view.connect_event_after(move |text_view, e| {
-            if e.get_event_type() != gdk::EventType::ButtonRelease
-                && e.get_event_type() != gdk::EventType::TouchEnd
-            {
-                return;
-            }
+        self.page_ctx
+            .text_view
+            .connect_event_after(move |text_view, e| {
+                if e.get_event_type() != gdk::EventType::ButtonRelease
+                    && e.get_event_type() != gdk::EventType::TouchEnd
+                {
+                    return;
+                }
 
-            if text_view.get_buffer().unwrap().get_has_selection() {
-                return;
-            }
-            
+                if text_view.get_buffer().unwrap().get_has_selection() {
+                    return;
+                }
 
-            let (x, y) = e.get_coords().unwrap();
-            let (x, y) = text_view.window_to_buffer_coords(gtk::TextWindowType::Widget, x as i32, y as i32);
-            let url = text_view
-                .get_iter_at_location(x as i32, y as i32)
-                .and_then(|iter| {
-                    for tag in iter.get_tags() {
-                        if tag.get_property_name().map(|s| s.to_string()).as_deref() == Some("a") {
-                            dbg!("clicked link at line ", &iter.get_line());
-                            return page_ctx.links.borrow().get(&iter.get_line()).map(|s| s.to_owned());
+                let (x, y) = e.get_coords().unwrap();
+                let (x, y) = text_view.window_to_buffer_coords(
+                    gtk::TextWindowType::Widget,
+                    x as i32,
+                    y as i32,
+                );
+                let url = text_view
+                    .get_iter_at_location(x as i32, y as i32)
+                    .and_then(|iter| {
+                        for tag in iter.get_tags() {
+                            if tag.get_property_name().map(|s| s.to_string()).as_deref()
+                                == Some("a")
+                            {
+                                dbg!("clicked link at line ", &iter.get_line());
+                                return page_ctx
+                                    .links
+                                    .borrow()
+                                    .get(&iter.get_line())
+                                    .map(|s| s.to_owned());
+                            }
                         }
-                    }
-                    None
-                });
+                        None
+                    });
 
-            use common::LinkHandler;
-            match url {
-                Some(LinkHandler::Internal(url)) => sender_clone.send(AppWindowMsg::LinkClicked(url)).unwrap(),
-                Some(LinkHandler::External(url)) => gtk::show_uri(None, url.as_str(), 0).unwrap(),
-                _ => {}
-            }
-        });
+                use common::LinkHandler;
+                match url {
+                    Some(LinkHandler::Internal(url)) => {
+                        sender_clone.send(AppWindowMsg::LinkClicked(url)).unwrap()
+                    }
+                    Some(LinkHandler::External(url)) => {
+                        gtk::show_uri(None, url.as_str(), 0).unwrap()
+                    }
+                    _ => {}
+                }
+            });
     }
 }
 

@@ -5,8 +5,7 @@ use std::cell::RefCell;
 use async_trait::async_trait;
 use std::borrow::Cow;
 use crate::config::Fonts;
-use async_std::io::BufRead;
-use async_std::io::prelude::*;
+use futures::prelude::*;
 
 pub trait TextRender<T> {
     fn render(&mut self, token: T);
@@ -230,7 +229,7 @@ pub trait LossyTextRead {
 }
 
 #[async_trait(?Send)]
-impl<T: BufRead + Unpin> LossyTextRead for T {
+impl<T: AsyncBufRead + Unpin> LossyTextRead for T {
     async fn read_line_lossy(&mut self, buf: &mut String) -> std::io::Result<usize> {
         // This is safe because we treat buf as a mut Vec to read the data, BUT,
         // we check if it's valid utf8 using String::from_utf8_lossy.

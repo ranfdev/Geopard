@@ -1,11 +1,11 @@
-use async_std::prelude::*;
-use async_std::net::TcpStream;
-use async_std::io::{ReadExt, Cursor};
+use async_net::{TcpStream, AsyncToSocketAddrs};
+use futures::prelude::*;
+use futures::io::Cursor;
 use std::convert::TryFrom;
 use url::Url;
 
 const INIT_BUFFER_SIZE: usize = 8192; // 8Kb
-const MAX_REDIRECT: u8 = 5; 
+const MAX_REDIRECT: u8 = 5;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProtoError {
@@ -36,7 +36,7 @@ pub enum Error {
     #[error("Too many redirections. Last requested redirect was {0}")]
     TooManyRedirects(String),
     #[error("This library only support the gemini url scheme")]
-    SchemeNotSupported
+    SchemeNotSupported,
 }
 
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
@@ -51,24 +51,24 @@ pub enum Status {
 impl TryFrom<u8> for Status {
     type Error = InvalidStatus;
     fn try_from(s: u8) -> Result<Self, Self::Error> {
-        match s/10 {
+        match s / 10 {
             1 => Ok(Status::Input(s)),
             2 => Ok(Status::Success(s)),
             3 => Ok(Status::Redirect(s)),
             4 => Ok(Status::TempFail(s)),
             5 => Ok(Status::PermFail(s)),
             6 => Ok(Status::CertRequired(s)),
-            _ => Err(InvalidStatus)
+            _ => Err(InvalidStatus),
         }
     }
 }
 
 #[derive(Debug)]
 pub struct Response {
-    cursor: async_std::io::Cursor<Vec<u8>>,
+    cursor: Cursor<Vec<u8>>,
     status: Status,
     meta: String,
-    tls_s: async_native_tls::TlsStream<async_std::net::TcpStream>
+    tls_s: async_native_tls::TlsStream<TcpStream>,
 }
 impl Response {
     pub fn status(&self) -> Status {
@@ -80,21 +80,21 @@ impl Response {
     pub fn meta_owned(self) -> String {
         self.meta
     }
-    pub fn body(self) -> Option<impl async_std::io::Read> {
+    pub fn body(self) -> Option<impl AsyncRead> {
         match self.status {
             Status::Success(_) => Some(self.cursor.chain(self.tls_s)),
-            _ => None
+            _ => None,
         }
     }
 }
 #[derive(Default, PartialEq, Debug, Copy, Clone)]
-struct ClientOptions {
-    redirect: bool
+pub struct ClientOptions {
+    redirect: bool,
 }
 
 #[derive(Default, Debug, Clone)]
 pub struct ClientBuilder {
-    options: ClientOptions
+    options: ClientOptions,
 }
 
 impl ClientBuilder {
@@ -107,19 +107,19 @@ impl ClientBuilder {
     }
     pub fn build(self) -> Client {
         Client {
-            options: self.options
+            options: self.options,
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Client {
-    options: ClientOptions
+    options: ClientOptions,
 }
 impl Client {
     pub fn new() -> Self {
         Self {
-            options: Default::default()
+            options: Default::default(),
         }
     }
     pub async fn fetch(&self, url: &str) -> Result<Response, Error> {
@@ -133,8 +133,8 @@ impl Client {
                         let url = Url::parse(&res.meta())?;
                         res = Self::fetch_internal(url).await?;
                         n_redirect += 1;
-                    },
-                    _ => break
+                    }
+                    _ => break,
                 }
                 if n_redirect > MAX_REDIRECT {
                     return Err(Error::TooManyRedirects(res.meta_owned()));
@@ -146,19 +146,21 @@ impl Client {
     }
     async fn fetch_internal(url: Url) -> Result<Response, Error> {
         if url.scheme() != "gemini" {
-            return Err(Error::SchemeNotSupported)
+            return Err(Error::SchemeNotSupported);
         }
 
         let port = match url.port() {
             Some(p) => p,
-            None => 1965
+            None => 1965,
         };
 
         let host = url.host_str().ok_or(Error::InvalidHost)?;
-        let tcp_s = TcpStream::connect((host, port)).await?;
+        let addr = async_net::resolve((host, port)).await?.into_iter().next().ok_or(Error::InvalidHost)?;
+        let tcp_s = TcpStream::connect(addr).await?;
         let mut tls_s = async_native_tls::TlsConnector::new()
             .danger_accept_invalid_certs(true)
-            .connect(host, tcp_s).await?;
+            .connect(host, tcp_s)
+            .await?;
 
         let url_request = url.to_string() + "\r\n";
         tls_s.write_all(url_request.as_bytes()).await?;
@@ -184,8 +186,10 @@ impl Client {
                         // at bytes just received.
                         // Start looking from n_read-n-1 to be sure to include the '\r', which may
                         // have been read before
-                        let search_start = (n_read-n).saturating_sub(1); // don't go below 0
-                        let meta_end_res = buffer[search_start..n_read].windows(2).position(|w| w == b"\r\n");
+                        let search_start = (n_read - n).saturating_sub(1); // don't go below 0
+                        let meta_end_res = buffer[search_start..n_read]
+                            .windows(2)
+                            .position(|w| w == b"\r\n");
                         if let Some(i) = meta_end_res {
                             println!("Found meta at {}", i);
                             break search_start + i;
@@ -194,8 +198,7 @@ impl Client {
                             return Err(Error::InvalidProtocolData(ProtoError::MetaNotFound));
                         }
                     }
-
-                },
+                }
                 Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
                 Err(e) => return Err(e.into()),
             };
@@ -217,7 +220,7 @@ impl Client {
         Ok(Response {
             status,
             // meta_end + 2b offset of status and space + 2b offset (\r\n)
-            cursor: Cursor::new(buffer.split_off(meta_end + 2)), 
+            cursor: Cursor::new(buffer.split_off(meta_end + 2)),
             meta,
             tls_s,
         })
@@ -225,65 +228,67 @@ impl Client {
 }
 #[cfg(test)]
 mod tests {
-    use crate::gemini_module::*;
+    use crate::gemini::*;
+    use futures::executor::block_on;
     #[test]
     fn client_builder() {
-        let client = ClientBuilder::new()
-            .redirect(true)
-            .build();
+        let client = ClientBuilder::new().redirect(true).build();
 
-        assert_eq!(client.options, ClientOptions {
-            redirect: true
-        });
+        assert_eq!(client.options, ClientOptions { redirect: true });
     }
-    #[async_std::test]
-    async fn home() -> Result<(), Error> {
-        let client = Client::new();
-        let res = client.fetch("gemini://gemini.circumlunar.space/").await?;
+    #[test]
+    fn home() -> Result<(), Error> {
+        block_on(async {
+            let client = Client::new();
+            let res = client.fetch("gemini://gemini.circumlunar.space/").await?;
 
-        assert_eq!(res.status(), Status::Success(20));
-        assert_eq!(res.meta(), "text/gemini");
-        assert!(res.body().is_some());
+            assert_eq!(res.status(), Status::Success(20));
+            assert_eq!(res.meta(), "text/gemini");
+            assert!(res.body().is_some());
 
-        Ok(())
+            Ok(())
+        })
     }
-    #[async_std::test]
-    async fn home_auto_redirect() -> Result<(), Error> {
-        let client = ClientBuilder::new()
-            .redirect(true)
-            .build();
+    #[test]
+    fn home_auto_redirect() -> Result<(), Error> {
+        block_on(async {
+            let client = ClientBuilder::new().redirect(true).build();
 
-        // The url doesn't have a final slash. It's going to be redirected to /
-        let res = client.fetch("gemini://gemini.circumlunar.space").await?;
+            // The url doesn't have a final slash. It's going to be redirected to /
+            let res = client.fetch("gemini://gemini.circumlunar.space").await?;
 
-        assert_eq!(res.status(), Status::Success(20));
-        assert_eq!(res.meta(), "text/gemini");
-        assert!(res.body().is_some());
+            assert_eq!(res.status(), Status::Success(20));
+            assert_eq!(res.meta(), "text/gemini");
+            assert!(res.body().is_some());
 
-        Ok(())
+            Ok(())
+        })
     }
 
-    #[async_std::test]
-    async fn home_no_redirect() -> Result<(), Error> {
-        let client = Client::new();
-        // The url doesn't have a final slash. It's going to be redirected to /
-        let res = client.fetch("gemini://gemini.circumlunar.space").await?;
+    #[test]
+    fn home_no_redirect() -> Result<(), Error> {
+        block_on(async {
+            let client = Client::new();
+            // The url doesn't have a final slash. It's going to be redirected to /
+            let res = client.fetch("gemini://gemini.circumlunar.space").await?;
 
-        assert_eq!(res.status(), Status::Redirect(31)); // needs redirection
-        assert_eq!(res.meta(), "gemini://gemini.circumlunar.space/");
-        assert!(res.body().is_none()); // no body in redirections
+            assert_eq!(res.status(), Status::Redirect(31)); // needs redirection
+            assert_eq!(res.meta(), "gemini://gemini.circumlunar.space/");
+            assert!(res.body().is_none()); // no body in redirections
 
-        Ok(())
+            Ok(())
+        })
     }
 
-    #[async_std::test]
-    async fn invalid_scheme() -> Result<(), Error> {
-        let client = Client::new();
-        // The url doesn't have a final slash. It's going to be redirected to /
-        let res = client.fetch("http://gemini.circumlunar.space").await;
+    #[test]
+    fn invalid_scheme() -> Result<(), Error> {
+        block_on(async {
+            let client = Client::new();
+            // The url doesn't have a final slash. It's going to be redirected to /
+            let res = client.fetch("http://gemini.circumlunar.space").await;
 
-        assert!(res.is_err());
-        Ok(())
+            assert!(res.is_err());
+            Ok(())
+        })
     }
-
 }
