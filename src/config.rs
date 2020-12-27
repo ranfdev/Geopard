@@ -1,7 +1,7 @@
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
-pub const DEFAULT_CONFIG: Lazy<Config> = Lazy::new(|| Config {
+pub static DEFAULT_CONFIG: Lazy<Config> = Lazy::new(|| Config {
     colors: true,
     fonts: Fonts {
         paragraph: Some(Fonts::default_paragraph()),

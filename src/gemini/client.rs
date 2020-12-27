@@ -3,6 +3,7 @@ use futures::io::Cursor;
 use futures::prelude::*;
 use std::convert::TryFrom;
 use url::Url;
+use log::debug;
 
 const INIT_BUFFER_SIZE: usize = 8192; // 8Kb
 const MAX_REDIRECT: u8 = 5;
@@ -168,7 +169,7 @@ impl Client {
 
         let url_request = url.to_string() + "\r\n";
         tls_s.write_all(url_request.as_bytes()).await?;
-        dbg!("request sent", url);
+        debug!("Request sent at {}", url);
 
         // To save some allocations, the buffer size is pretty big. If the user has a fast internet
         // connection, it may fill the entire buffer with one read syscall. With a slow connection,
@@ -183,7 +184,7 @@ impl Client {
                 Ok(0) => return Err(Error::InvalidProtocolData(ProtoError::MetaNotFound)),
                 Ok(n) => {
                     n_read += n;
-                    println!("Received {}", n);
+                    debug!("Received {}", n);
                     // The first three bytes are for status and a space
                     if n_read > 3 {
                         // Find the end of metadata, by looking for <CR><CF> directly by looking
@@ -195,7 +196,7 @@ impl Client {
                             .windows(2)
                             .position(|w| w == b"\r\n");
                         if let Some(i) = meta_end_res {
-                            println!("Found meta at {}", i);
+                            debug!("Found meta at {}", i);
                             break search_start + i;
                         }
                         if n_read > 3 + 1024 {

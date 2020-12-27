@@ -24,6 +24,7 @@ version = "0.13.0"
 [dependencies]
 async-net = "1.4.7"
 async-fs = "1.5.0"
+flume = "0.9.1"
 url = "2.1.1"
 thiserror = "1.0.20"
 futures = "0.3.5"
@@ -35,3 +36,5 @@ async-native-tls = "0.3.3"
 toml = "0.5.6"
 serde = { version = "1.0.116", features = ["derive"] }
 pango = { version = "0.9.0" }
+env_logger = "0.8.1"
+log = "0.4.0"

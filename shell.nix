@@ -18,5 +18,6 @@ pkgs.mkShell {
     gtk3
     openssl
     pkg-config
+    rust-analyzer
   ];
 }
