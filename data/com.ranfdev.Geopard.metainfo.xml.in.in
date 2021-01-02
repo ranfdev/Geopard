@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Lorenzo Miglietta 2020 <ranfdev@gmail.com> -->
+<component type="desktop-application">
+  <id>@app-id@</id>
+  <metadata_license>CC0</metadata_license>
+  <project_license>GPL-3.0+</project_license>
+  <name>Geopard</name>
+  <summary>A gemini browser</summary>
+  <description>
+    <p>A fast gemini browser with colors</p>
+  </description>
+
+  <url type="homepage">https://ranfdev.com/projects/Geopard</url>
+  <url type="bugtracker">https://github.com/ranfdev/Geopard/issues/</url>
+  <content_rating type="oars-1.0" />
+  <releases>
+    <release version="0.1.0" date="2020-07-10" />
+  </releases>
+  <kudos>
+     <!--
+       GNOME Software kudos:
+       https://gitlab.gnome.org/GNOME/gnome-software/blob/master/doc/kudos.md
+     -->
+     <kudo>ModernToolkit</kudo>
+     <kudo>HiDpiIcon</kudo>
+  </kudos>
+  <developer_name>Lorenzo Miglietta</developer_name>
+  <update_contact>ranfdev@gmail.com</update_contact>
+  <translation type="gettext">@gettext-package@</translation>
+  <launchable type="desktop-id">@app-id@.desktop</launchable>
+</component>
