@@ -10,7 +10,6 @@
     "tags" : [
         "stable"
     ],
-    "desktop-file-name-suffix" : " (Devel)",
     "finish-args" : [
         "--socket=fallback-x11",
         "--socket=wayland",
@@ -32,13 +31,13 @@
             "name" : "Geopard",
             "buildsystem" : "meson",
             "config-opts" : [
-                "-Dprofile=development"
+                "-Dprofile=default"
             ],
             "sources" : [
                 {
                     "type" : "git",
                     "url" : "../",
-                    "branch" : "test-github-actions"
+                    "branch" : "master"
                 }
             ]
         }

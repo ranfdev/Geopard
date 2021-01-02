@@ -17,7 +17,7 @@ fn main() {
     env_logger::init();
 
     let application = Application::new(
-        Some("com.ranfdev.app.geopard"),
+        Some("com.ranfdev.Geopard"),
         gio::ApplicationFlags::FLAGS_NONE,
     )
     .expect("Failed to init gtk app");

@@ -9,10 +9,13 @@ global_conf.set_quoted('LOCALEDIR', localedir)
 
 sources = files(
   'common/mod.rs',
+  'component.rs',
+  'tab.rs',
+  'config.rs',
+  'window.rs',
   'gemini/mod.rs',
   'gemini/client.rs',
   'gemini/parser.rs',
-  'gemini/renderer.rs',
   'config.rs',
   'main.rs',
 )
