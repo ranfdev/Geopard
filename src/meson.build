@@ -7,6 +7,19 @@ global_conf.set_quoted('VERSION', version + version_suffix)
 global_conf.set_quoted('GETTEXT_PACKAGE', gettext_package)
 global_conf.set_quoted('LOCALEDIR', localedir)
 
+build_config_rs = configure_file(
+  input: 'build_config.rs.in',
+  output: 'build_config.rs',
+  configuration: global_conf
+)
+
+run_command(
+  'cp',
+  build_config_rs,
+  meson.current_source_dir(),
+  check: true
+)
+
 sources = files(
   'common/mod.rs',
   'component.rs',

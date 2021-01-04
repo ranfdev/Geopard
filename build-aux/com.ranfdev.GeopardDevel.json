@@ -1,5 +1,5 @@
 {
-    "app-id" : "com.ranfdev.Geopard",
+    "app-id" : "com.ranfdev.GeopardDevel",
     "runtime" : "org.gnome.Platform",
     "runtime-version" : "3.36",
     "sdk" : "org.gnome.Sdk",
@@ -8,7 +8,7 @@
     ],
     "command" : "geopard",
     "tags" : [
-        "stable"
+        "devel"
     ],
     "finish-args" : [
         "--socket=fallback-x11",
@@ -31,7 +31,7 @@
             "name" : "Geopard",
             "buildsystem" : "meson",
             "config-opts" : [
-                "-Dprofile=default"
+                "-Dprofile=development"
             ],
             "sources" : [
                 {
