@@ -78,12 +78,11 @@ fn main() {
     let app_clone = application.clone();
     let windows = Rc::new(RefCell::new(vec![]));
 
-    let windows_clone = windows.clone();
     application.connect_activate(move |_| {
         let window = window::Window::new(&app_clone, config.clone());
         window.widget().show_all();
         window.widget().present();
-        windows_clone.borrow_mut().push(window);
+        windows.borrow_mut().push(window);
     });
 
     let ret = application.run(&std::env::args().collect::<Vec<String>>());

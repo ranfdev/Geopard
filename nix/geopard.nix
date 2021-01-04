@@ -13,7 +13,7 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "geopard";
-  version = "0.1.0";
+  version = "1.0.0-alpha";
 
   src = lib.cleanSource ../.;
   cargoSha256 = "0b77w95bj6avnxgs5ia93hhq3jr9cmbpa5zw8i37s688633il15x";

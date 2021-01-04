@@ -18,9 +18,9 @@ impl Parser {
             PageElement::Empty
         } else if self.inside_pre {
             PageElement::Preformatted(line.to_string())
-        } else if line.starts_with("#") {
+        } else if line.starts_with('#') {
             PageElement::Heading(line.to_string())
-        } else if line.starts_with(">") {
+        } else if line.starts_with('>') {
             PageElement::Quote(line.to_string())
         } else if let Some(captures) = R_GEMINI_LINK.captures(&line) {
             match (captures.name("href"), captures.name("label")) {

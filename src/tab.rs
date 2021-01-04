@@ -57,7 +57,7 @@ impl Tab {
 
         let (in_chan_tx, in_chan_rx) = flume::unbounded();
 
-        let draw_ctx = DrawCtx::new(text_view.clone(), config.clone());
+        let draw_ctx = DrawCtx::new(text_view.clone(), config);
         let gemini_client = gemini::ClientBuilder::new().redirect(true).build();
         let links = HashMap::new();
         let req_handle = None;
@@ -67,7 +67,7 @@ impl Tab {
         scroll_win.set_vexpand(true);
         scroll_win.add(&text_view);
 
-        let this = Self {
+        Self {
             draw_ctx,
             gemini_client,
             req_handle,
@@ -79,9 +79,7 @@ impl Tab {
             scroll_win,
             load_progress: 0.0,
             id: new_component_id(),
-        };
-
-        this
+        }
     }
     pub fn build_request_ctx(&self, url: Url) -> RequestCtx {
         RequestCtx {
@@ -312,7 +310,7 @@ impl Tab {
 
         for tag in iter.get_tags() {
             if let Some(url) = DrawCtx::get_linkhandler(&tag) {
-                return Ok(url.clone());
+                return Ok(url);
             }
         }
 
@@ -472,7 +470,7 @@ impl Tab {
                     continue;
                 }
                 Err(e) => {
-                    Err(e)?;
+                    return Err(e.into())
                 }
             }
         }

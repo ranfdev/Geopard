@@ -30,12 +30,12 @@ impl<T: glib::IsA<gtk::Widget>, M> Component<T, M> {
         }
     }
     pub fn id(&self) -> usize {
-        return self.id;
+        self.id
     }
     pub fn widget(&self) -> &T {
-        return &self.widget;
+        &self.widget
     }
     pub fn chan(&self) -> flume::Sender<M> {
-        return self.chan.clone();
+        self.chan.clone()
     }
 }

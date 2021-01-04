@@ -146,7 +146,7 @@ impl DrawCtx {
                 .fonts
                 .heading
                 .as_ref()
-                .or(default_config.fonts.heading.as_ref())
+                .or_else(|| default_config.fonts.heading.as_ref())
                 .unwrap()
         });
         tag_h1.set_property_size_points(tag_h1.get_property_size_points() * 1.4);
@@ -156,7 +156,7 @@ impl DrawCtx {
                 .fonts
                 .heading
                 .as_ref()
-                .or(default_config.fonts.heading.as_ref())
+                .or_else(|| default_config.fonts.heading.as_ref())
                 .unwrap()
         });
         tag_h1.set_property_size_points(tag_h1.get_property_size_points() * 1.2);
@@ -167,7 +167,7 @@ impl DrawCtx {
                 .fonts
                 .heading
                 .as_ref()
-                .or(default_config.fonts.heading.as_ref())
+                .or_else(|| default_config.fonts.heading.as_ref())
                 .unwrap(),
         );
         let tag_pre = DrawCtx::create_tag(
@@ -176,7 +176,7 @@ impl DrawCtx {
                 .fonts
                 .preformatted
                 .as_ref()
-                .or(default_config.fonts.preformatted.as_ref())
+                .or_else(|| default_config.fonts.preformatted.as_ref())
                 .unwrap(),
         );
         let tag_p = DrawCtx::create_tag(
@@ -185,7 +185,7 @@ impl DrawCtx {
                 .fonts
                 .paragraph
                 .as_ref()
-                .or(default_config.fonts.paragraph.as_ref())
+                .or_else(|| default_config.fonts.paragraph.as_ref())
                 .unwrap(),
         );
         let tag_q = DrawCtx::create_tag(
@@ -194,7 +194,7 @@ impl DrawCtx {
                 .fonts
                 .quote
                 .as_ref()
-                .or(default_config.fonts.quote.as_ref())
+                .or_else(|| default_config.fonts.quote.as_ref())
                 .unwrap(),
         );
         tag_q.set_property_style(pango::Style::Italic);
@@ -205,7 +205,7 @@ impl DrawCtx {
                 .fonts
                 .quote
                 .as_ref()
-                .or(default_config.fonts.paragraph.as_ref())
+                .or_else(|| default_config.fonts.paragraph.as_ref())
                 .unwrap(),
         );
 
@@ -235,7 +235,7 @@ impl DrawCtx {
         let tag_name = match n {
             1 => "h1",
             2 => "h2",
-            3 | _ => "h3",
+            _ => "h3",
         };
 
         let start = text_iter.get_offset();
@@ -291,7 +291,7 @@ impl DrawCtx {
             .fonts
             .paragraph
             .as_ref()
-            .or(default_config.fonts.paragraph.as_ref())
+            .or_else(|| default_config.fonts.paragraph.as_ref())
             .unwrap();
 
         let tag = gtk::TextTagBuilder::new()
@@ -305,7 +305,7 @@ impl DrawCtx {
 
         Self::set_linkhandler(&tag, link.clone());
 
-        let label = label.unwrap_or(link.url());
+        let label = label.unwrap_or_else(|| link.url());
         info!("Setted url {:?} to tag", Self::get_linkhandler(&tag));
         debug!("Link set successfully");
         self.insert_paragraph(&mut text_iter, &label);

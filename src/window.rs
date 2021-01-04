@@ -102,7 +102,7 @@ impl Window {
         this.bind_signals();
         this.add_tab();
 
-        let receiver: flume::Receiver<WindowMsg> = receiver.clone();
+        let receiver: flume::Receiver<WindowMsg> = receiver;
         let handle = glibctx()
             .spawn_local_with_handle(async move {
                 while let Ok(msg) = receiver.recv_async().await {
@@ -111,7 +111,7 @@ impl Window {
             })
             .unwrap();
 
-        Component::new(new_component_id(), window, sender.clone(), handle)
+        Component::new(new_component_id(), window, sender, handle)
     }
 
     fn gen_tab_label(&self, id: usize, url: Url) -> gtk::Box {
@@ -142,7 +142,7 @@ impl Window {
     fn add_tab(&mut self) -> flume::Sender<TabMsg> {
         let tab = Tab::new(self.config.clone(), self.sender.clone());
         let handler = tab.run();
-        let sender = handler.chan().clone();
+        let sender = handler.chan();
         let widget = handler.widget().clone();
         self.tabs.push(handler);
 
