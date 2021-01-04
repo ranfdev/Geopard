@@ -1,9 +1,9 @@
 use async_net::TcpStream;
 use futures::io::Cursor;
 use futures::prelude::*;
+use log::debug;
 use std::convert::TryFrom;
 use url::Url;
-use log::debug;
 
 const INIT_BUFFER_SIZE: usize = 8192; // 8Kb
 const MAX_REDIRECT: u8 = 5;

@@ -1,9 +1,8 @@
-use once_cell::sync::Lazy;
 use crate::common::PageElement;
+use once_cell::sync::Lazy;
 use regex::Regex;
 static R_GEMINI_LINK: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^=>\s*(?P<href>\S*)\s*(?P<label>.*)").unwrap());
-
 
 pub struct Parser {
     inside_pre: bool,
@@ -25,9 +24,10 @@ impl Parser {
             PageElement::Quote(line.to_string())
         } else if let Some(captures) = R_GEMINI_LINK.captures(&line) {
             match (captures.name("href"), captures.name("label")) {
-                (Some(m_href), Some(m_label)) if !m_label.as_str().is_empty() => {
-                    PageElement::Link(m_href.as_str().to_string(), Some(m_label.as_str().to_string()))
-                }
+                (Some(m_href), Some(m_label)) if !m_label.as_str().is_empty() => PageElement::Link(
+                    m_href.as_str().to_string(),
+                    Some(m_label.as_str().to_string()),
+                ),
                 (Some(m_href), _) => PageElement::Link(m_href.as_str().to_string(), None),
                 _ => PageElement::Empty,
             }

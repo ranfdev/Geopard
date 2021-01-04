@@ -1,7 +1,5 @@
-use crate::common::{
-    glibctx, DrawCtx, HistoryItem, Link, LossyTextRead, PageElement, RequestCtx,
-};
 use crate::common;
+use crate::common::{glibctx, DrawCtx, HistoryItem, Link, LossyTextRead, PageElement, RequestCtx};
 use crate::component::{new_component_id, Component};
 use crate::gemini;
 use crate::window::WindowMsg;

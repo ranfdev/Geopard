@@ -1,19 +1,19 @@
+use crate::common::{
+    BOOKMARK_FILE_PATH, CONFIG_DIR_PATH, DATA_DIR_PATH, DEFAULT_BOOKMARKS, HISTORY_FILE_PATH,
+    SETTINGS_FILE_PATH,
+};
+use anyhow::Context;
+use async_fs::File;
+use futures::prelude::*;
 use gio::prelude::*;
 use gtk::Application;
 use std::cell::RefCell;
 use std::rc::Rc;
-use anyhow::Context;
-use async_fs::File;
-use futures::prelude::*;
-use crate::common::{
-    BOOKMARK_FILE_PATH, CONFIG_DIR_PATH, DATA_DIR_PATH, DEFAULT_BOOKMARKS,
-    HISTORY_FILE_PATH, SETTINGS_FILE_PATH,
-};
 
+mod build_config;
 mod common;
 mod component;
 mod config;
-mod build_config;
 mod gemini;
 mod tab;
 mod window;
@@ -42,7 +42,6 @@ async fn init_file_if_not_exists(
             .context(format!("Failed to init file {:?}", path))?;
 
         if let Some(text) = text {
-
             file.write_all(text).await?;
         }
     }
@@ -51,8 +50,7 @@ async fn init_file_if_not_exists(
 async fn create_base_files() -> anyhow::Result<()> {
     create_dir_if_not_exists(&DATA_DIR_PATH).await?;
     create_dir_if_not_exists(&CONFIG_DIR_PATH).await?;
-    init_file_if_not_exists(&BOOKMARK_FILE_PATH, Some(DEFAULT_BOOKMARKS.as_bytes()))
-        .await?;
+    init_file_if_not_exists(&BOOKMARK_FILE_PATH, Some(DEFAULT_BOOKMARKS.as_bytes())).await?;
     init_file_if_not_exists(&HISTORY_FILE_PATH, None).await?;
     let default_config = toml::to_string(&*config::DEFAULT_CONFIG).unwrap();
 
@@ -65,8 +63,6 @@ fn main() {
     gtk::init().unwrap();
     env_logger::init();
 
-
-
     let application = Application::new(
         Some(build_config::APP_ID),
         gio::ApplicationFlags::FLAGS_NONE,
@@ -75,10 +71,9 @@ fn main() {
     println!("{}", build_config::APP_ID);
 
     let config = futures::executor::block_on(async {
-            create_base_files().await.unwrap();
-            read_config().await.unwrap()
+        create_base_files().await.unwrap();
+        read_config().await.unwrap()
     });
-
 
     let app_clone = application.clone();
     let windows = Rc::new(RefCell::new(vec![]));

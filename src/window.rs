@@ -1,6 +1,4 @@
-use crate::common::{
-    bookmarks_url, glibctx, BOOKMARK_FILE_PATH
-};
+use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
 use crate::component::{new_component_id, Component};
 use crate::config;
 use crate::tab::{Tab, TabMsg};
@@ -38,7 +36,10 @@ pub struct Window {
     add_tab_btn: gtk::Button,
 }
 impl Window {
-    pub fn new(app: &gtk::Application, config: config::Config) -> Component<gtk::ApplicationWindow, WindowMsg> {
+    pub fn new(
+        app: &gtk::Application,
+        config: config::Config,
+    ) -> Component<gtk::ApplicationWindow, WindowMsg> {
         let window = gtk::ApplicationWindow::new(app);
         let view = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let header_bar = gtk::HeaderBar::new();
@@ -156,7 +157,6 @@ impl Window {
         sender.send(TabMsg::Open(bookmarks_url())).unwrap();
         sender
     }
-
 
     async fn append_bookmark(url: &str) -> anyhow::Result<()> {
         let mut file = async_fs::OpenOptions::new()
@@ -325,9 +325,7 @@ impl Window {
         self.notebook
             .connect_switch_page(move |_notebook, _page, n| {
                 let sender_clone = sender_clone.clone();
-                sender_clone
-                    .send(WindowMsg::SwitchTab(n as usize))
-                    .unwrap();
+                sender_clone.send(WindowMsg::SwitchTab(n as usize)).unwrap();
             });
 
         let sender_clone = sender.clone();
