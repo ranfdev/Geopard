@@ -43,6 +43,7 @@ async fn init_file_if_not_exists(
 
         if let Some(text) = text {
             file.write_all(text).await?;
+            file.flush().await?;
         }
     }
     Ok(())
