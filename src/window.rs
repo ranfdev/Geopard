@@ -1,12 +1,11 @@
 use crate::common::{
-    bookmarks_url, glibctx, BOOKMARK_FILE_PATH, CONFIG_DIR_PATH, DATA_DIR_PATH, DEFAULT_BOOKMARKS,
-    HISTORY_FILE_PATH, SETTINGS_FILE_PATH,
+    bookmarks_url, glibctx, BOOKMARK_FILE_PATH
 };
 use crate::component::{new_component_id, Component};
 use crate::config;
 use crate::tab::{Tab, TabMsg};
 use anyhow::Context;
-use async_fs::File;
+
 use futures::prelude::*;
 use futures::task::LocalSpawnExt;
 use gtk::prelude::*;
@@ -39,13 +38,7 @@ pub struct Window {
     add_tab_btn: gtk::Button,
 }
 impl Window {
-    pub fn new(app: &gtk::Application) -> Component<gtk::ApplicationWindow, WindowMsg> {
-        let config = futures::executor::block_on(async {
-            Self::create_base_files().await.unwrap();
-            Self::read_config().await.unwrap()
-        });
-        debug!("Config: {:?}", &config);
-
+    pub fn new(app: &gtk::Application, config: config::Config) -> Component<gtk::ApplicationWindow, WindowMsg> {
         let window = gtk::ApplicationWindow::new(app);
         let view = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let header_bar = gtk::HeaderBar::new();
@@ -119,10 +112,7 @@ impl Window {
 
         Component::new(new_component_id(), window, sender.clone(), handle)
     }
-    async fn read_config() -> anyhow::Result<config::Config> {
-        toml::from_str(&async_fs::read_to_string(&*SETTINGS_FILE_PATH).await?)
-            .context("Reading config file")
-    }
+
     fn gen_tab_label(&self, id: usize, url: Url) -> gtk::Box {
         let tab_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         let tab_label = gtk::Label::new(Some(url.as_str()));
@@ -167,40 +157,7 @@ impl Window {
         sender
     }
 
-    async fn create_dir_if_not_exists(path: &std::path::PathBuf) -> anyhow::Result<()> {
-        if !path.exists() {
-            async_fs::create_dir_all(&*path)
-                .await
-                .context(format!("Failed to create directory {:?}", path))?
-        }
-        Ok(())
-    }
-    async fn init_file_if_not_exists(
-        path: &std::path::PathBuf,
-        text: Option<&[u8]>,
-    ) -> anyhow::Result<()> {
-        if !path.exists() {
-            let mut file = File::create(path)
-                .await
-                .context(format!("Failed to init file {:?}", path))?;
 
-            if let Some(text) = text {
-                file.write_all(text).await?;
-            }
-        }
-        Ok(())
-    }
-    async fn create_base_files() -> anyhow::Result<()> {
-        Self::create_dir_if_not_exists(&DATA_DIR_PATH).await?;
-        Self::create_dir_if_not_exists(&CONFIG_DIR_PATH).await?;
-        Self::init_file_if_not_exists(&BOOKMARK_FILE_PATH, Some(DEFAULT_BOOKMARKS.as_bytes()))
-            .await?;
-        Self::init_file_if_not_exists(&HISTORY_FILE_PATH, None).await?;
-        let default_config = toml::to_string(&*config::DEFAULT_CONFIG).unwrap();
-        Self::init_file_if_not_exists(&SETTINGS_FILE_PATH, Some(default_config.as_bytes())).await?;
-
-        Ok(())
-    }
     async fn append_bookmark(url: &str) -> anyhow::Result<()> {
         let mut file = async_fs::OpenOptions::new()
             .write(true)
