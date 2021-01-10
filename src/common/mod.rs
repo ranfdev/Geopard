@@ -106,7 +106,7 @@ pub struct GLink(Link);
 #[derive(Debug, Clone, PartialEq)]
 pub struct HistoryItem {
     pub url: url::Url,
-    pub cache: Option<()>,
+    pub cache: Option<Vec<u8>>,
     pub scroll_progress: f64,
 }
 

@@ -18,6 +18,7 @@ use url::Url;
 #[derive(Clone, Debug, PartialEq)]
 pub enum TabMsg {
     Open(Url),
+    AddCache(Vec<u8>),
     Back,
     LineClicked(Link),
     RegisterLink(usize, Link),
@@ -137,6 +138,11 @@ impl Tab {
             TabMsg::RegisterLink(i, link_handler) => {
                 self.links.insert(i, link_handler);
             }
+            TabMsg::AddCache(cache) => {
+                if let Some(item) = self.history.last_mut() {
+                    item.cache = Some(cache)
+                }
+            }
             TabMsg::RightClicked(widget) => match self.msg_right_clicked(&widget) {
                 Ok(_) => info!("Clicked right mouse btn"),
                 Err(e) => warn!("{}", e),
@@ -181,21 +187,54 @@ impl Tab {
 
         let draw_ctx = self.draw_ctx.clone();
         let in_chan_tx = self.in_chan_tx.clone();
-        self.req_handle = Some(
-            glibctx()
-                .spawn_local_with_handle(async move {
-                    match Self::open_url(&mut req_ctx).await {
-                        Ok(()) => {
-                            info!("Page loaded and displayed successfully ({})", url.clone());
-                        }
-                        Err(e) => {
-                            Self::display_error(draw_ctx, e);
-                        }
-                    }
-                    in_chan_tx.send(TabMsg::SetProgress(0.0)).unwrap();
-                })
-                .unwrap(),
-        );
+        let fut = async move {
+            match Self::open_url(&mut req_ctx).await {
+                Ok(Some(cache)) => {
+                    in_chan_tx
+                        .send(TabMsg::AddCache(cache))
+                        .unwrap();
+                    info!("Page loaded and cached ({})", url.clone());
+                }
+                Ok(_) => {
+                    info!("Page loaded ({})", url.clone());
+                }
+                Err(e) => {
+                    Self::display_error(draw_ctx, e);
+                }
+            }
+            in_chan_tx.send(TabMsg::SetProgress(0.0)).unwrap();
+        };
+        self.req_handle = Some(glibctx().spawn_local_with_handle(fut).unwrap());
+    }
+    fn spawn_open_history(&mut self, item: HistoryItem) {
+        let HistoryItem {url, cache, ..} = item;
+        match cache {
+            Some(cache) => self.spawn_open_cached(url, cache),
+            None => self.spawn_open(url),
+        }
+    }
+    fn spawn_open_cached(&mut self, url: Url, cache: Vec<u8>) {
+        self.history.push(HistoryItem {
+            url: url.clone(),
+            cache: None,
+            scroll_progress: 0.0,
+        });
+
+        let mut draw_ctx = self.draw_ctx.clone();
+        let in_chan_tx = self.in_chan_tx.clone();
+        let fut = async move {
+            let buf = BufReader::new(cache.as_slice());
+            draw_ctx.clear();
+            let res = Self::display_gemini(&mut draw_ctx, in_chan_tx.clone(), buf).await;
+            match res {
+                Ok(cache) => {
+                    info!("Loaded {} from cache", &url);
+                    in_chan_tx.send(TabMsg::AddCache(cache)).unwrap();
+                }
+                Err(e) => Self::display_error(draw_ctx.clone(), e),
+            }
+        };
+        self.req_handle = Some(glibctx().spawn_local_with_handle(fut).unwrap())
     }
     pub fn back(&mut self) -> Result<()> {
         if self.history.len() <= 1 {
@@ -203,21 +242,8 @@ impl Tab {
         }
         self.history.pop();
         match self.history.pop() {
-            //Some(HistoryItem {
-            //    url: _,
-            //    cache: Some(cache),
-            //    scroll_progress: _,
-            //}) => unimplemented!(),
-            Some(HistoryItem {
-                url,
-                cache: None,
-                scroll_progress: progress,
-            }) => {
-                self.spawn_open(url);
-                let chan = self.in_chan_tx.clone();
-                chan.send(TabMsg::SetProgress(progress)).unwrap();
-            }
-            _ => error!("Can't go back, no more items in history!"),
+            Some(item) => self.spawn_open_history(item),
+            None => {unreachable!()}
         }
         Ok(())
     }
@@ -333,33 +359,33 @@ impl Tab {
         }
         Ok(())
     }
-    async fn open_url(mut req: &mut RequestCtx) -> Result<()> {
+    async fn open_url(mut req: &mut RequestCtx) -> Result<Option<Vec<u8>>> {
         req.draw_ctx.clear();
         match req.url.scheme() {
             "about" => {
                 let reader = futures::io::BufReader::new(common::ABOUT_PAGE.as_bytes());
                 Self::display_gemini(&mut req.draw_ctx, req.in_chan_tx.clone(), reader).await?;
+                Ok(None)
             }
             "file" => {
                 Self::open_file_url(&mut req).await?;
+                Ok(None)
             }
-            "gemini" => {
-                Self::open_gemini_url(&mut req).await?;
-            }
+            "gemini" => Self::open_gemini_url(&mut req).await,
             _ => {
                 Self::display_url_confirmation(&mut req.draw_ctx, &req.url);
+                Ok(None)
             }
-        };
-        Ok(())
+        }
     }
-    async fn open_gemini_url(req: &mut RequestCtx) -> anyhow::Result<()> {
+    async fn open_gemini_url(req: &mut RequestCtx) -> anyhow::Result<Option<Vec<u8>>> {
         let res: gemini::Response = req.gemini_client.fetch(req.url.as_str()).await?;
 
         use gemini::Status::*;
         let meta = res.meta().to_owned();
         let status = res.status();
         debug!("Status: {:?}", &status);
-        match status {
+        let res = match status {
             Input(_) => {
                 Self::display_input(
                     &mut req.draw_ctx,
@@ -367,17 +393,22 @@ impl Tab {
                     &meta,
                     req.in_chan_tx.clone(),
                 );
+                None
             }
             Success(_) => {
                 let body = res.body().context("Body not found")?;
                 let buffered = futures::io::BufReader::new(body);
                 if meta.find("text/gemini").is_some() {
-                    Self::display_gemini(&mut req.draw_ctx, req.in_chan_tx.clone(), buffered)
-                        .await?;
+                    let res =
+                        Self::display_gemini(&mut req.draw_ctx, req.in_chan_tx.clone(), buffered)
+                            .await?;
+                    Some(res)
                 } else if meta.find("text").is_some() {
                     Self::display_text(&mut req.draw_ctx, buffered).await?;
+                    None
                 } else {
                     Self::display_download(&mut req.draw_ctx, req.url.clone(), buffered).await?;
+                    None
                 }
             }
             Redirect(_) => bail!("Redirected more than 5 times"),
@@ -385,7 +416,7 @@ impl Tab {
             PermFail(_) => bail!("Permanent server failure"),
             CertRequired(_) => bail!("A certificate is required to access this page"),
         };
-        Ok(())
+        Ok(res)
     }
     fn parse_link(&self, link: &str) -> Result<Url, url::ParseError> {
         let current_url = self
@@ -469,9 +500,7 @@ impl Tab {
                 Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {
                     continue;
                 }
-                Err(e) => {
-                    return Err(e.into())
-                }
+                Err(e) => return Err(e.into()),
             }
         }
         let mut text_iter = ctx.text_buffer.get_end_iter();
@@ -544,7 +573,7 @@ click on the link below\n",
         draw_ctx: &mut DrawCtx,
         sender: flume::Sender<TabMsg>,
         mut reader: T,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Vec<u8>> {
         let mut parser = gemini::Parser::new();
         let mut text_iter = draw_ctx.text_buffer.get_end_iter();
 
@@ -588,6 +617,6 @@ click on the link below\n",
                 }
             }
         }
-        Ok(())
+        Ok(data.into_bytes())
     }
 }
