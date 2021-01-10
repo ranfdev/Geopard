@@ -12,7 +12,6 @@ use futures::task::LocalSpawnExt;
 use gdk::prelude::*;
 use gtk::prelude::*;
 use log::{debug, error, info, warn};
-use std::collections::HashMap;
 use url::Url;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -21,7 +20,6 @@ pub enum TabMsg {
     AddCache(Vec<u8>),
     Back,
     LineClicked(Link),
-    RegisterLink(usize, Link),
     GetUrl,
     RightClicked(gtk::Widget),
     SetProgress(f64),
@@ -31,7 +29,6 @@ pub enum TabMsg {
 pub struct Tab {
     gemini_client: gemini::Client,
     draw_ctx: DrawCtx,
-    links: HashMap<usize, Link>,
     history: Vec<HistoryItem>,
     req_handle: Option<RemoteHandle<()>>,
     in_chan_tx: flume::Sender<TabMsg>,
@@ -60,7 +57,6 @@ impl Tab {
 
         let draw_ctx = DrawCtx::new(text_view.clone(), config);
         let gemini_client = gemini::ClientBuilder::new().redirect(true).build();
-        let links = HashMap::new();
         let req_handle = None;
         let history = vec![];
 
@@ -72,7 +68,6 @@ impl Tab {
             draw_ctx,
             gemini_client,
             req_handle,
-            links,
             history,
             in_chan_rx,
             in_chan_tx,
@@ -134,9 +129,6 @@ impl Tab {
                 self.out_chan
                     .send(WindowMsg::SetProgress(self.id, self.load_progress))
                     .unwrap();
-            }
-            TabMsg::RegisterLink(i, link_handler) => {
-                self.links.insert(i, link_handler);
             }
             TabMsg::AddCache(cache) => {
                 if let Some(item) = self.history.last_mut() {
@@ -228,7 +220,7 @@ impl Tab {
         let fut = async move {
             let buf = BufReader::new(cache.as_slice());
             draw_ctx.clear();
-            let res = Self::display_gemini(&mut draw_ctx, in_chan_tx.clone(), buf).await;
+            let res = Self::display_gemini(&mut draw_ctx, buf).await;
             match res {
                 Ok(cache) => {
                     info!("Loaded {} from cache", &url);
@@ -354,7 +346,7 @@ impl Tab {
         let lines = BufReader::new(file);
         match path.extension().map(|x| x.to_str()) {
             Some(Some("gmi")) | Some(Some("gemini")) => {
-                Self::display_gemini(&mut req.draw_ctx, req.in_chan_tx.clone(), lines).await?;
+                Self::display_gemini(&mut req.draw_ctx, lines).await?;
             }
             _ => {
                 Self::display_text(&mut req.draw_ctx, lines).await?;
@@ -367,7 +359,7 @@ impl Tab {
         match req.url.scheme() {
             "about" => {
                 let reader = futures::io::BufReader::new(common::ABOUT_PAGE.as_bytes());
-                Self::display_gemini(&mut req.draw_ctx, req.in_chan_tx.clone(), reader).await?;
+                Self::display_gemini(&mut req.draw_ctx, reader).await?;
                 Ok(None)
             }
             "file" => {
@@ -403,7 +395,7 @@ impl Tab {
                 let buffered = futures::io::BufReader::new(body);
                 if meta.find("text/gemini").is_some() {
                     let res =
-                        Self::display_gemini(&mut req.draw_ctx, req.in_chan_tx.clone(), buffered)
+                        Self::display_gemini(&mut req.draw_ctx, buffered)
                             .await?;
                     Some(res)
                 } else if meta.find("text").is_some() {
@@ -574,7 +566,6 @@ click on the link below\n",
     }
     async fn display_gemini<T: AsyncBufRead + Unpin>(
         draw_ctx: &mut DrawCtx,
-        sender: flume::Sender<TabMsg>,
         mut reader: T,
     ) -> anyhow::Result<Vec<u8>> {
         let mut parser = gemini::Parser::new();
@@ -591,13 +582,6 @@ click on the link below\n",
             }
             let line = &data[total..];
             let token = parser.parse_line(line);
-            if let PageElement::Link(url_str, _) = &token {
-                let register_link_action = TabMsg::RegisterLink(
-                    text_iter.get_line_offset() as usize,
-                    Link::Internal(url_str.clone()),
-                );
-                sender.send(register_link_action).unwrap();
-            }
             total += n;
             match token {
                 PageElement::Text(line) => {
