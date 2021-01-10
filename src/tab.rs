@@ -169,6 +169,9 @@ impl Tab {
         }
         Ok(())
     }
+    fn spawn_req(&mut self, fut: impl Future<Output = ()> + 'static) {
+        self.req_handle = Some(glibctx().spawn_local_with_handle(fut).unwrap());
+    }
     pub fn spawn_open(&mut self, url: Url) {
         let scroll_progress = self.scroll_win.get_vadjustment().unwrap().get_value();
         if let Some(item) = self.history.last_mut() {
@@ -204,7 +207,7 @@ impl Tab {
             }
             in_chan_tx.send(TabMsg::SetProgress(0.0)).unwrap();
         };
-        self.req_handle = Some(glibctx().spawn_local_with_handle(fut).unwrap());
+        self.spawn_req(fut);
     }
     fn spawn_open_history(&mut self, item: HistoryItem) {
         let HistoryItem {url, cache, ..} = item;
@@ -234,7 +237,7 @@ impl Tab {
                 Err(e) => Self::display_error(draw_ctx.clone(), e),
             }
         };
-        self.req_handle = Some(glibctx().spawn_local_with_handle(fut).unwrap())
+        self.spawn_req(fut);
     }
     pub fn back(&mut self) -> Result<()> {
         if self.history.len() <= 1 {
