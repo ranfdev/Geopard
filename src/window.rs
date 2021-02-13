@@ -147,11 +147,9 @@ impl Window {
         self.tabs.push(handler);
 
         let label = gtk::Label::new(Some("tab"));
-        let page_n = self.notebook.append_page(&widget, Some(&label));
+        self.notebook.append_page(&widget, Some(&label));
 
         self.notebook.show_all();
-        self.notebook.set_current_page(Some(page_n));
-
         sender.send(TabMsg::Open(bookmarks_url())).unwrap();
         sender
     }
@@ -221,6 +219,7 @@ impl Window {
     }
     fn msg_switch_tab(&mut self, n: usize) {
         self.current_tab = n;
+        self.notebook.set_current_page(Some(n as u32));
         let chan = self.tabs[self.current_tab].chan();
         chan.send(TabMsg::GetUrl).unwrap();
         chan.send(TabMsg::GetProgress).unwrap();
@@ -231,11 +230,14 @@ impl Window {
         self.tabs.remove(tab.unwrap());
 
         if self.tabs.is_empty() {
-            self.add_tab();
+            self.msg_add_tab()
         }
+
+        self.current_tab = self.tabs.len() - 1;
     }
     fn msg_add_tab(&mut self) {
         self.add_tab();
+        self.sender.send(WindowMsg::SwitchTab(self.tabs.len() - 1)).unwrap();
     }
     fn msg_bookmark_current(&mut self) {
         let url = self.url_bar.get_text().to_string();
