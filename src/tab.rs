@@ -21,7 +21,8 @@ pub enum TabMsg {
     Back,
     LineClicked(Link),
     GetUrl,
-    RightClicked(gtk::Widget),
+    OpenNewTab(String),
+    CopyUrl(String),
     SetProgress(f64),
     GetProgress,
 }
@@ -135,31 +136,27 @@ impl Tab {
                     item.cache = Some(cache)
                 }
             }
-            TabMsg::RightClicked(widget) => match self.msg_right_clicked(&widget) {
-                Ok(_) => info!("Clicked right mouse btn"),
-                Err(e) => warn!("{}", e),
-            },
+            TabMsg::OpenNewTab(link) => {
+                let url = self.parse_link(&link)?;
+                self.out_chan.send(WindowMsg::OpenNewTab(url)).unwrap();
+            }
+            TabMsg::CopyUrl(link) => {
+                let url = self.parse_link(&link)?;
+                self.draw_ctx.text_view.get_clipboard(&gdk::SELECTION_CLIPBOARD)
+                    .set_text(url.as_str());
+            }
         }
         Ok(())
     }
-    fn msg_right_clicked(&mut self, widget: &gtk::Widget) -> anyhow::Result<()> {
+    fn handle_right_click(text_view: &gtk::TextView, widget: &gtk::Widget, in_chan: flume::Sender<TabMsg>) {
         if let Some(menu) = widget.dynamic_cast_ref::<gtk::Menu>() {
-            let (x, y) = Self::get_coords_in_widget(&self.draw_ctx.text_view);
-            let handler = Self::extract_linkhandler(&self.draw_ctx.text_view, (x as f64, y as f64));
-            match handler {
-                Ok(Link::Internal(url)) => {
-                    let url = self.parse_link(&url)?;
-                    Self::extend_textview_menu(&menu, url, self.out_chan.clone())
-                }
-                Ok(Link::External(url)) => {
-                    let url = self.parse_link(&url)?;
-                    Self::extend_textview_menu(&menu, url, self.out_chan.clone())
-                }
-                Err(e) => warn!("{}", e),
+            let (x, y) = Self::get_coords_in_widget(text_view);
+            
+            if let Ok(handler) = Self::extract_linkhandler(text_view, (x as f64, y as f64)) {
+                let url = handler.url();
+                Self::extend_textview_menu(&menu, url.to_owned(), in_chan.clone());
             }
-            menu.show_all();
         }
-        Ok(())
     }
     fn spawn_req(&mut self, fut: impl Future<Output = ()> + 'static) {
         self.req_handle = Some(glibctx().spawn_local_with_handle(fut).unwrap());
@@ -279,28 +276,28 @@ impl Tab {
             .get_device_position(&device);
         (x, y)
     }
-    fn extend_textview_menu(menu: &gtk::Menu, url: Url, sender: flume::Sender<WindowMsg>) {
+    fn extend_textview_menu(menu: &gtk::Menu, url: String, sender: flume::Sender<TabMsg>) {
         let copy_link_item = gtk::MenuItem::with_label("Copy link");
         let open_in_tab_item = gtk::MenuItem::with_label("Open in new tab");
         let url_clone = url.clone();
-        copy_link_item.connect_activate(move |widget| {
-            widget
-                .get_clipboard(&gdk::SELECTION_CLIPBOARD)
-                .set_text(url_clone.as_str());
+        let sender_clone = sender.clone();
+        copy_link_item.connect_activate(move |_| {
+                sender_clone.send(TabMsg::CopyUrl(url_clone.clone())).unwrap();
         });
         open_in_tab_item.connect_activate(move |_| {
-            sender.send(WindowMsg::OpenNewTab(url.clone())).unwrap();
+            sender.send(TabMsg::OpenNewTab(url.clone())).unwrap();
         });
-        menu.insert(&open_in_tab_item, 0);
-        menu.insert(&copy_link_item, 1);
+        menu.prepend(&copy_link_item);
+        menu.prepend(&open_in_tab_item);
+        menu.show_all();
     }
     fn bind_signals(&mut self) {
         let in_chan_tx = self.in_chan_tx.clone();
         self.draw_ctx
             .text_view
             .connect_event_after(move |text_view, e| {
-                let event_is_click = e.get_event_type() == gdk::EventType::ButtonRelease
-                    || e.get_event_type() == gdk::EventType::TouchEnd;
+                let event_is_click = (e.get_event_type() == gdk::EventType::ButtonRelease
+                    || e.get_event_type() == gdk::EventType::TouchEnd) && e.get_button() == Some(1);
 
                 let has_selection = text_view.get_buffer().unwrap().get_has_selection();
 
@@ -311,13 +308,11 @@ impl Tab {
                     }
                 }
             });
-        let in_chan_tx = self.in_chan_tx.clone();
+        let in_chan = self.in_chan_tx.clone();
         self.draw_ctx
             .text_view
-            .connect_populate_popup(move |_text_view, widget| {
-                in_chan_tx
-                    .send(TabMsg::RightClicked(widget.clone()))
-                    .unwrap();
+            .connect_populate_popup(move |text_view, widget| {
+                Self::handle_right_click(text_view, widget, in_chan.clone());
             });
     }
     fn extract_linkhandler(text_view: &gtk::TextView, (x, y): (f64, f64)) -> Result<Link> {
