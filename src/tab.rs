@@ -96,7 +96,7 @@ impl Tab {
             while let Ok(msg) = in_chan_rx.recv_async().await {
                 match self.handle_msg(msg).await {
                     Ok(()) => {}
-                    Err(e) => error!("While handling message: {}", e),
+                    Err(e) => Self::display_error(&mut self.draw_ctx, e),
                 }
             }
         };
