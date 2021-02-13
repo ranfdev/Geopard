@@ -142,16 +142,22 @@ impl Tab {
             }
             TabMsg::CopyUrl(link) => {
                 let url = self.parse_link(&link)?;
-                self.draw_ctx.text_view.get_clipboard(&gdk::SELECTION_CLIPBOARD)
+                self.draw_ctx
+                    .text_view
+                    .get_clipboard(&gdk::SELECTION_CLIPBOARD)
                     .set_text(url.as_str());
             }
         }
         Ok(())
     }
-    fn handle_right_click(text_view: &gtk::TextView, widget: &gtk::Widget, in_chan: flume::Sender<TabMsg>) {
+    fn handle_right_click(
+        text_view: &gtk::TextView,
+        widget: &gtk::Widget,
+        in_chan: flume::Sender<TabMsg>,
+    ) {
         if let Some(menu) = widget.dynamic_cast_ref::<gtk::Menu>() {
             let (x, y) = Self::get_coords_in_widget(text_view);
-            
+
             if let Ok(handler) = Self::extract_linkhandler(text_view, (x as f64, y as f64)) {
                 let url = handler.url();
                 Self::extend_textview_menu(&menu, url.to_owned(), in_chan.clone());
@@ -182,9 +188,7 @@ impl Tab {
         let fut = async move {
             match Self::open_url(&mut req_ctx).await {
                 Ok(Some(cache)) => {
-                    in_chan_tx
-                        .send(TabMsg::AddCache(cache))
-                        .unwrap();
+                    in_chan_tx.send(TabMsg::AddCache(cache)).unwrap();
                     info!("Page loaded and cached ({})", url.clone());
                 }
                 Ok(_) => {
@@ -199,7 +203,7 @@ impl Tab {
         self.spawn_req(fut);
     }
     fn spawn_open_history(&mut self, item: HistoryItem) {
-        let HistoryItem {url, cache, ..} = item;
+        let HistoryItem { url, cache, .. } = item;
         match cache {
             Some(cache) => self.spawn_open_cached(url, cache),
             None => self.spawn_open(url),
@@ -235,7 +239,7 @@ impl Tab {
         self.history.pop();
         match self.history.pop() {
             Some(item) => self.spawn_open_history(item),
-            None => {unreachable!()}
+            None => unreachable!(),
         }
         Ok(())
     }
@@ -282,7 +286,9 @@ impl Tab {
         let url_clone = url.clone();
         let sender_clone = sender.clone();
         copy_link_item.connect_activate(move |_| {
-                sender_clone.send(TabMsg::CopyUrl(url_clone.clone())).unwrap();
+            sender_clone
+                .send(TabMsg::CopyUrl(url_clone.clone()))
+                .unwrap();
         });
         open_in_tab_item.connect_activate(move |_| {
             sender.send(TabMsg::OpenNewTab(url.clone())).unwrap();
@@ -297,7 +303,8 @@ impl Tab {
             .text_view
             .connect_event_after(move |text_view, e| {
                 let event_is_click = (e.get_event_type() == gdk::EventType::ButtonRelease
-                    || e.get_event_type() == gdk::EventType::TouchEnd) && e.get_button() == Some(1);
+                    || e.get_event_type() == gdk::EventType::TouchEnd)
+                    && e.get_button() == Some(1);
 
                 let has_selection = text_view.get_buffer().unwrap().get_has_selection();
 
@@ -389,9 +396,7 @@ impl Tab {
                 let body = res.body().context("Body not found")?;
                 let buffered = futures::io::BufReader::new(body);
                 if meta.find("text/gemini").is_some() {
-                    let res =
-                        Self::display_gemini(&mut req.draw_ctx, buffered)
-                            .await?;
+                    let res = Self::display_gemini(&mut req.draw_ctx, buffered).await?;
                     Some(res)
                 } else if meta.find("text").is_some() {
                     Self::display_text(&mut req.draw_ctx, buffered).await?;
