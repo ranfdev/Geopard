@@ -150,9 +150,7 @@ impl Window {
         let page_n = self.notebook.append_page(&widget, Some(&label));
 
         self.notebook.show_all();
-        if self.tabs.len() == 1 {
-            self.notebook.set_current_page(Some(page_n));
-        }
+        self.notebook.set_current_page(Some(page_n));
 
         sender.send(TabMsg::Open(bookmarks_url())).unwrap();
         sender
