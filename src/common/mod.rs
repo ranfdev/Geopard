@@ -179,6 +179,8 @@ impl DrawCtx {
                 .or_else(|| default_config.fonts.preformatted.as_ref())
                 .unwrap(),
         );
+
+        tag_pre.set_property_wrap_mode(gtk::WrapMode::None);
         let tag_p = DrawCtx::create_tag(
             "p",
             self.config
