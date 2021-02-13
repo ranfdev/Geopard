@@ -183,7 +183,6 @@ impl Tab {
             .unwrap();
         self.in_chan_tx.send(TabMsg::SetProgress(0.5)).unwrap();
 
-        let draw_ctx = self.draw_ctx.clone();
         let in_chan_tx = self.in_chan_tx.clone();
         let fut = async move {
             match Self::open_url(&mut req_ctx).await {
@@ -195,7 +194,7 @@ impl Tab {
                     info!("Page loaded ({})", url.clone());
                 }
                 Err(e) => {
-                    Self::display_error(draw_ctx, e);
+                    Self::display_error(&mut req_ctx.draw_ctx, e);
                 }
             }
             in_chan_tx.send(TabMsg::SetProgress(0.0)).unwrap();
@@ -227,7 +226,7 @@ impl Tab {
                     info!("Loaded {} from cache", &url);
                     in_chan_tx.send(TabMsg::AddCache(cache)).unwrap();
                 }
-                Err(e) => Self::display_error(draw_ctx.clone(), e),
+                Err(e) => Self::display_error(&mut draw_ctx, e),
             }
         };
         self.spawn_req(fut);
@@ -243,15 +242,10 @@ impl Tab {
         }
         Ok(())
     }
-    fn display_error(mut ctx: DrawCtx, error: anyhow::Error) {
+    fn display_error(ctx: &mut DrawCtx, error: anyhow::Error) {
         error!("{:?}", error);
-        glibctx().spawn_local(async move {
-            let error_text = format!("Geopard experienced an error:\n {}", error);
-            let buffered = BufReader::new(error_text.as_bytes());
-            Self::display_text(&mut ctx, buffered)
-                .await
-                .expect("Error while showing error in the text_view. This can't happen");
-        })
+        let error_text = format!("Geopard experienced an error:\n {:?}", error);
+        ctx.insert_paragraph(&mut ctx.text_buffer.get_end_iter(), &error_text);
     }
     pub fn handle_click(&mut self, handler: &Link) -> Result<()> {
         match handler {
@@ -520,9 +514,9 @@ impl Tab {
             if n == 0 {
                 break Ok(());
             }
-            let mut text_iter = draw_ctx.text_buffer.get_end_iter();
-            draw_ctx.insert_paragraph(&mut text_iter, &line);
-            draw_ctx.insert_paragraph(&mut text_iter, "\n");
+            let text_iter = &mut draw_ctx.text_buffer.get_end_iter();
+            draw_ctx.insert_paragraph(text_iter, &line);
+            draw_ctx.insert_paragraph(text_iter, "\n");
         }
     }
 
