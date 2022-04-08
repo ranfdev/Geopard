@@ -63,11 +63,10 @@ fn main() {
     gtk::init().unwrap();
     env_logger::init();
 
-    let application = Application::new(
+    let application = adw::Application::new(
         Some(build_config::APP_ID),
         gio::ApplicationFlags::FLAGS_NONE,
-    )
-    .expect("Failed to init gtk app");
+    );
     println!("{}", build_config::APP_ID);
 
     let config = futures::executor::block_on(async {
@@ -80,11 +79,10 @@ fn main() {
 
     application.connect_activate(move |_| {
         let window = window::Window::new(&app_clone, config.clone());
-        window.widget().show_all();
         window.widget().present();
         windows.borrow_mut().push(window);
     });
 
-    let ret = application.run(&std::env::args().collect::<Vec<String>>());
+    let ret = application.run();
     std::process::exit(ret);
 }

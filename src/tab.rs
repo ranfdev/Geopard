@@ -43,7 +43,7 @@ pub struct Tab {
 impl Tab {
     pub fn new(config: crate::config::Config, out_chan: flume::Sender<WindowMsg>) -> Self {
         use common::MARGIN;
-        let text_view = gtk::TextViewBuilder::new()
+        let text_view = gtk::builders::TextViewBuilder::new()
             .top_margin(MARGIN)
             .left_margin(MARGIN)
             .right_margin(MARGIN)
@@ -61,9 +61,9 @@ impl Tab {
         let req_handle = None;
         let history = vec![];
 
-        let scroll_win = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
+        let scroll_win = gtk::ScrolledWindow::new();
         scroll_win.set_vexpand(true);
-        scroll_win.add(&text_view);
+        scroll_win.set_child(Some(&text_view));
 
         Self {
             draw_ctx,
@@ -144,7 +144,7 @@ impl Tab {
                 let url = self.parse_link(&link)?;
                 self.draw_ctx
                     .text_view
-                    .get_clipboard(&gdk::SELECTION_CLIPBOARD)
+                    .clipboard()
                     .set_text(url.as_str());
             }
         }
@@ -155,12 +155,12 @@ impl Tab {
         widget: &gtk::Widget,
         in_chan: flume::Sender<TabMsg>,
     ) {
-        if let Some(menu) = widget.dynamic_cast_ref::<gtk::Menu>() {
-            let (x, y) = Self::get_coords_in_widget(text_view);
+        if let Some(menu) = widget.dynamic_cast_ref::<gtk::PopoverMenu>() {
+            let (x, y) = Self::coords_in_widget(text_view);
 
             if let Ok(handler) = Self::extract_linkhandler(text_view, (x as f64, y as f64)) {
                 let url = handler.url();
-                Self::extend_textview_menu(&menu, url.to_owned(), in_chan.clone());
+                /*FIXME: Self::extend_textview_menu(&menu, url.to_owned(), in_chan.clone());*/
             }
         }
     }
@@ -168,7 +168,7 @@ impl Tab {
         self.req_handle = Some(glibctx().spawn_local_with_handle(fut).unwrap());
     }
     pub fn spawn_open(&mut self, url: Url) {
-        let scroll_progress = self.scroll_win.get_vadjustment().unwrap().get_value();
+        let scroll_progress = self.scroll_win.vadjustment().value();
         if let Some(item) = self.history.last_mut() {
             item.scroll_progress = scroll_progress;
         }
@@ -245,7 +245,7 @@ impl Tab {
     fn display_error(ctx: &mut DrawCtx, error: anyhow::Error) {
         error!("{:?}", error);
         let error_text = format!("Geopard experienced an error:\n {:?}", error);
-        ctx.insert_paragraph(&mut ctx.text_buffer.get_end_iter(), &error_text);
+        ctx.insert_paragraph(&mut ctx.text_buffer.end_iter(), &error_text);
     }
     pub fn handle_click(&mut self, handler: &Link) -> Result<()> {
         match handler {
@@ -255,7 +255,7 @@ impl Tab {
             }
             Link::External(link) => {
                 let url = self.parse_link(&link)?;
-                gtk::show_uri(None, url.as_str(), 0)?;
+                gtk::show_uri(None::<&gtk::Window>, url.as_str(), 0);
             }
         }
         Ok(())
@@ -263,18 +263,18 @@ impl Tab {
     pub fn widget(&self) -> &gtk::ScrolledWindow {
         &self.scroll_win
     }
-    fn get_coords_in_widget<T: IsA<gtk::Widget>>(widget: &T) -> (i32, i32) {
-        let seat = gdk::Display::get_default()
+    fn coords_in_widget<T: IsA<gtk::Widget>>(widget: &T) -> (i32, i32) {
+        /* let seat = gdk::Display::default()
             .unwrap()
-            .get_default_seat()
+            .default_seat()
             .unwrap();
-        let device = seat.get_pointer().unwrap();
-        let (_window, x, y, _) = WidgetExt::get_window(widget)
+        let device = seat.pointer().unwrap();
+        FIXME: let (_window, x, y, _) = WidgetExt::window(widget)
             .unwrap()
-            .get_device_position(&device);
-        (x, y)
+            .device_position(&device);*/
+        (0, 0)
     }
-    fn extend_textview_menu(menu: &gtk::Menu, url: String, sender: flume::Sender<TabMsg>) {
+    /* FIXME: fn extend_textview_menu(menu: &gtk::Menu, url: String, sender: flume::Sender<TabMsg>) {
         let copy_link_item = gtk::MenuItem::with_label("Copy link");
         let open_in_tab_item = gtk::MenuItem::with_label("Open in new tab");
         let url_clone = url.clone();
@@ -290,31 +290,31 @@ impl Tab {
         menu.prepend(&copy_link_item);
         menu.prepend(&open_in_tab_item);
         menu.show_all();
-    }
+    }*/
     fn bind_signals(&mut self) {
         let in_chan_tx = self.in_chan_tx.clone();
-        self.draw_ctx
+        /* FIXME: self.draw_ctx
             .text_view
             .connect_event_after(move |text_view, e| {
-                let event_is_click = (e.get_event_type() == gdk::EventType::ButtonRelease
-                    || e.get_event_type() == gdk::EventType::TouchEnd)
-                    && e.get_button() == Some(1);
+                let event_is_click = (e.event_type() == gdk::EventType::ButtonRelease
+                    || e.event_type() == gdk::EventType::TouchEnd)
+                    && e.button() == Some(1);
 
-                let has_selection = text_view.get_buffer().unwrap().get_has_selection();
+                let has_selection = text_view.buffer().unwrap().has_selection();
 
                 if event_is_click && !has_selection {
-                    match Self::extract_linkhandler(text_view, e.get_coords().unwrap()) {
+                    match Self::extract_linkhandler(text_view, e.coords().unwrap()) {
                         Ok(handler) => in_chan_tx.send(TabMsg::LineClicked(handler)).unwrap(),
                         Err(e) => warn!("{}", e),
                     }
                 }
-            });
+            });*/
         let in_chan = self.in_chan_tx.clone();
-        self.draw_ctx
+        /* FIXME: self.draw_ctx
             .text_view
             .connect_populate_popup(move |text_view, widget| {
                 Self::handle_right_click(text_view, widget, in_chan.clone());
-            });
+            });*/
     }
     fn extract_linkhandler(text_view: &gtk::TextView, (x, y): (f64, f64)) -> Result<Link> {
         info!("Extracting linkhandler from clicked text");
@@ -322,11 +322,11 @@ impl Tab {
             text_view.window_to_buffer_coords(gtk::TextWindowType::Widget, x as i32, y as i32);
 
         let iter = text_view
-            .get_iter_at_location(x as i32, y as i32)
+            .iter_at_location(x as i32, y as i32)
             .context("Can't get text iter where clicked")?;
 
-        for tag in iter.get_tags() {
-            if let Some(url) = DrawCtx::get_linkhandler(&tag) {
+        for tag in iter.tags() {
+            if let Some(url) = DrawCtx::linkhandler(&tag) {
                 return Ok(url);
             }
         }
@@ -418,7 +418,7 @@ impl Tab {
         Ok(link_url)
     }
 
-    fn get_download_path(url: &Url) -> anyhow::Result<std::path::PathBuf> {
+    fn download_path(url: &Url) -> anyhow::Result<std::path::PathBuf> {
         let file_name = url
             .path_segments()
             .context("Can't divide url in segments")?
@@ -451,13 +451,13 @@ impl Tab {
         url: Url,
         mut stream: T,
     ) -> anyhow::Result<()> {
-        let d_path = Self::get_download_path(&url)?;
+        let d_path = Self::download_path(&url)?;
 
         let mut buffer = Vec::with_capacity(8192);
         buffer.extend_from_slice(&[0; 8192]);
 
         let mut read = 0;
-        let mut text_iter = ctx.text_buffer.get_end_iter();
+        let mut text_iter = ctx.text_buffer.end_iter();
         ctx.insert_paragraph(
             &mut text_iter,
             &format!("writing to {:?}\n", d_path.as_os_str()),
@@ -475,14 +475,14 @@ impl Tab {
                 Ok(n) => {
                     file.write_all(&buffer[..n]).await?;
                     read += n;
-                    debug!("lines {}", ctx.text_buffer.get_line_count());
+                    debug!("lines {}", ctx.text_buffer.line_count());
                     let mut old_line_iter = ctx
                         .text_buffer
-                        .get_iter_at_line(ctx.text_buffer.get_line_count() - 2);
+                        .iter_at_line(ctx.text_buffer.line_count() - 2);
                     ctx.text_buffer
-                        .delete(&mut old_line_iter, &mut ctx.text_buffer.get_end_iter());
+                        .delete(&mut old_line_iter.unwrap(), &mut ctx.text_buffer.end_iter());
                     ctx.insert_paragraph(
-                        &mut old_line_iter,
+                        &mut old_line_iter.unwrap(),
                         &format!("downloaded\t {}KB\n", read / 1000),
                     );
                 }
@@ -492,7 +492,7 @@ impl Tab {
                 Err(e) => return Err(e.into()),
             }
         }
-        let mut text_iter = ctx.text_buffer.get_end_iter();
+        let mut text_iter = ctx.text_buffer.end_iter();
         ctx.insert_paragraph(&mut text_iter, "download finished!\n");
         let downloaded_file_url = format!("file://{}", d_path.as_os_str().to_str().unwrap());
         ctx.insert_link(
@@ -514,7 +514,7 @@ impl Tab {
             if n == 0 {
                 break Ok(());
             }
-            let text_iter = &mut draw_ctx.text_buffer.get_end_iter();
+            let text_iter = &mut draw_ctx.text_buffer.end_iter();
             draw_ctx.insert_paragraph(text_iter, &line);
             draw_ctx.insert_paragraph(text_iter, "\n");
         }
@@ -523,20 +523,19 @@ impl Tab {
     fn display_input(ctx: &mut DrawCtx, url: Url, msg: &str, sender: flume::Sender<TabMsg>) {
         let text_buffer = &ctx.text_buffer;
 
-        let mut iter = text_buffer.get_end_iter();
+        let mut iter = text_buffer.end_iter();
         ctx.insert_paragraph(&mut iter, &msg);
         ctx.insert_paragraph(&mut iter, "\n");
 
         let anchor = text_buffer
-            .create_child_anchor(&mut text_buffer.get_end_iter())
-            .unwrap();
+            .create_child_anchor(&mut text_buffer.end_iter());
         let text_input = gtk::Entry::new();
         text_input.set_hexpand(true);
         ctx.text_view.add_child_at_anchor(&text_input, &anchor);
         text_input.show();
 
         text_input.connect_activate(move |text_input| {
-            let query = text_input.get_text().to_string();
+            let query = text_input.text().to_string();
             let mut url = url.clone();
             url.set_query(Some(&query));
             sender.send(TabMsg::Open(url)).unwrap();
@@ -544,7 +543,7 @@ impl Tab {
     }
 
     fn display_url_confirmation(ctx: &mut DrawCtx, url: &Url) {
-        let mut text_iter = ctx.text_buffer.get_end_iter();
+        let mut text_iter = ctx.text_buffer.end_iter();
         ctx.insert_paragraph(
             &mut text_iter,
             "Geopard doesn't support this url scheme. 
@@ -563,7 +562,7 @@ click on the link below\n",
         mut reader: T,
     ) -> anyhow::Result<Vec<u8>> {
         let mut parser = gemini::Parser::new();
-        let mut text_iter = draw_ctx.text_buffer.get_end_iter();
+        let mut text_iter = draw_ctx.text_buffer.end_iter();
 
         let mut data = String::with_capacity(1024);
         let mut total = 0;

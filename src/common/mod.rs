@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use futures::prelude::*;
 use gdk::prelude::*;
 use glib::subclass::prelude::*;
-use glib::GBoxed;
+use glib::Boxed;
 use gtk::prelude::*;
 use log::{debug, info};
 use std::borrow::Cow;
@@ -15,21 +15,19 @@ use crate::tab::TabMsg;
 use once_cell::sync::Lazy;
 
 pub static DOWNLOAD_PATH: Lazy<std::path::PathBuf> =
-    Lazy::new(|| glib::get_user_special_dir(glib::UserDirectory::Downloads).unwrap());
+    Lazy::new(|| glib::user_special_dir(glib::UserDirectory::Downloads).unwrap());
 
 pub static ABOUT_PAGE: &str = std::include_str!("../../README.gemini");
 
 pub const MARGIN: i32 = 20;
 
 pub static DATA_DIR_PATH: Lazy<std::path::PathBuf> = Lazy::new(|| {
-    glib::get_user_data_dir()
-        .expect("No user data dir")
+    glib::user_data_dir()
         .join("geopard")
 });
 
 pub static CONFIG_DIR_PATH: Lazy<std::path::PathBuf> = Lazy::new(|| {
-    glib::get_user_config_dir()
-        .expect("No user config dir")
+    glib::user_config_dir()
         .join("geopard")
 });
 
@@ -99,8 +97,8 @@ impl Link {
     }
 }
 
-#[derive(Debug, Clone, GBoxed)]
-#[gboxed(type_name = "GLink")]
+#[derive(Debug, Clone, Boxed)]
+#[boxed_type(name = "GLink")]
 pub struct GLink(Link);
 
 #[derive(Debug, Clone, PartialEq)]
@@ -126,7 +124,7 @@ pub struct DrawCtx {
 }
 impl DrawCtx {
     pub fn new(text_view: gtk::TextView, config: crate::config::Config) -> Self {
-        let text_buffer = gtk::TextBuffer::new::<gtk::TextTagTable>(None);
+        let text_buffer = gtk::TextBuffer::new(None);
         text_view.set_buffer(Some(&text_buffer));
 
         let this = Self {
@@ -149,7 +147,7 @@ impl DrawCtx {
                 .or_else(|| default_config.fonts.heading.as_ref())
                 .unwrap()
         });
-        tag_h1.set_property_size_points(tag_h1.get_property_size_points() * 1.4);
+        tag_h1.set_size_points(tag_h1.size_points() * 1.4);
 
         let tag_h2 = DrawCtx::create_tag("h2", {
             self.config
@@ -159,7 +157,7 @@ impl DrawCtx {
                 .or_else(|| default_config.fonts.heading.as_ref())
                 .unwrap()
         });
-        tag_h1.set_property_size_points(tag_h1.get_property_size_points() * 1.2);
+        tag_h1.set_size_points(tag_h1.size_points() * 1.2);
 
         let tag_h3 = DrawCtx::create_tag(
             "h3",
@@ -180,7 +178,7 @@ impl DrawCtx {
                 .unwrap(),
         );
 
-        tag_pre.set_property_wrap_mode(gtk::WrapMode::None);
+        tag_pre.set_wrap_mode(gtk::WrapMode::None);
         let tag_p = DrawCtx::create_tag(
             "p",
             self.config
@@ -199,7 +197,7 @@ impl DrawCtx {
                 .or_else(|| default_config.fonts.quote.as_ref())
                 .unwrap(),
         );
-        tag_q.set_property_style(pango::Style::Italic);
+        tag_q.set_style(gtk::pango::Style::Italic);
 
         let tag_a = DrawCtx::create_tag(
             "a",
@@ -211,8 +209,8 @@ impl DrawCtx {
                 .unwrap(),
         );
 
-        tag_a.set_property_foreground(Some("blue"));
-        tag_a.set_property_underline(pango::Underline::Low);
+        tag_a.set_foreground(Some("blue"));
+        tag_a.set_underline(gtk::pango::Underline::Low);
 
         tag_table.add(&tag_h1);
         tag_table.add(&tag_h2);
@@ -224,7 +222,7 @@ impl DrawCtx {
         tag_table
     }
     pub fn create_tag(name: &str, config: &crate::config::Font) -> gtk::TextTag {
-        gtk::TextTagBuilder::new()
+        gtk::builders::TextTagBuilder::new()
             .family(&config.family)
             .size_points(config.size as f64)
             .weight(config.weight)
@@ -240,41 +238,41 @@ impl DrawCtx {
             _ => "h3",
         };
 
-        let start = text_iter.get_offset();
+        let start = text_iter.offset();
 
         self.text_buffer.insert(&mut text_iter, &line);
         self.text_buffer.apply_tag_by_name(
             tag_name,
-            &self.text_buffer.get_iter_at_offset(start),
-            &self.text_buffer.get_end_iter(),
+            &self.text_buffer.iter_at_offset(start),
+            &self.text_buffer.end_iter(),
         );
     }
 
     pub fn insert_quote(&self, mut text_iter: &mut gtk::TextIter, line: &str) {
-        let start = text_iter.get_offset();
+        let start = text_iter.offset();
         self.text_buffer.insert(&mut text_iter, &line);
         self.text_buffer.apply_tag_by_name(
             "q",
-            &self.text_buffer.get_iter_at_offset(start),
+            &self.text_buffer.iter_at_offset(start),
             &text_iter,
         );
     }
 
     pub fn insert_preformatted(&self, mut text_iter: &mut gtk::TextIter, line: &str) {
-        let start = text_iter.get_offset();
+        let start = text_iter.offset();
         self.text_buffer.insert(&mut text_iter, &line);
         self.text_buffer.apply_tag_by_name(
             "pre",
-            &self.text_buffer.get_iter_at_offset(start),
+            &self.text_buffer.iter_at_offset(start),
             &text_iter,
         );
     }
     pub fn insert_paragraph(&self, mut text_iter: &mut gtk::TextIter, line: &str) {
-        let start = text_iter.get_offset();
+        let start = text_iter.offset();
         self.text_buffer.insert(&mut text_iter, &line);
         self.text_buffer.apply_tag_by_name(
             "p",
-            &self.text_buffer.get_iter_at_offset(start),
+            &self.text_buffer.iter_at_offset(start),
             &text_iter,
         );
     }
@@ -285,7 +283,7 @@ impl DrawCtx {
         label: Option<&str>,
     ) {
         debug!("Inserting link");
-        let start = text_iter.get_offset();
+        let start = text_iter.offset();
         let default_config = &config::DEFAULT_CONFIG;
 
         let config = self
@@ -296,29 +294,29 @@ impl DrawCtx {
             .or_else(|| default_config.fonts.paragraph.as_ref())
             .unwrap();
 
-        let tag = gtk::TextTagBuilder::new()
+        let tag = gtk::builders::TextTagBuilder::new()
             .family(&config.family)
             .size_points(config.size as f64)
             .weight(config.weight)
             .build();
 
-        tag.set_property_foreground(Some("blue"));
-        tag.set_property_underline(pango::Underline::Low);
+        tag.set_foreground(Some("blue"));
+        tag.set_underline(gtk::pango::Underline::Low);
 
         Self::set_linkhandler(&tag, link.clone());
 
         let label = label.unwrap_or_else(|| link.url());
-        info!("Setted url {:?} to tag", Self::get_linkhandler(&tag));
+        info!("Setted url {:?} to tag", Self::linkhandler(&tag));
         debug!("Link set successfully");
         self.insert_paragraph(&mut text_iter, &label);
         self.insert_paragraph(&mut text_iter, "\n");
 
-        let tag_table = self.text_buffer.get_tag_table().unwrap();
+        let tag_table = self.text_buffer.tag_table();
         tag_table.add(&tag);
 
         self.text_buffer.apply_tag(
             &tag,
-            &self.text_buffer.get_iter_at_offset(start),
+            &self.text_buffer.iter_at_offset(start),
             &text_iter,
         );
     }
@@ -330,18 +328,19 @@ impl DrawCtx {
             tag.set_data("linkhandler", GLink(s).to_value());
         }
     }
-    pub fn get_linkhandler(tag: &gtk::TextTag) -> Option<Link> {
-        unsafe {
-            let handler: Option<&glib::Value> = tag.get_data("linkhandler");
+    pub fn linkhandler(tag: &gtk::TextTag) -> Option<Link> {
+        /*FIXME: unsafe {
+            let handler: Option<&glib::Value> = tag.data("linkhandler");
             handler
         }
         .and_then(|gl| gl.get::<&GLink>().ok())
         .and_then(|l| l.to_owned())
-        .map(|l| l.0.clone())
+        .map(|l| l.0.clone())*/
+        None
     }
     pub fn clear(&mut self) {
         let b = &self.text_buffer;
-        b.delete(&mut b.get_start_iter(), &mut b.get_end_iter());
+        b.delete(&mut b.start_iter(), &mut b.end_iter());
 
         self.text_buffer = gtk::TextBuffer::new(Some(&self.init_tags()));
         self.text_view.set_buffer(Some(&self.text_buffer));

@@ -9,6 +9,7 @@ use futures::task::LocalSpawnExt;
 use gtk::prelude::*;
 use log::{debug, error, info};
 use url::Url;
+use adw::prelude::*;
 
 pub enum WindowMsg {
     Open(url::Url),
@@ -37,50 +38,49 @@ pub struct Window {
 }
 impl Window {
     pub fn new(
-        app: &gtk::Application,
+        app: &adw::Application,
         config: config::Config,
-    ) -> Component<gtk::ApplicationWindow, WindowMsg> {
-        let window = gtk::ApplicationWindow::new(app);
+    ) -> Component<adw::ApplicationWindow, WindowMsg> {
+        let window = adw::ApplicationWindow::new(app);
         let view = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let header_bar = gtk::HeaderBar::new();
-        header_bar.set_title(Some("Geopard"));
-        header_bar.set_show_close_button(true);
+        header_bar.set_show_title_buttons(true);
 
-        let btn_box = gtk::ButtonBox::new(gtk::Orientation::Horizontal);
-        btn_box.set_property_layout_style(gtk::ButtonBoxStyle::Expand);
+        let btn_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         let back_btn =
-            gtk::Button::from_icon_name(Some("go-previous-symbolic"), gtk::IconSize::Button);
+            gtk::Button::from_icon_name("go-previous-symbolic");
         let add_bookmark_btn =
-            gtk::Button::from_icon_name(Some("star-new-symbolic"), gtk::IconSize::Button);
+            gtk::Button::from_icon_name("star-new-symbolic");
 
         let show_bookmarks_btn =
-            gtk::Button::from_icon_name(Some("view-list-symbolic"), gtk::IconSize::Button);
+            gtk::Button::from_icon_name("view-list-symbolic");
 
-        btn_box.add(&back_btn);
-        btn_box.add(&add_bookmark_btn);
-        btn_box.add(&show_bookmarks_btn);
+        btn_box.append(&back_btn);
+        btn_box.append(&add_bookmark_btn);
+        btn_box.append(&show_bookmarks_btn);
 
         header_bar.pack_start(&btn_box);
 
         let url_bar = gtk::SearchEntry::new();
         url_bar.set_hexpand(true);
 
-        header_bar.set_custom_title(Some(&url_bar));
+        header_bar.set_title_widget(Some(&url_bar));
 
-        window.set_titlebar(Some(&header_bar));
-        window.add(&view);
+        let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        content.append(&header_bar);
+        content.append(&view);
 
+        window.set_content(Some(&content));
         window.set_default_size(800, 600);
 
         let notebook = gtk::Notebook::new();
         let add_tab_btn =
-            gtk::Button::from_icon_name(Some("document-new-symbolic"), gtk::IconSize::Menu);
+            gtk::Button::from_icon_name("document-new-symbolic");
 
         notebook.set_action_widget(&add_tab_btn, gtk::PackType::End);
         notebook.set_scrollable(true);
 
-        view.add(&notebook);
-        add_tab_btn.show_all();
+        view.append(&notebook);
 
         let (sender, receiver): (flume::Sender<WindowMsg>, flume::Receiver<WindowMsg>) =
             flume::unbounded();
@@ -118,18 +118,16 @@ impl Window {
         let tab_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         let tab_label = gtk::Label::new(Some(url.as_str()));
         tab_label.set_hexpand(true);
-        tab_label.set_ellipsize(pango::EllipsizeMode::Start);
+        tab_label.set_ellipsize(gtk::pango::EllipsizeMode::Start);
         tab_label.set_width_chars(12);
         let tab_action =
-            gtk::Button::from_icon_name(Some("window-close-symbolic"), gtk::IconSize::Menu);
+            gtk::Button::from_icon_name("window-close-symbolic");
 
-        let style_ctx = tab_action.get_style_context();
-        style_ctx.add_class("flat");
-        style_ctx.add_class("small-button");
+        // FIXME: tab_action.add_class("flat");
+        // FIXME: tab_action.add_class("small-button");
 
-        tab_box.add(&tab_label);
-        tab_box.pack_end(&tab_action, false, false, 5);
-        tab_box.show_all();
+        tab_box.append(&tab_label);
+        tab_box.append(&tab_action);
 
         let sender = self.sender.clone();
         tab_action.connect_clicked(move |_| {
@@ -149,7 +147,6 @@ impl Window {
         let label = gtk::Label::new(Some("tab"));
         self.notebook.append_page(&widget, Some(&label));
 
-        self.notebook.show_all();
         sender.send(TabMsg::Open(bookmarks_url())).unwrap();
         sender
     }
@@ -189,7 +186,7 @@ impl Window {
     }
     fn msg_set_progress(&mut self, tab_id: usize, progress: f64) {
         if self.current_tab().id() == tab_id {
-            self.url_bar.set_progress_fraction(progress);
+            // FIXME: self.url_bar.set_progress_fraction(progress);
         }
     }
     fn msg_open_new_tab(&mut self, url: Url) {
@@ -240,7 +237,7 @@ impl Window {
         self.sender.send(WindowMsg::SwitchTab(self.tabs.len() - 1)).unwrap();
     }
     fn msg_bookmark_current(&mut self) {
-        let url = self.url_bar.get_text().to_string();
+        let url = self.url_bar.text().to_string();
         let sender = self.sender.clone();
         glibctx().spawn_local(async move {
             match Self::append_bookmark(&url).await {
@@ -251,7 +248,7 @@ impl Window {
         });
     }
     fn msg_url_bar_activated(&mut self) {
-        let url = Url::parse(self.url_bar.get_text().as_str());
+        let url = Url::parse(self.url_bar.text().as_str());
         match url {
             Ok(url) => self.sender.send(WindowMsg::Open(url)).unwrap(),
             Err(e) => error!("Failed to parse url from urlbar: {:?}", e),
@@ -296,7 +293,7 @@ impl Window {
     //        .load_from_data(stylesheet.as_bytes())
     //        .expect("Failed loading stylesheet");
     //    gtk::StyleContext::add_provider_for_screen(
-    //        &gdk::Screen::get_default().unwrap(),
+    //        &gdk::Screen::default().unwrap(),
     //        &provider,
     //        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
     //    );
