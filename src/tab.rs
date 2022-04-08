@@ -65,6 +65,7 @@ impl Tab {
         scroll_win.set_vexpand(true);
         scroll_win.set_child(Some(&text_view));
 
+
         Self {
             draw_ctx,
             gemini_client,

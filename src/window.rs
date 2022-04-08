@@ -32,7 +32,7 @@ pub struct Window {
     show_bookmarks_btn: gtk::Button,
     tabs: Vec<Component<gtk::ScrolledWindow, TabMsg>>,
     current_tab: usize,
-    notebook: gtk::Notebook,
+    tab_view: adw::TabView,
     config: config::Config,
     add_tab_btn: gtk::Button,
 }
@@ -51,36 +51,38 @@ impl Window {
             gtk::Button::from_icon_name("go-previous-symbolic");
         let add_bookmark_btn =
             gtk::Button::from_icon_name("star-new-symbolic");
-
         let show_bookmarks_btn =
             gtk::Button::from_icon_name("view-list-symbolic");
+        let add_tab_btn =
+            gtk::Button::from_icon_name("document-new-symbolic");
+
+
 
         btn_box.append(&back_btn);
-        btn_box.append(&add_bookmark_btn);
-        btn_box.append(&show_bookmarks_btn);
+        btn_box.append(&add_tab_btn);
+
 
         header_bar.pack_start(&btn_box);
+        header_bar.pack_end(&add_bookmark_btn);
+        header_bar.pack_end(&show_bookmarks_btn);
 
         let url_bar = gtk::SearchEntry::new();
         url_bar.set_hexpand(true);
 
         header_bar.set_title_widget(Some(&url_bar));
 
-        let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        content.append(&header_bar);
-        content.append(&view);
+        view.append(&header_bar);
 
-        window.set_content(Some(&content));
+
+        window.set_content(Some(&view));
         window.set_default_size(800, 600);
 
-        let notebook = gtk::Notebook::new();
-        let add_tab_btn =
-            gtk::Button::from_icon_name("document-new-symbolic");
+        let tab_bar = adw::TabBar::new();
+        let tab_view = adw::TabView::new();
+        tab_bar.set_view(Some(&tab_view));
 
-        notebook.set_action_widget(&add_tab_btn, gtk::PackType::End);
-        notebook.set_scrollable(true);
-
-        view.append(&notebook);
+        view.append(&tab_bar);
+        view.append(&tab_view);
 
         let (sender, receiver): (flume::Sender<WindowMsg>, flume::Receiver<WindowMsg>) =
             flume::unbounded();
@@ -94,7 +96,7 @@ impl Window {
             sender: sender.clone(),
             current_tab: 0,
             tabs,
-            notebook,
+            tab_view,
             config,
             add_tab_btn,
         };
@@ -114,28 +116,9 @@ impl Window {
         Component::new(new_component_id(), window, sender, handle)
     }
 
-    fn gen_tab_label(&self, id: usize, url: Url) -> gtk::Box {
-        let tab_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-        let tab_label = gtk::Label::new(Some(url.as_str()));
-        tab_label.set_hexpand(true);
-        tab_label.set_ellipsize(gtk::pango::EllipsizeMode::Start);
-        tab_label.set_width_chars(12);
-        let tab_action =
-            gtk::Button::from_icon_name("window-close-symbolic");
-
-        // FIXME: tab_action.add_class("flat");
-        // FIXME: tab_action.add_class("small-button");
-
-        tab_box.append(&tab_label);
-        tab_box.append(&tab_action);
-
+    fn gen_tab_label(&self, id: usize, url: Url) {
         let sender = self.sender.clone();
-        tab_action.connect_clicked(move |_| {
-            let sender = sender.clone();
-            sender.send(WindowMsg::CloseTab(id)).unwrap();
-        });
 
-        tab_box
     }
     fn add_tab(&mut self) -> flume::Sender<TabMsg> {
         let tab = Tab::new(self.config.clone(), self.sender.clone());
@@ -144,8 +127,9 @@ impl Window {
         let widget = handler.widget().clone();
         self.tabs.push(handler);
 
-        let label = gtk::Label::new(Some("tab"));
-        self.notebook.append_page(&widget, Some(&label));
+        let w = self.tab_view.append(&widget);
+
+        self.tab_view.set_selected_page(&w);
 
         sender.send(TabMsg::Open(bookmarks_url())).unwrap();
         sender
@@ -210,21 +194,21 @@ impl Window {
         }
         if let Some(tab) = self.tab_by_id(tab_id) {
             let tab_widget = tab.widget();
-            self.notebook
-                .set_tab_label(tab_widget, Some(&self.gen_tab_label(tab_id, url)));
+            self.tab_view.page(tab_widget).set_title(url.as_str());
         }
     }
     fn msg_switch_tab(&mut self, n: usize) {
         self.current_tab = n;
-        self.notebook.set_current_page(Some(n as u32));
+        let page_at_n = self.tab_view.nth_page(n as i32);
+        self.tab_view.set_selected_page(&page_at_n);
         let chan = self.tabs[self.current_tab].chan();
         chan.send(TabMsg::GetUrl).unwrap();
         chan.send(TabMsg::GetProgress).unwrap();
     }
     fn msg_close_tab(&mut self, tab_id: usize) {
-        let tab = self.tabs.iter().position(|tab| tab.id() == tab_id);
-        self.notebook.remove_page(tab.map(|x| x as u32));
-        self.tabs.remove(tab.unwrap());
+        let tab_page = self.tab_view.nth_page(tab_id as i32);
+        self.tab_view.close_page(&tab_page);
+        self.tabs.remove(tab_id);
 
         if self.tabs.is_empty() {
             self.msg_add_tab()
@@ -319,9 +303,10 @@ impl Window {
         });
 
         let sender_clone = sender.clone();
-        self.notebook
-            .connect_switch_page(move |_notebook, _page, n| {
+        self.tab_view
+            .connect_selected_page_notify(move |tab_view| {
                 let sender_clone = sender_clone.clone();
+                let n = tab_view.page_position(tab_view.selected_page().as_ref().unwrap());
                 sender_clone.send(WindowMsg::SwitchTab(n as usize)).unwrap();
             });
 
@@ -333,6 +318,14 @@ impl Window {
         let sender_clone = sender.clone();
         self.show_bookmarks_btn.connect_clicked(move |_| {
             sender_clone.send(WindowMsg::AddTab).unwrap();
+        });
+
+        let sender_clone = sender.clone();
+        self.tab_view.connect_close_page(move |tab_view, page| {
+            dbg!("eh");
+            sender_clone.send(WindowMsg::CloseTab(tab_view.page_position(page) as usize)).unwrap();
+            tab_view.close_page_finish(page, true);
+            true
         });
     }
 }
