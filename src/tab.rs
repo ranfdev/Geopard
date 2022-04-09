@@ -73,6 +73,7 @@ pub mod imp {
         fn dispose(&self, _obj: &Self::Type) {
             self.scroll_win.unparent();
         }
+
         fn signals() -> &'static [glib::subclass::Signal] {
             static SIGNALS: Lazy<Vec<glib::subclass::Signal>> = Lazy::new(|| {
                 vec![
@@ -84,6 +85,12 @@ pub mod imp {
                     .build(),
                     glib::subclass::Signal::builder(
                         "title-changed",
+                        &[String::static_type().into()],
+                        <()>::static_type().into(),
+                    )
+                    .build(),
+                    glib::subclass::Signal::builder(
+                        "url-changed",
                         &[String::static_type().into()],
                         <()>::static_type().into(),
                     )
@@ -193,12 +200,13 @@ impl Tab {
                 }
                 Ok(_) => {
                     info!("Page loaded ({})", url.clone());
-                    this.emit_by_name_with_values("title-changed", &[url.to_string().to_value()]);
                 }
                 Err(e) => {
                     Self::display_error(&mut req_ctx.draw_ctx, e);
                 }
             }
+            this.emit_by_name_with_values("title-changed", &[url.to_string().to_value()]);
+            this.emit_by_name_with_values("url-changed", &[url.to_string().to_value()]);
         };
         self.spawn_req(fut);
     }
@@ -235,12 +243,15 @@ impl Tab {
     }
     pub fn back(&self) -> Result<()> {
         let imp = self.imp();
-        let mut history = imp.history.borrow_mut();
-        if history.len() <= 1 {
-            bail!("Already at last item in history");
-        }
-        history.pop();
-        match history.pop() {
+        let item = {
+            let mut history = imp.history.borrow_mut();
+            if history.len() <= 1 {
+                bail!("Already at last item in history");
+            }
+            history.pop();
+            history.pop()
+        };
+        match item {
             Some(item) => self.spawn_open_history(item),
             None => unreachable!(),
         }

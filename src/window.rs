@@ -122,6 +122,12 @@ impl Window {
             page.set_title(&title);
             None
         });
+        let url_bar = self.url_bar.clone();
+        tab.connect_local("url-changed", false, move |values| {
+            let title: String = values[1].get().unwrap();
+            url_bar.set_text(&title);
+            None
+        });
 
         let w = self.tab_view.append(&tab);
         self.tabs.push(w.clone());
