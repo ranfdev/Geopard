@@ -1,7 +1,8 @@
 { stdenv
 , cargo
 , glib
-, gtk3
+, gtk4
+, libadwaita
 , pango
 , rust
 , rustc
@@ -27,7 +28,8 @@ rustPlatform.buildRustPackage rec {
 
   buildInputs = [
     glib
-    gtk3
+    gtk4
+    libadwaita
     pango
     openssl
   ];

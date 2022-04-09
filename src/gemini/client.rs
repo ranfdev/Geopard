@@ -113,7 +113,7 @@ impl ClientBuilder {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Client {
     options: ClientOptions,
 }

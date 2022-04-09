@@ -1,11 +1,12 @@
 use async_trait::async_trait;
 use futures::prelude::*;
-use gdk::prelude::*;
 use glib::subclass::prelude::*;
 use glib::Boxed;
+use gtk::gdk::prelude::*;
 use gtk::prelude::*;
 use log::{debug, info};
 use std::borrow::Cow;
+use std::collections::HashMap;
 use url::Url;
 
 use crate::config;
@@ -21,15 +22,11 @@ pub static ABOUT_PAGE: &str = std::include_str!("../../README.gemini");
 
 pub const MARGIN: i32 = 20;
 
-pub static DATA_DIR_PATH: Lazy<std::path::PathBuf> = Lazy::new(|| {
-    glib::user_data_dir()
-        .join("geopard")
-});
+pub static DATA_DIR_PATH: Lazy<std::path::PathBuf> =
+    Lazy::new(|| glib::user_data_dir().join("geopard"));
 
-pub static CONFIG_DIR_PATH: Lazy<std::path::PathBuf> = Lazy::new(|| {
-    glib::user_config_dir()
-        .join("geopard")
-});
+pub static CONFIG_DIR_PATH: Lazy<std::path::PathBuf> =
+    Lazy::new(|| glib::user_config_dir().join("geopard"));
 
 pub static BOOKMARK_FILE_PATH: Lazy<std::path::PathBuf> =
     Lazy::new(|| DATA_DIR_PATH.join("bookmarks.gemini"));
@@ -112,7 +109,6 @@ pub struct HistoryItem {
 pub struct RequestCtx {
     pub gemini_client: gemini::Client,
     pub draw_ctx: DrawCtx,
-    pub in_chan_tx: flume::Sender<TabMsg>,
     pub url: Url,
 }
 
@@ -314,29 +310,20 @@ impl DrawCtx {
         let tag_table = self.text_buffer.tag_table();
         tag_table.add(&tag);
 
-        self.text_buffer.apply_tag(
-            &tag,
-            &self.text_buffer.iter_at_offset(start),
-            &text_iter,
-        );
+        self.text_buffer
+            .apply_tag(&tag, &self.text_buffer.iter_at_offset(start), &text_iter);
     }
 
-    fn set_linkhandler(tag: &gtk::TextTag, s: Link) {
-        // I hope using a GBoxed type manages memory for me
-        // TODO: Ask a glib mantainer if this is true
+    fn set_linkhandler(tag: &gtk::TextTag, l: Link) {
         unsafe {
-            tag.set_data("linkhandler", GLink(s).to_value());
+            tag.set_data("linkhandler", l);
         }
     }
-    pub fn linkhandler(tag: &gtk::TextTag) -> Option<Link> {
-        /*FIXME: unsafe {
-            let handler: Option<&glib::Value> = tag.data("linkhandler");
-            handler
+    pub fn linkhandler(tag: &gtk::TextTag) -> Option<&Link> {
+        unsafe {
+            let handler: Option<std::ptr::NonNull<Link>> = tag.data("linkhandler");
+            handler.map(|n| n.as_ref())
         }
-        .and_then(|gl| gl.get::<&GLink>().ok())
-        .and_then(|l| l.to_owned())
-        .map(|l| l.0.clone())*/
-        None
     }
     pub fn clear(&mut self) {
         let b = &self.text_buffer;

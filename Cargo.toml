@@ -19,9 +19,6 @@ features = ["v2_60"]
 [dependencies.gio]
 version = "0.15.1"
 
-[dependencies.gdk]
-version = "0.15.1"
-
 [dependencies]
 async-net = "1.4.7"
 async-fs = "1.5.0"
@@ -36,7 +33,6 @@ async-trait = "0.1.38"
 async-native-tls = "0.3.3"
 toml = "0.5.6"
 serde = { version = "1.0.116", features = ["derive"] }
-pango = { version = "0.9.0" }
 env_logger = "0.8.1"
 log = "0.4.0"
 adw = { package = "libadwaita", version = "0.1.0" }

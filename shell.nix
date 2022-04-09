@@ -1,4 +1,4 @@
-{pkgs ? import <nixos-unstable> {}}:
+{pkgs ? import <nixpkgs-unstable> {}}:
 pkgs.mkShell {
   buildInputs = with pkgs; [
     cargo
@@ -9,13 +9,14 @@ pkgs.mkShell {
     meson
     ninja
     python3
+    gtk4
+    libadwaita
     rustc
     rustfmt
     wrapGAppsHook
     dbus
     gdk-pixbuf
     glib
-    gtk3
     openssl
     pkg-config
     rust-analyzer

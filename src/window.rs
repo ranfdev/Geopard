@@ -4,12 +4,12 @@ use crate::config;
 use crate::tab::{Tab, TabMsg};
 use anyhow::Context;
 
+use adw::prelude::*;
 use futures::prelude::*;
 use futures::task::LocalSpawnExt;
 use gtk::prelude::*;
 use log::{debug, error, info};
 use url::Url;
-use adw::prelude::*;
 
 pub enum WindowMsg {
     Open(url::Url),
@@ -17,7 +17,7 @@ pub enum WindowMsg {
     AddTab,
     UrlBarActivated,
     CloseTab(usize),
-    SwitchTab(usize),
+    SwitchTab(Tab),
     UpdateUrlBar(usize, Url),
     BookmarkCurrent,
     Back,
@@ -30,7 +30,7 @@ pub struct Window {
     back_btn: gtk::Button,
     add_bookmark_btn: gtk::Button,
     show_bookmarks_btn: gtk::Button,
-    tabs: Vec<Component<gtk::ScrolledWindow, TabMsg>>,
+    tabs: Vec<adw::TabPage>,
     current_tab: usize,
     tab_view: adw::TabView,
     config: config::Config,
@@ -47,20 +47,13 @@ impl Window {
         header_bar.set_show_title_buttons(true);
 
         let btn_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        let back_btn =
-            gtk::Button::from_icon_name("go-previous-symbolic");
-        let add_bookmark_btn =
-            gtk::Button::from_icon_name("star-new-symbolic");
-        let show_bookmarks_btn =
-            gtk::Button::from_icon_name("view-list-symbolic");
-        let add_tab_btn =
-            gtk::Button::from_icon_name("document-new-symbolic");
-
-
+        let back_btn = gtk::Button::from_icon_name("go-previous-symbolic");
+        let add_bookmark_btn = gtk::Button::from_icon_name("star-new-symbolic");
+        let show_bookmarks_btn = gtk::Button::from_icon_name("view-list-symbolic");
+        let add_tab_btn = gtk::Button::from_icon_name("document-new-symbolic");
 
         btn_box.append(&back_btn);
         btn_box.append(&add_tab_btn);
-
 
         header_bar.pack_start(&btn_box);
         header_bar.pack_end(&add_bookmark_btn);
@@ -72,7 +65,6 @@ impl Window {
         header_bar.set_title_widget(Some(&url_bar));
 
         view.append(&header_bar);
-
 
         window.set_content(Some(&view));
         window.set_default_size(800, 600);
@@ -103,6 +95,7 @@ impl Window {
 
         this.bind_signals();
         this.add_tab();
+        this.open_url(bookmarks_url());
 
         let receiver: flume::Receiver<WindowMsg> = receiver;
         let handle = glibctx()
@@ -118,23 +111,39 @@ impl Window {
 
     fn gen_tab_label(&self, id: usize, url: Url) {
         let sender = self.sender.clone();
-
     }
-    fn add_tab(&mut self) -> flume::Sender<TabMsg> {
-        let tab = Tab::new(self.config.clone(), self.sender.clone());
-        let handler = tab.run();
-        let sender = handler.chan();
-        let widget = handler.widget().clone();
-        self.tabs.push(handler);
+    fn add_tab(&mut self) {
+        let tab = Tab::new(self.config.clone());
+        let tab_view = self.tab_view.clone();
+        tab.connect_local("title-changed", false, move |values| {
+            let title: String = values[1].get().unwrap();
+            let gtab: Tab = values[0].get().unwrap();
+            let page = tab_view.page(&gtab);
+            page.set_title(&title);
+            None
+        });
 
-        let w = self.tab_view.append(&widget);
-
+        let w = self.tab_view.append(&tab);
+        self.tabs.push(w.clone());
+        self.current_tab = self.tabs.len() - 1;
         self.tab_view.set_selected_page(&w);
-
-        sender.send(TabMsg::Open(bookmarks_url())).unwrap();
-        sender
+        self.open_url(bookmarks_url());
     }
 
+    fn handle_msg(&mut self, msg: WindowMsg) {
+        match msg {
+            WindowMsg::Open(url) => {}
+            WindowMsg::OpenNewTab(url) => self.msg_open_new_tab(url),
+            WindowMsg::Back => self.msg_back(),
+            WindowMsg::UpdateUrlBar(tab_id, url) => self.msg_update_url_bar(tab_id, url),
+            WindowMsg::SwitchTab(tab) => self.msg_switch_tab(tab),
+            WindowMsg::CloseTab(widget) => {}
+            WindowMsg::AddTab => self.msg_add_tab(),
+            WindowMsg::BookmarkCurrent => self.msg_bookmark_current(),
+            WindowMsg::UrlBarActivated => self.msg_url_bar_activated(),
+            WindowMsg::SetProgress(tab_id, n) => self.msg_set_progress(tab_id, n),
+        }
+    }
     async fn append_bookmark(url: &str) -> anyhow::Result<()> {
         let mut file = async_fs::OpenOptions::new()
             .write(true)
@@ -151,59 +160,27 @@ impl Window {
         file.flush().await?;
         Ok(())
     }
-    fn current_tab(&self) -> &Component<gtk::ScrolledWindow, TabMsg> {
-        &self.tabs[self.current_tab]
-    }
-    fn handle_msg(&mut self, msg: WindowMsg) {
-        match msg {
-            WindowMsg::Open(url) => self.msg_open(url),
-            WindowMsg::OpenNewTab(url) => self.msg_open_new_tab(url),
-            WindowMsg::Back => self.msg_back(),
-            WindowMsg::UpdateUrlBar(tab_id, url) => self.msg_update_url_bar(tab_id, url),
-            WindowMsg::SwitchTab(n) => self.msg_switch_tab(n),
-            WindowMsg::CloseTab(widget) => self.msg_close_tab(widget),
-            WindowMsg::AddTab => self.msg_add_tab(),
-            WindowMsg::BookmarkCurrent => self.msg_bookmark_current(),
-            WindowMsg::UrlBarActivated => self.msg_url_bar_activated(),
-            WindowMsg::SetProgress(tab_id, n) => self.msg_set_progress(tab_id, n),
-        }
+    fn current_tab(&self) -> Tab {
+        self.tabs[self.current_tab].child().downcast().unwrap()
     }
     fn msg_set_progress(&mut self, tab_id: usize, progress: f64) {
-        if self.current_tab().id() == tab_id {
-            // FIXME: self.url_bar.set_progress_fraction(progress);
-        }
+        // FIXME: self.url_bar.set_progress_fraction(progress);
     }
     fn msg_open_new_tab(&mut self, url: Url) {
         let new_tab = self.add_tab();
-        new_tab.send(TabMsg::Open(url)).unwrap();
     }
-    fn msg_open(&mut self, url: Url) {
-        let chan = self.tabs[self.current_tab].chan();
-        chan.send(TabMsg::Open(url)).unwrap();
+    fn open_url(&mut self, url: Url) {
+        self.current_tab().spawn_open(url);
     }
     fn msg_back(&mut self) {
-        let chan = self.tabs[self.current_tab].chan();
-        chan.send(TabMsg::Back).unwrap();
-    }
-    fn tab_by_id(&self, id: usize) -> Option<&Component<gtk::ScrolledWindow, TabMsg>> {
-        self.tabs.iter().find(|t| t.id() == id)
+        self.current_tab().back();
     }
     fn msg_update_url_bar(&mut self, tab_id: usize, url: Url) {
-        if self.current_tab().id() == tab_id {
-            self.url_bar.set_text(url.as_str());
-        }
-        if let Some(tab) = self.tab_by_id(tab_id) {
-            let tab_widget = tab.widget();
-            self.tab_view.page(tab_widget).set_title(url.as_str());
-        }
+        // FIXME
+        // self.tab_view.page(tab_widget).set_title(url.as_str());
     }
-    fn msg_switch_tab(&mut self, n: usize) {
-        self.current_tab = n;
-        let page_at_n = self.tab_view.nth_page(n as i32);
-        self.tab_view.set_selected_page(&page_at_n);
-        let chan = self.tabs[self.current_tab].chan();
-        chan.send(TabMsg::GetUrl).unwrap();
-        chan.send(TabMsg::GetProgress).unwrap();
+    fn msg_switch_tab(&mut self, tab: Tab) {
+        self.url_bar.set_text(tab.url().unwrap().as_str());
     }
     fn msg_close_tab(&mut self, tab_id: usize) {
         let tab_page = self.tab_view.nth_page(tab_id as i32);
@@ -218,7 +195,6 @@ impl Window {
     }
     fn msg_add_tab(&mut self) {
         self.add_tab();
-        self.sender.send(WindowMsg::SwitchTab(self.tabs.len() - 1)).unwrap();
     }
     fn msg_bookmark_current(&mut self) {
         let url = self.url_bar.text().to_string();
@@ -303,12 +279,17 @@ impl Window {
         });
 
         let sender_clone = sender.clone();
-        self.tab_view
-            .connect_selected_page_notify(move |tab_view| {
-                let sender_clone = sender_clone.clone();
-                let n = tab_view.page_position(tab_view.selected_page().as_ref().unwrap());
-                sender_clone.send(WindowMsg::SwitchTab(n as usize)).unwrap();
-            });
+        self.tab_view.connect_selected_page_notify(move |tab_view| {
+            let sender_clone = sender_clone.clone();
+            let tab: Tab = tab_view
+                .selected_page()
+                .unwrap()
+                .child()
+                .downcast()
+                .unwrap();
+
+            sender_clone.send(WindowMsg::SwitchTab(tab)).unwrap();
+        });
 
         let sender_clone = sender.clone();
         self.add_bookmark_btn.connect_clicked(move |_| {
@@ -318,14 +299,6 @@ impl Window {
         let sender_clone = sender.clone();
         self.show_bookmarks_btn.connect_clicked(move |_| {
             sender_clone.send(WindowMsg::AddTab).unwrap();
-        });
-
-        let sender_clone = sender.clone();
-        self.tab_view.connect_close_page(move |tab_view, page| {
-            dbg!("eh");
-            sender_clone.send(WindowMsg::CloseTab(tab_view.page_position(page) as usize)).unwrap();
-            tab_view.close_page_finish(page, true);
-            true
         });
     }
 }

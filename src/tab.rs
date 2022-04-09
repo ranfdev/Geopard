@@ -1,6 +1,5 @@
 use crate::common;
 use crate::common::{glibctx, DrawCtx, HistoryItem, Link, LossyTextRead, PageElement, RequestCtx};
-use crate::component::{new_component_id, Component};
 use crate::gemini;
 use crate::window::WindowMsg;
 use anyhow::{bail, Context, Result};
@@ -9,9 +8,13 @@ use futures::future::RemoteHandle;
 use futures::io::BufReader;
 use futures::prelude::*;
 use futures::task::LocalSpawnExt;
-use gdk::prelude::*;
+use glib::subclass::prelude::*;
+use gtk::gdk::prelude::*;
 use gtk::prelude::*;
+use gtk::subclass::prelude::*;
 use log::{debug, error, info, warn};
+use once_cell::sync::Lazy;
+use std::cell::RefCell;
 use url::Url;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -27,21 +30,79 @@ pub enum TabMsg {
     GetProgress,
 }
 
-pub struct Tab {
-    gemini_client: gemini::Client,
-    draw_ctx: DrawCtx,
-    history: Vec<HistoryItem>,
-    req_handle: Option<RemoteHandle<()>>,
-    in_chan_tx: flume::Sender<TabMsg>,
-    in_chan_rx: flume::Receiver<TabMsg>,
-    out_chan: flume::Sender<WindowMsg>,
-    scroll_win: gtk::ScrolledWindow,
-    load_progress: f64,
-    id: usize,
-}
+pub mod imp {
 
+    pub use super::*;
+    #[derive(Debug, Default)]
+    pub struct Tab {
+        pub(crate) gemini_client: RefCell<gemini::Client>,
+        pub(crate) draw_ctx: RefCell<Option<DrawCtx>>,
+        pub(crate) history: RefCell<Vec<HistoryItem>>,
+        pub(crate) scroll_win: gtk::ScrolledWindow,
+        pub(crate) event_ctrlr_click: RefCell<Option<gtk::GestureClick>>,
+        pub(crate) req_handle: RefCell<Option<RemoteHandle<()>>>,
+        pub(crate) load_progress: f64,
+    }
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for Tab {
+        const NAME: &'static str = "GeopardTab";
+        type Type = super::Tab;
+        type ParentType = gtk::Widget;
+
+        fn class_init(klass: &mut Self::Class) {
+            // The layout manager determines how child widgets are laid out.
+            klass.set_layout_manager_type::<gtk::BinLayout>();
+        }
+    }
+
+    impl ObjectImpl for Tab {
+        fn constructed(&self, obj: &Self::Type) {
+            self.parent_constructed(obj);
+
+            self.scroll_win.set_parent(obj);
+            self.scroll_win.set_vexpand(true);
+            obj.set_vexpand(true);
+
+            self.event_ctrlr_click
+                .replace(Some(gtk::GestureClick::new()));
+            self.gemini_client
+                .replace(gemini::ClientBuilder::new().redirect(true).build());
+        }
+
+        fn dispose(&self, _obj: &Self::Type) {
+            self.scroll_win.unparent();
+        }
+        fn signals() -> &'static [glib::subclass::Signal] {
+            static SIGNALS: Lazy<Vec<glib::subclass::Signal>> = Lazy::new(|| {
+                vec![
+                    glib::subclass::Signal::builder(
+                        "open-background-tab",
+                        &[],
+                        <()>::static_type().into(),
+                    )
+                    .build(),
+                    glib::subclass::Signal::builder(
+                        "title-changed",
+                        &[String::static_type().into()],
+                        <()>::static_type().into(),
+                    )
+                    .build(),
+                ]
+            });
+            SIGNALS.as_ref()
+        }
+    }
+    impl WidgetImpl for Tab {}
+}
+glib::wrapper! {
+    pub struct Tab(ObjectSubclass<imp::Tab>)
+        @extends gtk::Widget;
+}
 impl Tab {
-    pub fn new(config: crate::config::Config, out_chan: flume::Sender<WindowMsg>) -> Self {
+    pub fn new(config: crate::config::Config) -> Self {
+        let mut this: Self = glib::Object::new(&[]).unwrap();
+        let imp = this.imp();
         use common::MARGIN;
         let text_view = gtk::builders::TextViewBuilder::new()
             .top_margin(MARGIN)
@@ -53,171 +114,111 @@ impl Tab {
             .cursor_visible(false)
             .wrap_mode(gtk::WrapMode::WordChar)
             .build();
+        text_view.add_controller(imp.event_ctrlr_click.borrow().as_ref().unwrap());
+        imp.scroll_win.set_child(Some(&text_view));
+        imp.draw_ctx
+            .replace(Some(DrawCtx::new(text_view.clone(), config)));
 
-        let (in_chan_tx, in_chan_rx) = flume::unbounded();
-
-        let draw_ctx = DrawCtx::new(text_view.clone(), config);
-        let gemini_client = gemini::ClientBuilder::new().redirect(true).build();
-        let req_handle = None;
-        let history = vec![];
-
-        let scroll_win = gtk::ScrolledWindow::new();
-        scroll_win.set_vexpand(true);
-        scroll_win.set_child(Some(&text_view));
-
-
-        Self {
-            draw_ctx,
-            gemini_client,
-            req_handle,
-            history,
-            in_chan_rx,
-            in_chan_tx,
-            out_chan,
-            scroll_win,
-            load_progress: 0.0,
-            id: new_component_id(),
-        }
+        this.bind_signals();
+        this
+    }
+    pub fn child(&self) -> &gtk::ScrolledWindow {
+        let imp = self.imp();
+        &imp.scroll_win
     }
     pub fn build_request_ctx(&self, url: Url) -> RequestCtx {
+        let imp = self.imp();
         RequestCtx {
-            draw_ctx: self.draw_ctx.clone(),
-            in_chan_tx: self.in_chan_tx.clone(),
-            gemini_client: self.gemini_client.clone(),
+            draw_ctx: imp.draw_ctx.borrow().clone().unwrap(),
+            gemini_client: imp.gemini_client.borrow().clone(),
             url,
         }
     }
-    pub fn run(mut self) -> Component<gtk::ScrolledWindow, TabMsg> {
-        let in_chan_tx = self.in_chan_tx.clone();
-        let in_chan_rx = self.in_chan_rx.clone();
-        let widget = self.widget().clone();
-        let id = self.id;
-        self.bind_signals();
-        let handle_msgs = async move {
-            while let Ok(msg) = in_chan_rx.recv_async().await {
-                match self.handle_msg(msg).await {
-                    Ok(()) => {}
-                    Err(e) => Self::display_error(&mut self.draw_ctx, e),
-                }
-            }
-        };
-        let handle = glibctx().spawn_local_with_handle(handle_msgs).unwrap();
-
-        Component::new(id, widget, in_chan_tx, handle)
+    pub fn url(&self) -> Result<url::Url> {
+        let imp = self.imp();
+        Ok(imp
+            .history
+            .borrow_mut()
+            .last()
+            .context("No items in history")?
+            .url
+            .clone())
     }
-    pub async fn handle_msg(&mut self, msg: TabMsg) -> Result<()> {
-        debug!("Msg: {:?}", &msg);
-        match msg {
-            TabMsg::Open(url) => self.spawn_open(url),
-            TabMsg::Back => match self.back() {
-                Ok(()) => info!("Went back"),
-                Err(e) => warn!("{}", e),
-            },
-            TabMsg::LineClicked(link) => self.handle_click(&link)?,
-            TabMsg::GetUrl => {
-                let url = &self.history.last().context("No items in history")?.url;
-
-                self.out_chan
-                    .send(WindowMsg::UpdateUrlBar(self.id, url.clone()))
-                    .unwrap();
-            }
-            TabMsg::SetProgress(n) => {
-                self.load_progress = n;
-                self.out_chan
-                    .send(WindowMsg::SetProgress(self.id, self.load_progress))
-                    .unwrap();
-            }
-            TabMsg::GetProgress => {
-                self.out_chan
-                    .send(WindowMsg::SetProgress(self.id, self.load_progress))
-                    .unwrap();
-            }
-            TabMsg::AddCache(cache) => {
-                if let Some(item) = self.history.last_mut() {
-                    item.cache = Some(cache)
-                }
-            }
-            TabMsg::OpenNewTab(link) => {
-                let url = self.parse_link(&link)?;
-                self.out_chan.send(WindowMsg::OpenNewTab(url)).unwrap();
-            }
-            TabMsg::CopyUrl(link) => {
-                let url = self.parse_link(&link)?;
-                self.draw_ctx
-                    .text_view
-                    .clipboard()
-                    .set_text(url.as_str());
-            }
+    pub fn add_cache(&self, cache: Vec<u8>) {
+        let imp = self.imp();
+        if let Some(item) = imp.history.borrow_mut().last_mut() {
+            item.cache = Some(cache)
         }
+    }
+    pub fn open_new_tab(&self, link: &str) -> Result<()> {
+        let url = self.parse_link(&link)?;
         Ok(())
     }
-    fn handle_right_click(
-        text_view: &gtk::TextView,
-        widget: &gtk::Widget,
-        in_chan: flume::Sender<TabMsg>,
-    ) {
+    fn handle_right_click(text_view: &gtk::TextView, widget: &gtk::Widget) {
         if let Some(menu) = widget.dynamic_cast_ref::<gtk::PopoverMenu>() {
-            let (x, y) = Self::coords_in_widget(text_view);
+            // let (x, y) = Self::coords_in_widget(text_view);
 
-            if let Ok(handler) = Self::extract_linkhandler(text_view, (x as f64, y as f64)) {
-                let url = handler.url();
-                /*FIXME: Self::extend_textview_menu(&menu, url.to_owned(), in_chan.clone());*/
-            }
+            // if let Ok(handler) = Self::extract_linkhandler(text_view, (x as f64, y as f64)) {
+            //     let url = handler.url();
+            //     /*FIXME: Self::extend_textview_menu(&menu, url.to_owned(), in_chan.clone());*/
+            // }
         }
     }
-    fn spawn_req(&mut self, fut: impl Future<Output = ()> + 'static) {
-        self.req_handle = Some(glibctx().spawn_local_with_handle(fut).unwrap());
+    fn spawn_req(&self, fut: impl Future<Output = ()> + 'static) {
+        let imp = self.imp();
+        imp.req_handle
+            .replace(Some(glibctx().spawn_local_with_handle(fut).unwrap()));
     }
-    pub fn spawn_open(&mut self, url: Url) {
-        let scroll_progress = self.scroll_win.vadjustment().value();
-        if let Some(item) = self.history.last_mut() {
+    pub fn spawn_open(&self, url: Url) {
+        let imp = self.imp();
+
+        let scroll_progress = imp.scroll_win.vadjustment().value();
+        let mut history = imp.history.borrow_mut();
+        if let Some(item) = history.last_mut() {
             item.scroll_progress = scroll_progress;
         }
-        self.history.push(HistoryItem {
+        history.push(HistoryItem {
             url: url.clone(),
             cache: None,
             scroll_progress: 0.0,
         });
         let mut req_ctx = self.build_request_ctx(url.clone());
-        self.out_chan
-            .send(WindowMsg::UpdateUrlBar(self.id, url.clone()))
-            .unwrap();
-        self.in_chan_tx.send(TabMsg::SetProgress(0.5)).unwrap();
 
-        let in_chan_tx = self.in_chan_tx.clone();
+        let this = self.clone();
         let fut = async move {
             match Self::open_url(&mut req_ctx).await {
                 Ok(Some(cache)) => {
-                    in_chan_tx.send(TabMsg::AddCache(cache)).unwrap();
+                    this.add_cache(cache);
                     info!("Page loaded and cached ({})", url.clone());
                 }
                 Ok(_) => {
                     info!("Page loaded ({})", url.clone());
+                    this.emit_by_name_with_values("title-changed", &[url.to_string().to_value()]);
                 }
                 Err(e) => {
                     Self::display_error(&mut req_ctx.draw_ctx, e);
                 }
             }
-            in_chan_tx.send(TabMsg::SetProgress(0.0)).unwrap();
         };
         self.spawn_req(fut);
     }
-    fn spawn_open_history(&mut self, item: HistoryItem) {
+    fn spawn_open_history(&self, item: HistoryItem) {
         let HistoryItem { url, cache, .. } = item;
         match cache {
             Some(cache) => self.spawn_open_cached(url, cache),
             None => self.spawn_open(url),
         }
     }
-    fn spawn_open_cached(&mut self, url: Url, cache: Vec<u8>) {
-        self.history.push(HistoryItem {
+    fn spawn_open_cached(&self, url: Url, cache: Vec<u8>) {
+        let imp = self.imp();
+        imp.history.borrow_mut().push(HistoryItem {
             url: url.clone(),
             cache: None,
             scroll_progress: 0.0,
         });
 
-        let mut draw_ctx = self.draw_ctx.clone();
-        let in_chan_tx = self.in_chan_tx.clone();
+        let mut draw_ctx = imp.draw_ctx.borrow().clone().unwrap();
+        let this = self.clone();
         let fut = async move {
             let buf = BufReader::new(cache.as_slice());
             draw_ctx.clear();
@@ -225,19 +226,21 @@ impl Tab {
             match res {
                 Ok(cache) => {
                     info!("Loaded {} from cache", &url);
-                    in_chan_tx.send(TabMsg::AddCache(cache)).unwrap();
+                    this.add_cache(cache);
                 }
                 Err(e) => Self::display_error(&mut draw_ctx, e),
             }
         };
         self.spawn_req(fut);
     }
-    pub fn back(&mut self) -> Result<()> {
-        if self.history.len() <= 1 {
+    pub fn back(&self) -> Result<()> {
+        let imp = self.imp();
+        let mut history = imp.history.borrow_mut();
+        if history.len() <= 1 {
             bail!("Already at last item in history");
         }
-        self.history.pop();
-        match self.history.pop() {
+        history.pop();
+        match history.pop() {
             Some(item) => self.spawn_open_history(item),
             None => unreachable!(),
         }
@@ -248,7 +251,16 @@ impl Tab {
         let error_text = format!("Geopard experienced an error:\n {:?}", error);
         ctx.insert_paragraph(&mut ctx.text_buffer.end_iter(), &error_text);
     }
-    pub fn handle_click(&mut self, handler: &Link) -> Result<()> {
+    pub fn handle_click(&self, buttoni: i32, x: f64, y: f64) -> Result<()> {
+        dbg!(x, y);
+        let imp = self.imp();
+        let draw_ctx = imp.draw_ctx.borrow();
+        let text_view = &draw_ctx.as_ref().unwrap().text_view;
+        let has_selection = text_view.buffer().has_selection();
+        if has_selection {
+            return Ok(());
+        }
+        let handler = Self::extract_linkhandler(&draw_ctx.as_ref().unwrap(), x, y)?;
         match handler {
             Link::Internal(link) => {
                 let url = self.parse_link(&link)?;
@@ -260,20 +272,6 @@ impl Tab {
             }
         }
         Ok(())
-    }
-    pub fn widget(&self) -> &gtk::ScrolledWindow {
-        &self.scroll_win
-    }
-    fn coords_in_widget<T: IsA<gtk::Widget>>(widget: &T) -> (i32, i32) {
-        /* let seat = gdk::Display::default()
-            .unwrap()
-            .default_seat()
-            .unwrap();
-        let device = seat.pointer().unwrap();
-        FIXME: let (_window, x, y, _) = WidgetExt::window(widget)
-            .unwrap()
-            .device_position(&device);*/
-        (0, 0)
     }
     /* FIXME: fn extend_textview_menu(menu: &gtk::Menu, url: String, sender: flume::Sender<TabMsg>) {
         let copy_link_item = gtk::MenuItem::with_label("Copy link");
@@ -292,43 +290,54 @@ impl Tab {
         menu.prepend(&open_in_tab_item);
         menu.show_all();
     }*/
-    fn bind_signals(&mut self) {
-        let in_chan_tx = self.in_chan_tx.clone();
-        /* FIXME: self.draw_ctx
-            .text_view
-            .connect_event_after(move |text_view, e| {
-                let event_is_click = (e.event_type() == gdk::EventType::ButtonRelease
-                    || e.event_type() == gdk::EventType::TouchEnd)
-                    && e.button() == Some(1);
+    fn bind_signals(&self) {
+        let imp = self.imp();
+        let draw_ctx = imp.draw_ctx.borrow().clone().unwrap();
+        let this = self.clone();
+        imp.event_ctrlr_click
+            .borrow()
+            .as_ref()
+            .unwrap()
+            .connect_pressed(move |_gsclick, buttoni, x, y| {
+                match this.handle_click(buttoni, x, y) {
+                    Err(e) => info!("{}", e),
+                    _ => {}
+                };
+            });
 
-                let has_selection = text_view.buffer().unwrap().has_selection();
+        /*        .GestureClick
+        .connect_event_after(move |text_view, e| {
+            let event_is_click = (e.event_type() == gdk::EventType::ButtonRelease
+                || e.event_type() == gdk::EventType::TouchEnd)
+                && e.button() == Some(1);
 
-                if event_is_click && !has_selection {
-                    match Self::extract_linkhandler(text_view, e.coords().unwrap()) {
-                        Ok(handler) => in_chan_tx.send(TabMsg::LineClicked(handler)).unwrap(),
-                        Err(e) => warn!("{}", e),
-                    }
+            let has_selection = text_view.buffer().unwrap().has_selection();
+
+            if event_is_click && !has_selection {
+                match Self::extract_linkhandler(text_view, e.coords().unwrap()) {
+                    Ok(handler) => in_chan_tx.send(TabMsg::LineClicked(handler)).unwrap(),
+                    Err(e) => warn!("{}", e),
                 }
-            });*/
-        let in_chan = self.in_chan_tx.clone();
+            }
+        });*/
         /* FIXME: self.draw_ctx
-            .text_view
-            .connect_populate_popup(move |text_view, widget| {
-                Self::handle_right_click(text_view, widget, in_chan.clone());
-            });*/
+        .text_view
+        .connect_populate_popup(move |text_view, widget| {
+            Self::handle_right_click(text_view, widget, in_chan.clone());
+        });*/
     }
-    fn extract_linkhandler(text_view: &gtk::TextView, (x, y): (f64, f64)) -> Result<Link> {
+    fn extract_linkhandler(draw_ctx: &DrawCtx, x: f64, y: f64) -> Result<Link> {
         info!("Extracting linkhandler from clicked text");
+        let text_view = &draw_ctx.text_view;
         let (x, y) =
             text_view.window_to_buffer_coords(gtk::TextWindowType::Widget, x as i32, y as i32);
-
         let iter = text_view
             .iter_at_location(x as i32, y as i32)
             .context("Can't get text iter where clicked")?;
 
         for tag in iter.tags() {
-            if let Some(url) = DrawCtx::linkhandler(&tag) {
-                return Ok(url);
+            if let Some(link) = DrawCtx::linkhandler(&tag) {
+                return Ok(link.clone());
             }
         }
 
@@ -379,12 +388,7 @@ impl Tab {
         debug!("Status: {:?}", &status);
         let res = match status {
             Input(_) => {
-                Self::display_input(
-                    &mut req.draw_ctx,
-                    req.url.clone(),
-                    &meta,
-                    req.in_chan_tx.clone(),
-                );
+                Self::display_input(&mut req.draw_ctx, req.url.clone(), &meta);
                 None
             }
             Success(_) => {
@@ -409,8 +413,10 @@ impl Tab {
         Ok(res)
     }
     fn parse_link(&self, link: &str) -> Result<Url, url::ParseError> {
-        let current_url = self
+        let imp = self.imp();
+        let current_url = imp
             .history
+            .borrow_mut()
             .last()
             .expect("History item not found")
             .url
@@ -521,15 +527,14 @@ impl Tab {
         }
     }
 
-    fn display_input(ctx: &mut DrawCtx, url: Url, msg: &str, sender: flume::Sender<TabMsg>) {
+    fn display_input(ctx: &mut DrawCtx, url: Url, msg: &str) {
         let text_buffer = &ctx.text_buffer;
 
         let mut iter = text_buffer.end_iter();
         ctx.insert_paragraph(&mut iter, &msg);
         ctx.insert_paragraph(&mut iter, "\n");
 
-        let anchor = text_buffer
-            .create_child_anchor(&mut text_buffer.end_iter());
+        let anchor = text_buffer.create_child_anchor(&mut text_buffer.end_iter());
         let text_input = gtk::Entry::new();
         text_input.set_hexpand(true);
         ctx.text_view.add_child_at_anchor(&text_input, &anchor);
@@ -539,7 +544,7 @@ impl Tab {
             let query = text_input.text().to_string();
             let mut url = url.clone();
             url.set_query(Some(&query));
-            sender.send(TabMsg::Open(url)).unwrap();
+            // sender.send(TabMsg::Open(url)).unwrap();
         });
     }
 

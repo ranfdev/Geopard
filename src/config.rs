@@ -29,7 +29,7 @@ pub struct Fonts {
 impl Fonts {
     pub fn default_heading() -> Font {
         Font {
-            family: String::from("sans-serif"),
+            family: String::from("Cantarell"),
             size: 18,
             weight: 800,
         }
@@ -45,7 +45,7 @@ impl Fonts {
 
     pub fn default_quote() -> Font {
         Font {
-            family: String::from("sans-serif"),
+            family: String::from("Cantarell"),
             size: 13,
             weight: 500,
         }
@@ -53,7 +53,7 @@ impl Fonts {
 
     pub fn default_paragraph() -> Font {
         Font {
-            family: String::from("sans-serif"),
+            family: String::from("Cantarell"),
             size: 13,
             weight: 500,
         }
