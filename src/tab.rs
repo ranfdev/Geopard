@@ -117,7 +117,7 @@ impl Tab {
         let imp = this.imp();
         use common::MARGIN;
         let text_view = gtk::builders::TextViewBuilder::new()
-            .top_margin(MARGIN)
+            .top_margin(MARGIN * 2)
             .left_margin(MARGIN)
             .right_margin(MARGIN)
             .bottom_margin(MARGIN)
@@ -315,28 +315,13 @@ impl Tab {
             .borrow()
             .as_ref()
             .unwrap()
-            .connect_pressed(move |_gsclick, buttoni, x, y| {
+            .connect_released(move |_gsclick, buttoni, x, y| {
                 match this.handle_click(buttoni, x, y) {
                     Err(e) => info!("{}", e),
                     _ => {}
                 };
             });
 
-        /*        .GestureClick
-        .connect_event_after(move |text_view, e| {
-            let event_is_click = (e.event_type() == gdk::EventType::ButtonRelease
-                || e.event_type() == gdk::EventType::TouchEnd)
-                && e.button() == Some(1);
-
-            let has_selection = text_view.buffer().unwrap().has_selection();
-
-            if event_is_click && !has_selection {
-                match Self::extract_linkhandler(text_view, e.coords().unwrap()) {
-                    Ok(handler) => in_chan_tx.send(TabMsg::LineClicked(handler)).unwrap(),
-                    Err(e) => warn!("{}", e),
-                }
-            }
-        });*/
         /* FIXME: self.draw_ctx
         .text_view
         .connect_populate_popup(move |text_view, widget| {
