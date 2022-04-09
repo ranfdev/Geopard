@@ -167,15 +167,15 @@ impl Tab {
         let url = self.parse_link(&link)?;
         Ok(())
     }
-    fn handle_right_click(text_view: &gtk::TextView, widget: &gtk::Widget) {
-        if let Some(menu) = widget.dynamic_cast_ref::<gtk::PopoverMenu>() {
-            // let (x, y) = Self::coords_in_widget(text_view);
+    fn handle_right_click(&self, x: f64, y: f64) {
+        // FIXME: if let Some(menu) = widget.dynamic_cast_ref::<gtk::PopoverMenu>() {
+        //     // let (x, y) = Self::coords_in_widget(text_view);
 
-            // if let Ok(handler) = Self::extract_linkhandler(text_view, (x as f64, y as f64)) {
-            //     let url = handler.url();
-            //     /*FIXME: Self::extend_textview_menu(&menu, url.to_owned(), in_chan.clone());*/
-            // }
-        }
+        //     // if let Ok(handler) = Self::extract_linkhandler(text_view, (x as f64, y as f64)) {
+        //     //     let url = handler.url();
+        //     //     /*FIXME: Self::extend_textview_menu(&menu, url.to_owned(), in_chan.clone());*/
+        //     // }
+        // }
     }
     fn spawn_req(&self, fut: impl Future<Output = ()> + 'static) {
         let imp = self.imp();
@@ -270,7 +270,7 @@ impl Tab {
         let error_text = format!("Geopard experienced an error:\n {:?}", error);
         ctx.insert_paragraph(&mut ctx.text_buffer.end_iter(), &error_text);
     }
-    pub fn handle_click(&self, buttoni: i32, x: f64, y: f64) -> Result<()> {
+    pub fn handle_click(&self, x: f64, y: f64) -> Result<()> {
         dbg!(x, y);
         let imp = self.imp();
         let draw_ctx = imp.draw_ctx.borrow();
@@ -311,24 +311,20 @@ impl Tab {
     }*/
     fn bind_signals(&self) {
         let imp = self.imp();
-        let draw_ctx = imp.draw_ctx.borrow().clone().unwrap();
         let this = self.clone();
-        imp.event_ctrlr_click
-            .borrow()
-            .as_ref()
-            .unwrap()
-            .connect_released(move |_gsclick, buttoni, x, y| {
-                match this.handle_click(buttoni, x, y) {
-                    Err(e) => info!("{}", e),
-                    _ => {}
-                };
-            });
+        let event_ctrlr_click = imp.event_ctrlr_click.borrow();
+        let event_ctrlr_click = event_ctrlr_click.as_ref().unwrap();
+        event_ctrlr_click.connect_released(move |_gsclick, _buttoni, x, y| {
+            match this.handle_click(x, y) {
+                Err(e) => info!("{}", e),
+                _ => {}
+            };
+        });
 
-        /* FIXME: self.draw_ctx
-        .text_view
-        .connect_populate_popup(move |text_view, widget| {
-            Self::handle_right_click(text_view, widget, in_chan.clone());
-        });*/
+        let this = self.clone();
+        event_ctrlr_click.connect_pressed(move |_gsclick, _buttoni, x, y| {
+            this.handle_right_click(x, y);
+        });
     }
     fn extract_linkhandler(draw_ctx: &DrawCtx, x: f64, y: f64) -> Result<Link> {
         info!("Extracting linkhandler from clicked text");
@@ -487,7 +483,7 @@ impl Tab {
                     file.write_all(&buffer[..n]).await?;
                     read += n;
                     debug!("lines {}", ctx.text_buffer.line_count());
-                    let mut old_line_iter = ctx
+                    let old_line_iter = ctx
                         .text_buffer
                         .iter_at_line(ctx.text_buffer.line_count() - 2);
                     ctx.text_buffer

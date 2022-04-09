@@ -8,7 +8,7 @@ use adw::prelude::*;
 use futures::prelude::*;
 use futures::task::LocalSpawnExt;
 use gtk::prelude::*;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use url::Url;
 
 pub enum WindowMsg {
@@ -16,9 +16,7 @@ pub enum WindowMsg {
     OpenNewTab(url::Url),
     AddTab,
     UrlBarActivated,
-    CloseTab(usize),
     SwitchTab(Tab),
-    UpdateUrlBar(usize, Url),
     BookmarkCurrent,
     Back,
     SetProgress(usize, f64),
@@ -109,9 +107,6 @@ impl Window {
         Component::new(new_component_id(), window, sender, handle)
     }
 
-    fn gen_tab_label(&self, id: usize, url: Url) {
-        let sender = self.sender.clone();
-    }
     fn add_tab(&mut self) {
         let tab = Tab::new(self.config.clone());
         let tab_view = self.tab_view.clone();
@@ -138,12 +133,10 @@ impl Window {
 
     fn handle_msg(&mut self, msg: WindowMsg) {
         match msg {
-            WindowMsg::Open(url) => {}
+            WindowMsg::Open(url) => self.open_url(url),
             WindowMsg::OpenNewTab(url) => self.msg_open_new_tab(url),
             WindowMsg::Back => self.msg_back(),
-            WindowMsg::UpdateUrlBar(tab_id, url) => self.msg_update_url_bar(tab_id, url),
             WindowMsg::SwitchTab(tab) => self.msg_switch_tab(tab),
-            WindowMsg::CloseTab(widget) => {}
             WindowMsg::AddTab => self.msg_add_tab(),
             WindowMsg::BookmarkCurrent => self.msg_bookmark_current(),
             WindowMsg::UrlBarActivated => self.msg_url_bar_activated(),
@@ -167,7 +160,12 @@ impl Window {
         Ok(())
     }
     fn current_tab(&self) -> Tab {
-        self.tabs[self.current_tab].child().downcast().unwrap()
+        self.tab_view
+            .selected_page()
+            .unwrap()
+            .child()
+            .downcast()
+            .unwrap()
     }
     fn msg_set_progress(&mut self, tab_id: usize, progress: f64) {
         // FIXME: self.url_bar.set_progress_fraction(progress);
@@ -179,25 +177,13 @@ impl Window {
         self.current_tab().spawn_open(url);
     }
     fn msg_back(&mut self) {
-        self.current_tab().back();
-    }
-    fn msg_update_url_bar(&mut self, tab_id: usize, url: Url) {
-        // FIXME
-        // self.tab_view.page(tab_widget).set_title(url.as_str());
+        match self.current_tab().back() {
+            Err(e) => warn!("{}", e),
+            Ok(_) => info!("went back"),
+        }
     }
     fn msg_switch_tab(&mut self, tab: Tab) {
         self.url_bar.set_text(tab.url().unwrap().as_str());
-    }
-    fn msg_close_tab(&mut self, tab_id: usize) {
-        let tab_page = self.tab_view.nth_page(tab_id as i32);
-        self.tab_view.close_page(&tab_page);
-        self.tabs.remove(tab_id);
-
-        if self.tabs.is_empty() {
-            self.msg_add_tab()
-        }
-
-        self.current_tab = self.tabs.len() - 1;
     }
     fn msg_add_tab(&mut self) {
         self.add_tab();
