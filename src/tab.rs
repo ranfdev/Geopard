@@ -39,6 +39,7 @@ pub mod imp {
         pub(crate) draw_ctx: RefCell<Option<DrawCtx>>,
         pub(crate) history: RefCell<Vec<HistoryItem>>,
         pub(crate) scroll_win: gtk::ScrolledWindow,
+        pub(crate) clamp: adw::Clamp,
         pub(crate) event_ctrlr_click: RefCell<Option<gtk::GestureClick>>,
         pub(crate) req_handle: RefCell<Option<RemoteHandle<()>>>,
         pub(crate) load_progress: f64,
@@ -60,9 +61,13 @@ pub mod imp {
         fn constructed(&self, obj: &Self::Type) {
             self.parent_constructed(obj);
 
-            self.scroll_win.set_parent(obj);
             self.scroll_win.set_vexpand(true);
             obj.set_vexpand(true);
+
+            self.clamp.set_parent(obj);
+            self.clamp.set_maximum_size(768);
+            self.clamp.set_tightening_threshold(720);
+            self.clamp.set_child(Some(&self.scroll_win));
 
             self.event_ctrlr_click
                 .replace(Some(gtk::GestureClick::new()));
@@ -71,7 +76,7 @@ pub mod imp {
         }
 
         fn dispose(&self, _obj: &Self::Type) {
-            self.scroll_win.unparent();
+            self.clamp.unparent();
         }
 
         fn signals() -> &'static [glib::subclass::Signal] {
@@ -122,6 +127,7 @@ impl Tab {
             .wrap_mode(gtk::WrapMode::WordChar)
             .build();
         text_view.add_controller(imp.event_ctrlr_click.borrow().as_ref().unwrap());
+
         imp.scroll_win.set_child(Some(&text_view));
         imp.draw_ctx
             .replace(Some(DrawCtx::new(text_view.clone(), config)));
