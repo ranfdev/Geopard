@@ -233,6 +233,8 @@ impl Tab {
 
         let mut draw_ctx = imp.draw_ctx.borrow().clone().unwrap();
         let this = self.clone();
+        self.emit_by_name_with_values("title-changed", &[url.as_str().to_value()]);
+        self.emit_by_name_with_values("url-changed", &[url.as_str().to_value()]);
         let fut = async move {
             let buf = BufReader::new(cache.as_slice());
             draw_ctx.clear();
