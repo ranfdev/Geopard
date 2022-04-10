@@ -80,25 +80,6 @@ pub enum PageElement {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Link {
-    Internal(String),
-    External(String),
-}
-
-impl Link {
-    pub fn url(&self) -> &str {
-        match self {
-            Link::Internal(url) => url,
-            Link::External(url) => url,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Boxed)]
-#[boxed_type(name = "GLink")]
-pub struct GLink(Link);
-
-#[derive(Debug, Clone, PartialEq)]
 pub struct HistoryItem {
     pub url: url::Url,
     pub cache: Option<Vec<u8>>,
@@ -275,7 +256,7 @@ impl DrawCtx {
     pub fn insert_link(
         &mut self,
         mut text_iter: &mut gtk::TextIter,
-        link: Link,
+        link: String,
         label: Option<&str>,
     ) {
         debug!("Inserting link");
@@ -301,7 +282,7 @@ impl DrawCtx {
 
         Self::set_linkhandler(&tag, link.clone());
 
-        let label = label.unwrap_or_else(|| link.url());
+        let label = label.unwrap_or_else(|| &link);
         info!("Setted url {:?} to tag", Self::linkhandler(&tag));
         debug!("Link set successfully");
         self.insert_paragraph(&mut text_iter, &label);
@@ -313,15 +294,19 @@ impl DrawCtx {
         self.text_buffer
             .apply_tag(&tag, &self.text_buffer.iter_at_offset(start), &text_iter);
     }
+    pub fn insert_widget(&mut self, text_iter: &mut gtk::TextIter, widget: &impl IsA<gtk::Widget>) {
+        let anchor = self.text_buffer.create_child_anchor(text_iter);
+        self.text_view.add_child_at_anchor(widget, &anchor);
+    }
 
-    fn set_linkhandler(tag: &gtk::TextTag, l: Link) {
+    fn set_linkhandler(tag: &gtk::TextTag, l: String) {
         unsafe {
             tag.set_data("linkhandler", l);
         }
     }
-    pub fn linkhandler(tag: &gtk::TextTag) -> Option<&Link> {
+    pub fn linkhandler(tag: &gtk::TextTag) -> Option<&String> {
         unsafe {
-            let handler: Option<std::ptr::NonNull<Link>> = tag.data("linkhandler");
+            let handler: Option<std::ptr::NonNull<String>> = tag.data("linkhandler");
             handler.map(|n| n.as_ref())
         }
     }

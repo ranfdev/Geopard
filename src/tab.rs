@@ -1,5 +1,5 @@
 use crate::common;
-use crate::common::{glibctx, DrawCtx, HistoryItem, Link, LossyTextRead, PageElement, RequestCtx};
+use crate::common::{glibctx, DrawCtx, HistoryItem, LossyTextRead, PageElement, RequestCtx};
 use crate::gemini;
 use crate::window::WindowMsg;
 use anyhow::{bail, Context, Result};
@@ -22,7 +22,7 @@ pub enum TabMsg {
     Open(Url),
     AddCache(Vec<u8>),
     Back,
-    LineClicked(Link),
+    LineClicked(String),
     GetUrl,
     OpenNewTab(String),
     CopyUrl(String),
@@ -279,17 +279,9 @@ impl Tab {
         if has_selection {
             return Ok(());
         }
-        let handler = Self::extract_linkhandler(&draw_ctx.as_ref().unwrap(), x, y)?;
-        match handler {
-            Link::Internal(link) => {
-                let url = self.parse_link(&link)?;
-                self.spawn_open(url);
-            }
-            Link::External(link) => {
-                let url = self.parse_link(&link)?;
-                gtk::show_uri(None::<&gtk::Window>, url.as_str(), 0);
-            }
-        }
+        let link = Self::extract_linkhandler(&draw_ctx.as_ref().unwrap(), x, y)?;
+        let url = self.parse_link(&link)?;
+        self.spawn_open(url);
         Ok(())
     }
     /* FIXME: fn extend_textview_menu(menu: &gtk::Menu, url: String, sender: flume::Sender<TabMsg>) {
@@ -326,7 +318,7 @@ impl Tab {
             this.handle_right_click(x, y);
         });
     }
-    fn extract_linkhandler(draw_ctx: &DrawCtx, x: f64, y: f64) -> Result<Link> {
+    fn extract_linkhandler(draw_ctx: &DrawCtx, x: f64, y: f64) -> Result<String> {
         info!("Extracting linkhandler from clicked text");
         let text_view = &draw_ctx.text_view;
         let (x, y) =
@@ -458,6 +450,7 @@ impl Tab {
         url: Url,
         mut stream: T,
     ) -> anyhow::Result<()> {
+        // FIXME: iter moves
         let d_path = Self::download_path(&url)?;
 
         let mut buffer = Vec::with_capacity(8192);
@@ -502,11 +495,12 @@ impl Tab {
         let mut text_iter = ctx.text_buffer.end_iter();
         ctx.insert_paragraph(&mut text_iter, "download finished!\n");
         let downloaded_file_url = format!("file://{}", d_path.as_os_str().to_str().unwrap());
-        ctx.insert_link(
-            &mut text_iter,
-            Link::External(downloaded_file_url),
-            Some("open with default program"),
-        );
+        let button = gtk::Button::with_label("Open With Default Program");
+        button.add_css_class("suggested-action");
+        button.connect_clicked(move |_| {
+            gtk::show_uri(None::<&gtk::Window>, &downloaded_file_url, 0);
+        });
+        ctx.insert_widget(&mut text_iter, &button);
 
         Ok(())
     }
@@ -534,18 +528,18 @@ impl Tab {
         ctx.insert_paragraph(&mut iter, &msg);
         ctx.insert_paragraph(&mut iter, "\n");
 
-        let anchor = text_buffer.create_child_anchor(&mut text_buffer.end_iter());
         let text_input = gtk::Entry::new();
         text_input.set_hexpand(true);
-        ctx.text_view.add_child_at_anchor(&text_input, &anchor);
-        text_input.show();
-
+        text_input.set_width_chars(70);
         text_input.connect_activate(move |text_input| {
             let query = text_input.text().to_string();
             let mut url = url.clone();
             url.set_query(Some(&query));
-            // sender.send(TabMsg::Open(url)).unwrap();
+            text_input
+                .activate_action("win.open-omni", Some(&url.to_string().to_variant()))
+                .unwrap();
         });
+        ctx.insert_widget(&mut iter, &text_input);
     }
 
     fn display_url_confirmation(ctx: &mut DrawCtx, url: &Url) {
@@ -554,14 +548,18 @@ impl Tab {
             &mut text_iter,
             "Geopard doesn't support this url scheme. 
 If you want to open the following link in an external application, \
-click on the link below\n",
+click on the button below\n",
         );
+        ctx.insert_paragraph(&mut text_iter, &format!("Trying to open: {}\n", url));
 
-        ctx.insert_link(
-            &mut text_iter,
-            Link::External(url.to_string()),
-            Some(url.as_str()),
-        );
+        let button = gtk::Button::with_label("Open Externally");
+        button.add_css_class("suggested-action");
+        let url = url.clone();
+        button.connect_clicked(move |_| {
+            gtk::show_uri(None::<&gtk::Window>, url.as_str(), 0);
+        });
+        ctx.insert_widget(&mut text_iter, &button);
+        // FIXME: Handle open
     }
     async fn display_gemini<T: AsyncBufRead + Unpin>(
         draw_ctx: &mut DrawCtx,
@@ -599,7 +597,7 @@ click on the link below\n",
                     draw_ctx.insert_paragraph(&mut text_iter, "\n");
                 }
                 PageElement::Link(url, label) => {
-                    draw_ctx.insert_link(&mut text_iter, Link::Internal(url), label.as_deref());
+                    draw_ctx.insert_link(&mut text_iter, url, label.as_deref());
                 }
             }
         }
