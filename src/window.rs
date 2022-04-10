@@ -1,5 +1,5 @@
-use adw::prelude::*;
 use adw::subclass::application_window::AdwApplicationWindowImpl;
+use adw::{prelude::*, CallbackAnimationTarget};
 use anyhow::Context;
 use futures::prelude::*;
 use futures::task::LocalSpawnExt;
@@ -13,7 +13,7 @@ use url::Url;
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
 use crate::component::{new_component_id, Component};
 use crate::config;
-use crate::tab::{Tab, TabMsg};
+use crate::tab::Tab;
 
 pub enum WindowMsg {
     Open(url::Url),
@@ -31,6 +31,7 @@ pub mod imp {
     #[derive(Debug, Default)]
     pub struct Window {
         pub(crate) url_bar: gtk::SearchEntry,
+        pub(crate) progress_bar: gtk::ProgressBar,
         pub(crate) back_btn: gtk::Button,
         pub(crate) add_bookmark_btn: gtk::Button,
         pub(crate) show_bookmarks_btn: gtk::Button,
@@ -38,6 +39,7 @@ pub mod imp {
         pub(crate) tab_view: adw::TabView,
         pub(crate) config: RefCell<config::Config>,
         pub(crate) add_tab_btn: gtk::Button,
+        pub(crate) progress_animation: RefCell<Option<adw::SpringAnimation>>,
     }
 
     #[glib::object_subclass]
@@ -94,9 +96,12 @@ impl Window {
         header_bar.set_title_widget(Some(&imp.url_bar));
 
         content.append(&header_bar);
-        imp.tab_bar.set_view(Some(&imp.tab_view));
 
+        imp.tab_bar.set_view(Some(&imp.tab_view));
         content.append(&imp.tab_bar);
+
+        imp.progress_bar.add_css_class("osd");
+        content.append(&imp.progress_bar);
         content.append(&imp.tab_view);
 
         this.set_default_size(800, 600);
@@ -140,6 +145,15 @@ impl Window {
             url_bar.set_text(&title);
             None
         });
+        tab.connect_local(
+            "progress-changed",
+            false,
+            clone!(@weak self as this  => @default-panic, move |values| {
+                let p: f64 = values[1].get().unwrap();
+                this.set_progress(p);
+                return None
+            }),
+        );
 
         let w = imp.tab_view.append(&tab);
         imp.tab_view.set_selected_page(&w);
@@ -180,8 +194,29 @@ impl Window {
             .downcast()
             .unwrap()
     }
-    fn msg_set_progress(&self, tab_id: usize, progress: f64) {
-        // FIXME: self.url_bar.set_progress_fraction(progress);
+    fn set_progress(&self, progress: f64) {
+        let imp = self.imp();
+        info!("progress {}", progress);
+        if let Some(ref animation) = imp.progress_animation.borrow().as_ref() {
+            animation.pause();
+        }
+        if progress == 0.0 {
+            imp.progress_bar.set_fraction(0.0);
+            return;
+        }
+        let progress_bar = imp.progress_bar.clone();
+        let animation = adw::SpringAnimation::new(
+            &imp.progress_bar,
+            imp.progress_bar.fraction(),
+            progress,
+            &adw::SpringParams::new(1.0, 0.05, 15.0),
+            &adw::CallbackAnimationTarget::new(Some(Box::new(move |v| {
+                progress_bar.set_fraction(v);
+                progress_bar.set_opacity(1.0 - v);
+            }))),
+        );
+        animation.play();
+        imp.progress_animation.replace(Some(animation));
     }
     fn open_url(&self, url: Url) {
         self.current_tab().spawn_open(url);

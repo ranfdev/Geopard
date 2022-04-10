@@ -1,7 +1,6 @@
 use crate::common;
 use crate::common::{glibctx, DrawCtx, HistoryItem, LossyTextRead, PageElement, RequestCtx};
 use crate::gemini;
-use crate::window::WindowMsg;
 use anyhow::{bail, Context, Result};
 use async_fs::File;
 use futures::future::RemoteHandle;
@@ -16,19 +15,6 @@ use log::{debug, error, info, warn};
 use once_cell::sync::Lazy;
 use std::cell::RefCell;
 use url::Url;
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum TabMsg {
-    Open(Url),
-    AddCache(Vec<u8>),
-    Back,
-    LineClicked(String),
-    GetUrl,
-    OpenNewTab(String),
-    CopyUrl(String),
-    SetProgress(f64),
-    GetProgress,
-}
 
 pub mod imp {
 
@@ -100,6 +86,12 @@ pub mod imp {
                         <()>::static_type().into(),
                     )
                     .build(),
+                    glib::subclass::Signal::builder(
+                        "progress-changed",
+                        &[f64::static_type().into()],
+                        <()>::static_type().into(),
+                    )
+                    .build(),
                 ]
             });
             SIGNALS.as_ref()
@@ -165,6 +157,7 @@ impl Tab {
     }
     pub fn open_new_tab(&self, link: &str) -> Result<()> {
         let url = self.parse_link(&link)?;
+        // FIXME: emit action
         Ok(())
     }
     fn handle_right_click(&self, x: f64, y: f64) {
@@ -185,6 +178,7 @@ impl Tab {
     pub fn spawn_open(&self, url: Url) {
         let imp = self.imp();
 
+        self.emit_by_name_with_values("progress-changed", &[0.0.to_value()]);
         let scroll_progress = imp.scroll_win.vadjustment().value();
         let mut history = imp.history.borrow_mut();
         if let Some(item) = history.last_mut() {
@@ -213,7 +207,9 @@ impl Tab {
             }
             this.emit_by_name_with_values("title-changed", &[url.to_string().to_value()]);
             this.emit_by_name_with_values("url-changed", &[url.to_string().to_value()]);
+            this.emit_by_name_with_values("progress-changed", &[1.0.to_value()]);
         };
+        self.emit_by_name_with_values("progress-changed", &[0.3.to_value()]);
         self.spawn_req(fut);
     }
     fn spawn_open_history(&self, item: HistoryItem) {

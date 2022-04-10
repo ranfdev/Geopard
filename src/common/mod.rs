@@ -11,7 +11,6 @@ use url::Url;
 
 use crate::config;
 use crate::gemini;
-use crate::tab::TabMsg;
 
 use once_cell::sync::Lazy;
 
@@ -327,6 +326,7 @@ pub trait LossyTextRead {
 #[async_trait(?Send)]
 impl<T: AsyncBufRead + Unpin> LossyTextRead for T {
     async fn read_line_lossy(&mut self, buf: &mut String) -> std::io::Result<usize> {
+        // FIXME:  thread 'main' panicked at 'assertion failed: self.is_char_boundary(new_len)', /build/rustc-1.58.1-src/library/alloc/src/string.rs:1204:13
         // This is safe because we treat buf as a mut Vec to read the data, BUT,
         // we check if it's valid utf8 using String::from_utf8_lossy.
         // If it's not valid utf8, we swap our buf with the newly allocated and
