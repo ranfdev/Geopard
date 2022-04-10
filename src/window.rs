@@ -1,15 +1,19 @@
+use adw::prelude::*;
+use adw::subclass::application_window::AdwApplicationWindowImpl;
+use anyhow::Context;
+use futures::prelude::*;
+use futures::task::LocalSpawnExt;
+use glib::clone;
+use gtk::prelude::*;
+use gtk::subclass::prelude::*;
+use log::{debug, error, info, warn};
+use std::cell::RefCell;
+use url::Url;
+
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
 use crate::component::{new_component_id, Component};
 use crate::config;
 use crate::tab::{Tab, TabMsg};
-use anyhow::Context;
-
-use adw::prelude::*;
-use futures::prelude::*;
-use futures::task::LocalSpawnExt;
-use gtk::prelude::*;
-use log::{debug, error, info, warn};
-use url::Url;
 
 pub enum WindowMsg {
     Open(url::Url),
@@ -22,94 +26,105 @@ pub enum WindowMsg {
     SetProgress(usize, f64),
 }
 
-pub struct Window {
-    sender: flume::Sender<WindowMsg>,
-    url_bar: gtk::SearchEntry,
-    back_btn: gtk::Button,
-    add_bookmark_btn: gtk::Button,
-    show_bookmarks_btn: gtk::Button,
-    tabs: Vec<adw::TabPage>,
-    current_tab: usize,
-    tab_view: adw::TabView,
-    config: config::Config,
-    add_tab_btn: gtk::Button,
+pub mod imp {
+    use super::*;
+    #[derive(Debug, Default)]
+    pub struct Window {
+        pub(crate) url_bar: gtk::SearchEntry,
+        pub(crate) back_btn: gtk::Button,
+        pub(crate) add_bookmark_btn: gtk::Button,
+        pub(crate) show_bookmarks_btn: gtk::Button,
+        pub(crate) tab_bar: adw::TabBar,
+        pub(crate) tab_view: adw::TabView,
+        pub(crate) config: RefCell<config::Config>,
+        pub(crate) add_tab_btn: gtk::Button,
+    }
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for Window {
+        const NAME: &'static str = "GeopardWindow";
+        type Type = super::Window;
+        type ParentType = adw::ApplicationWindow;
+    }
+
+    impl ObjectImpl for Window {}
+    impl WidgetImpl for Window {}
+    impl WindowImpl for Window {}
+    impl ApplicationWindowImpl for Window {}
+    impl AdwApplicationWindowImpl for Window {}
+}
+glib::wrapper! {
+    pub struct Window(ObjectSubclass<imp::Window>)
+    @extends adw::ApplicationWindow, gtk::Window,
+    @implements gio::ActionMap, gio::ActionGroup;
 }
 impl Window {
-    pub fn new(
-        app: &adw::Application,
-        config: config::Config,
-    ) -> Component<adw::ApplicationWindow, WindowMsg> {
-        let window = adw::ApplicationWindow::new(app);
-        let view = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    pub fn new(app: &adw::Application, config: config::Config) -> Self {
+        let this: Self = glib::Object::new(&[("application", app)]).unwrap();
+        let imp = this.imp();
+        imp.config.replace(config);
+
+        let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let header_bar = gtk::HeaderBar::new();
         header_bar.set_show_title_buttons(true);
 
-        let btn_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        let back_btn = gtk::Button::from_icon_name("go-previous-symbolic");
-        let add_bookmark_btn = gtk::Button::from_icon_name("star-new-symbolic");
-        let show_bookmarks_btn = gtk::Button::from_icon_name("view-list-symbolic");
-        let add_tab_btn = gtk::Button::from_icon_name("document-new-symbolic");
+        imp.back_btn.set_icon_name("go-previous-symbolic");
+        imp.add_bookmark_btn.set_icon_name("star-new-symbolic");
+        imp.show_bookmarks_btn.set_icon_name("view-list-symbolic");
+        imp.add_tab_btn.set_icon_name("document-new-symbolic");
 
-        btn_box.append(&back_btn);
-        btn_box.append(&add_tab_btn);
+        header_bar.pack_start(&imp.back_btn);
+        header_bar.pack_start(&imp.add_tab_btn);
+        header_bar.pack_end(&imp.add_bookmark_btn);
+        header_bar.pack_end(&imp.show_bookmarks_btn);
 
-        header_bar.pack_start(&btn_box);
-        header_bar.pack_end(&add_bookmark_btn);
-        header_bar.pack_end(&show_bookmarks_btn);
+        imp.url_bar.set_hexpand(true);
 
-        let url_bar = gtk::SearchEntry::new();
-        url_bar.set_hexpand(true);
+        header_bar.set_title_widget(Some(&imp.url_bar));
 
-        header_bar.set_title_widget(Some(&url_bar));
+        content.append(&header_bar);
+        imp.tab_bar.set_view(Some(&imp.tab_view));
 
-        view.append(&header_bar);
+        content.append(&imp.tab_bar);
+        content.append(&imp.tab_view);
 
-        window.set_content(Some(&view));
-        window.set_default_size(800, 600);
-
-        let tab_bar = adw::TabBar::new();
-        let tab_view = adw::TabView::new();
-        tab_bar.set_view(Some(&tab_view));
-
-        view.append(&tab_bar);
-        view.append(&tab_view);
-
-        let (sender, receiver): (flume::Sender<WindowMsg>, flume::Receiver<WindowMsg>) =
-            flume::unbounded();
-        let tabs = vec![];
-
-        let mut this = Self {
-            url_bar,
-            back_btn,
-            add_bookmark_btn,
-            show_bookmarks_btn,
-            sender: sender.clone(),
-            current_tab: 0,
-            tabs,
-            tab_view,
-            config,
-            add_tab_btn,
-        };
+        this.set_default_size(800, 600);
+        this.set_content(Some(&content));
 
         this.bind_signals();
+        this.setup_actions();
         this.add_tab();
         this.open_url(bookmarks_url());
-
-        let receiver: flume::Receiver<WindowMsg> = receiver;
-        let handle = glibctx()
-            .spawn_local_with_handle(async move {
-                while let Ok(msg) = receiver.recv_async().await {
-                    this.handle_msg(msg);
-                }
-            })
-            .unwrap();
-
-        Component::new(new_component_id(), window, sender, handle)
+        this
     }
 
-    fn add_tab(&mut self) {
-        let tab = Tab::new(self.config.clone());
-        let tab_view = self.tab_view.clone();
+    fn setup_actions(&self) {
+        let act_back = gio::SimpleAction::new("back", None);
+        act_back.connect_activate(clone!(@weak self as this => move |_,_| this.back()));
+        self.add_action(&act_back);
+
+        let act_new_tab = gio::SimpleAction::new("new-tab", None);
+        act_new_tab.connect_activate(clone!(@weak self as this => move |_,_| this.add_tab()));
+        self.add_action(&act_new_tab);
+
+        let act_show_bookmarks = gio::SimpleAction::new("show-bookmarks", None);
+        act_show_bookmarks
+            .connect_activate(clone!(@weak self as this => move |_,_| this.add_tab()));
+        self.add_action(&act_show_bookmarks);
+
+        let act_add_bookmark = gio::SimpleAction::new("bookmark-current", None);
+        act_add_bookmark
+            .connect_activate(clone!(@weak self as this => move |_,_| this.bookmark_current()));
+        self.add_action(&act_add_bookmark);
+
+        let act_close_tab = gio::SimpleAction::new("close-tab", None);
+        act_close_tab.connect_activate(clone!(@weak self as this => move |_,_| this.close_tab()));
+        self.add_action(&act_close_tab);
+    }
+    fn add_tab(&self) {
+        let imp = self.imp();
+        let tab = Tab::new(imp.config.borrow().clone());
+        let tab_view = imp.tab_view.clone();
         tab.connect_local("title-changed", false, move |values| {
             let title: String = values[1].get().unwrap();
             let gtab: Tab = values[0].get().unwrap();
@@ -117,32 +132,23 @@ impl Window {
             page.set_title(&title);
             None
         });
-        let url_bar = self.url_bar.clone();
+        let url_bar = imp.url_bar.clone();
         tab.connect_local("url-changed", false, move |values| {
             let title: String = values[1].get().unwrap();
             url_bar.set_text(&title);
             None
         });
 
-        let w = self.tab_view.append(&tab);
-        self.tabs.push(w.clone());
-        self.current_tab = self.tabs.len() - 1;
-        self.tab_view.set_selected_page(&w);
+        let w = imp.tab_view.append(&tab);
+        imp.tab_view.set_selected_page(&w);
         self.open_url(bookmarks_url());
     }
-
-    fn handle_msg(&mut self, msg: WindowMsg) {
-        match msg {
-            WindowMsg::Open(url) => self.open_url(url),
-            WindowMsg::OpenNewTab(url) => self.msg_open_new_tab(url),
-            WindowMsg::Back => self.msg_back(),
-            WindowMsg::SwitchTab(tab) => self.msg_switch_tab(tab),
-            WindowMsg::AddTab => self.msg_add_tab(),
-            WindowMsg::BookmarkCurrent => self.msg_bookmark_current(),
-            WindowMsg::UrlBarActivated => self.msg_url_bar_activated(),
-            WindowMsg::SetProgress(tab_id, n) => self.msg_set_progress(tab_id, n),
-        }
+    fn close_tab(&self) {
+        let imp = self.imp();
+        imp.tab_view
+            .close_page(&imp.tab_view.page(&self.current_tab()));
     }
+
     async fn append_bookmark(url: &str) -> anyhow::Result<()> {
         let mut file = async_fs::OpenOptions::new()
             .write(true)
@@ -160,49 +166,41 @@ impl Window {
         Ok(())
     }
     fn current_tab(&self) -> Tab {
-        self.tab_view
+        let imp = self.imp();
+        imp.tab_view
             .selected_page()
             .unwrap()
             .child()
             .downcast()
             .unwrap()
     }
-    fn msg_set_progress(&mut self, tab_id: usize, progress: f64) {
+    fn msg_set_progress(&self, tab_id: usize, progress: f64) {
         // FIXME: self.url_bar.set_progress_fraction(progress);
     }
-    fn msg_open_new_tab(&mut self, url: Url) {
-        let new_tab = self.add_tab();
-    }
-    fn open_url(&mut self, url: Url) {
+    fn open_url(&self, url: Url) {
         self.current_tab().spawn_open(url);
     }
-    fn msg_back(&mut self) {
+    fn back(&self) {
         match self.current_tab().back() {
             Err(e) => warn!("{}", e),
             Ok(_) => info!("went back"),
         }
     }
-    fn msg_switch_tab(&mut self, tab: Tab) {
-        self.url_bar.set_text(tab.url().unwrap().as_str());
-    }
-    fn msg_add_tab(&mut self) {
-        self.add_tab();
-    }
-    fn msg_bookmark_current(&mut self) {
-        let url = self.url_bar.text().to_string();
-        let sender = self.sender.clone();
+    fn bookmark_current(&self) {
+        let imp = self.imp();
+        let url = imp.url_bar.text().to_string();
         glibctx().spawn_local(async move {
             match Self::append_bookmark(&url).await {
                 Ok(_) => info!("{} saved to bookmarks", url),
                 Err(e) => error!("{}", e),
             }
-            sender.send(WindowMsg::AddTab).unwrap();
         });
     }
-    fn msg_url_bar_activated(&mut self) {
-        let url = Url::parse(self.url_bar.text().as_str());
+    fn msg_url_bar_activated(&self) {
+        let imp = self.imp();
+        let url = Url::parse(imp.url_bar.text().as_str());
         match url {
-            Ok(url) => self.sender.send(WindowMsg::Open(url)).unwrap(),
+            Ok(url) => self.open_url(url),
             Err(e) => error!("Failed to parse url from urlbar: {:?}", e),
         }
     }
@@ -252,27 +250,15 @@ impl Window {
     //}
 
     fn bind_signals(&self) {
-        let sender = self.sender.clone();
+        let imp = self.imp();
 
-        let sender_clone = sender.clone();
-        self.url_bar.connect_activate(move |_| {
-            sender_clone.send(WindowMsg::UrlBarActivated).unwrap();
+        imp.url_bar.connect_activate(move |_| {
+            // FIXME: sender_clone.send(WindowMsg::UrlBarActivated).unwrap();
         });
 
-        let sender_clone = sender.clone();
-        self.back_btn.connect_clicked(move |_| {
-            sender_clone.send(WindowMsg::Back).unwrap();
-        });
-
-        let sender_clone = sender.clone();
-        self.add_tab_btn.connect_clicked(move |_| {
-            debug!("Clicked add tab...");
-            sender_clone.send(WindowMsg::AddTab).unwrap();
-        });
-
-        let sender_clone = sender.clone();
-        self.tab_view.connect_selected_page_notify(move |tab_view| {
-            let sender_clone = sender_clone.clone();
+        imp.back_btn.set_action_name(Some("win.back"));
+        imp.add_tab_btn.set_action_name(Some("win.new-tab"));
+        imp.tab_view.connect_selected_page_notify(move |tab_view| {
             let tab: Tab = tab_view
                 .selected_page()
                 .unwrap()
@@ -280,17 +266,12 @@ impl Window {
                 .downcast()
                 .unwrap();
 
-            sender_clone.send(WindowMsg::SwitchTab(tab)).unwrap();
+            // FIXME: sender_clone.send(WindowMsg::SwitchTab(tab)).unwrap();
         });
 
-        let sender_clone = sender.clone();
-        self.add_bookmark_btn.connect_clicked(move |_| {
-            sender_clone.send(WindowMsg::BookmarkCurrent).unwrap();
-        });
-
-        let sender_clone = sender.clone();
-        self.show_bookmarks_btn.connect_clicked(move |_| {
-            sender_clone.send(WindowMsg::AddTab).unwrap();
-        });
+        imp.add_bookmark_btn
+            .set_action_name(Some("win.bookmark-current"));
+        imp.show_bookmarks_btn
+            .set_action_name(Some("win.show-bookmarks"))
     }
 }

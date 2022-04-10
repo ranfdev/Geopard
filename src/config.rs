@@ -11,14 +11,14 @@ pub static DEFAULT_CONFIG: Lazy<Config> = Lazy::new(|| Config {
     },
 });
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Font {
     pub family: String,
     pub size: i32,
     pub weight: i32,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Fonts {
     pub paragraph: Option<Font>,
     pub preformatted: Option<Font>,
@@ -26,6 +26,7 @@ pub struct Fonts {
     pub quote: Option<Font>,
 }
 
+// FIXME: handle Default
 impl Fonts {
     pub fn default_heading() -> Font {
         Font {
@@ -60,7 +61,7 @@ impl Fonts {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Config {
     pub colors: bool,
     pub fonts: Fonts,
