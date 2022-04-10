@@ -296,7 +296,7 @@ impl DrawCtx {
             .weight(config.weight)
             .build();
 
-        tag.set_foreground(Some("blue"));
+        tag.set_foreground(Some("#1c71d8"));
         tag.set_underline(gtk::pango::Underline::Low);
 
         Self::set_linkhandler(&tag, link.clone());

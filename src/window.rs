@@ -82,7 +82,7 @@ impl Window {
         imp.back_btn.set_icon_name("go-previous-symbolic");
         imp.add_bookmark_btn.set_icon_name("star-new-symbolic");
         imp.show_bookmarks_btn.set_icon_name("view-list-symbolic");
-        imp.add_tab_btn.set_icon_name("document-new-symbolic");
+        imp.add_tab_btn.set_icon_name("tab-new-symbolic");
 
         header_bar.pack_start(&imp.back_btn);
         header_bar.pack_start(&imp.add_tab_btn);
