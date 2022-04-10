@@ -58,6 +58,17 @@ glib::wrapper! {
     @extends adw::ApplicationWindow, gtk::Window,
     @implements gio::ActionMap, gio::ActionGroup;
 }
+
+macro_rules! self_action {
+    ($self:ident, $name:literal, $method:ident) => {
+        {
+            let this = &$self;
+            let action = gio::SimpleAction::new($name, None);
+            action.connect_activate(clone!(@weak this => move |_,_| this.$method()));
+            $self.add_action(&action);
+        }
+    }
+}
 impl Window {
     pub fn new(app: &adw::Application, config: config::Config) -> Self {
         let this: Self = glib::Object::new(&[("application", app)]).unwrap();
@@ -99,27 +110,18 @@ impl Window {
     }
 
     fn setup_actions(&self) {
-        let act_back = gio::SimpleAction::new("back", None);
-        act_back.connect_activate(clone!(@weak self as this => move |_,_| this.back()));
-        self.add_action(&act_back);
+        self_action!(self, "back", back);
+        self_action!(self, "new-tab", add_tab);
+        self_action!(self, "show-bookmarks", add_tab);
+        self_action!(self, "bookmark-current", bookmark_current);
+        self_action!(self, "close-tab", close_tab);
+        self_action!(self, "focus-url-bar", focus_url_bar);
 
-        let act_new_tab = gio::SimpleAction::new("new-tab", None);
-        act_new_tab.connect_activate(clone!(@weak self as this => move |_,_| this.add_tab()));
-        self.add_action(&act_new_tab);
-
-        let act_show_bookmarks = gio::SimpleAction::new("show-bookmarks", None);
-        act_show_bookmarks
-            .connect_activate(clone!(@weak self as this => move |_,_| this.add_tab()));
-        self.add_action(&act_show_bookmarks);
-
-        let act_add_bookmark = gio::SimpleAction::new("bookmark-current", None);
-        act_add_bookmark
-            .connect_activate(clone!(@weak self as this => move |_,_| this.bookmark_current()));
-        self.add_action(&act_add_bookmark);
-
-        let act_close_tab = gio::SimpleAction::new("close-tab", None);
-        act_close_tab.connect_activate(clone!(@weak self as this => move |_,_| this.close_tab()));
-        self.add_action(&act_close_tab);
+        let act_open_page = gio::SimpleAction::new("open-omni", Some(&glib::VariantTy::STRING));
+        act_open_page.connect_activate(
+            clone!(@weak self as this => move |_,v| this.open_omni(v.unwrap().get::<String>().unwrap().as_str())),
+        );
+        self.add_action(&act_open_page);
     }
     fn add_tab(&self) {
         let imp = self.imp();
@@ -147,6 +149,10 @@ impl Window {
         let imp = self.imp();
         imp.tab_view
             .close_page(&imp.tab_view.page(&self.current_tab()));
+    }
+    fn focus_url_bar(&self) {
+        let imp = self.imp();
+        imp.url_bar.grab_focus();
     }
 
     async fn append_bookmark(url: &str) -> anyhow::Result<()> {
@@ -198,10 +204,15 @@ impl Window {
     }
     fn msg_url_bar_activated(&self) {
         let imp = self.imp();
-        let url = Url::parse(imp.url_bar.text().as_str());
+        self.open_omni(imp.url_bar.text().as_str());
+    }
+    // this should also handle search requests
+    fn open_omni(&self, v: &str) {
+        let imp = self.imp();
+        let url = Url::parse(v);
         match url {
             Ok(url) => self.open_url(url),
-            Err(e) => error!("Failed to parse url from urlbar: {:?}", e),
+            Err(e) => error!("Failed to parse url: {:?}", e),
         }
     }
     //TODO: Reintroduce colors
@@ -252,10 +263,11 @@ impl Window {
     fn bind_signals(&self) {
         let imp = self.imp();
 
-        imp.url_bar.connect_activate(move |_| {
-            // FIXME: sender_clone.send(WindowMsg::UrlBarActivated).unwrap();
+        imp.url_bar.connect_activate(|url_bar| {
+            url_bar
+                .activate_action("win.open-omni", Some(&url_bar.text().to_variant()))
+                .unwrap();
         });
-
         imp.back_btn.set_action_name(Some("win.back"));
         imp.add_tab_btn.set_action_name(Some("win.new-tab"));
         imp.tab_view.connect_selected_page_notify(move |tab_view| {

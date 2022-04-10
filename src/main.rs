@@ -88,6 +88,7 @@ fn main() {
     application.set_accels_for_action("win.bookmark-current", &["<Ctrl>d"]);
     application.set_accels_for_action("win.new-tab", &["<Ctrl>t"]);
     application.set_accels_for_action("win.close-tab", &["<Ctrl>w"]);
+    application.set_accels_for_action("win.focus-url-bar", &["F6"]);
     let ret = application.run();
     std::process::exit(ret);
 }
