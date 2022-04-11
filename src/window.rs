@@ -3,6 +3,8 @@ use adw::subclass::application_window::AdwApplicationWindowImpl;
 use anyhow::Context;
 use futures::prelude::*;
 use glib::clone;
+use gtk::gio;
+use gtk::glib;
 use gtk::subclass::prelude::*;
 use log::{error, info, warn};
 use std::cell::RefCell;

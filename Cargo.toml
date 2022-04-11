@@ -2,7 +2,7 @@
 name = "geopard"
 version = "1.0.0-alpha"
 authors = ["ranfdev <ranfdev@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -12,17 +12,9 @@ package = "gtk4"
 version = "0.4.7"
 features = ["v4_4"]
 
-[dependencies.glib]
-version = "0.15.1"
-features = ["v2_60"]
-
-[dependencies.gio]
-version = "0.15.1"
-
 [dependencies]
 async-net = "1.4.7"
 async-fs = "1.5.0"
-flume = "0.9.1"
 url = "2.1.1"
 thiserror = "1.0.20"
 futures = "0.3.5"

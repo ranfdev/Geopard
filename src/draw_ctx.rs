@@ -2,6 +2,7 @@ use crate::common::MARGIN;
 use crate::config;
 
 use glib::IsA;
+use gtk::glib;
 use gtk::prelude::*;
 use log::{debug, info};
 

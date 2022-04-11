@@ -5,7 +5,7 @@ use crate::common::{
 use anyhow::Context;
 use async_fs::File;
 use futures::prelude::*;
-use gio::prelude::*;
+use gtk::gio;
 use std::cell::RefCell;
 use std::rc::Rc;
 

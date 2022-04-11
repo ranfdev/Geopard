@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use futures::prelude::*;
+use gtk::glib;
 use once_cell::sync::Lazy;
 use std::borrow::Cow;
 use url::Url;
