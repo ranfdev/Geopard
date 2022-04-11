@@ -22,7 +22,7 @@ impl Parser {
             PageElement::Heading(line.to_string())
         } else if line.starts_with('>') {
             PageElement::Quote(line.to_string())
-        } else if let Some(captures) = R_GEMINI_LINK.captures(&line) {
+        } else if let Some(captures) = R_GEMINI_LINK.captures(line) {
             match (captures.name("href"), captures.name("label")) {
                 (Some(m_href), Some(m_label)) if !m_label.as_str().is_empty() => PageElement::Link(
                     m_href.as_str().to_string(),

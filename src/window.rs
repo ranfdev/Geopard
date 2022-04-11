@@ -1,30 +1,16 @@
+use adw::prelude::*;
 use adw::subclass::application_window::AdwApplicationWindowImpl;
-use adw::{prelude::*, CallbackAnimationTarget};
 use anyhow::Context;
 use futures::prelude::*;
-use futures::task::LocalSpawnExt;
 use glib::clone;
-use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use log::{debug, error, info, warn};
+use log::{error, info, warn};
 use std::cell::RefCell;
 use url::Url;
 
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
-use crate::component::{new_component_id, Component};
 use crate::config;
 use crate::tab::Tab;
-
-pub enum WindowMsg {
-    Open(url::Url),
-    OpenNewTab(url::Url),
-    AddTab,
-    UrlBarActivated,
-    SwitchTab(Tab),
-    BookmarkCurrent,
-    Back,
-    SetProgress(usize, f64),
-}
 
 pub mod imp {
     use super::*;
@@ -122,7 +108,7 @@ impl Window {
         self_action!(self, "close-tab", close_tab);
         self_action!(self, "focus-url-bar", focus_url_bar);
 
-        let act_open_page = gio::SimpleAction::new("open-omni", Some(&glib::VariantTy::STRING));
+        let act_open_page = gio::SimpleAction::new("open-omni", Some(glib::VariantTy::STRING));
         act_open_page.connect_activate(
             clone!(@weak self as this => move |_,v| this.open_omni(v.unwrap().get::<String>().unwrap().as_str())),
         );
@@ -151,7 +137,7 @@ impl Window {
             clone!(@weak self as this  => @default-panic, move |values| {
                 let p: f64 = values[1].get().unwrap();
                 this.set_progress(p);
-                return None
+                None
             }),
         );
 
@@ -197,7 +183,7 @@ impl Window {
     fn set_progress(&self, progress: f64) {
         let imp = self.imp();
         info!("progress {}", progress);
-        if let Some(ref animation) = imp.progress_animation.borrow().as_ref() {
+        if let Some(animation) = imp.progress_animation.borrow().as_ref() {
             animation.pause();
         }
         if progress == 0.0 {
@@ -237,13 +223,8 @@ impl Window {
             }
         });
     }
-    fn msg_url_bar_activated(&self) {
-        let imp = self.imp();
-        self.open_omni(imp.url_bar.text().as_str());
-    }
     // this should also handle search requests
     fn open_omni(&self, v: &str) {
-        let imp = self.imp();
         let url = Url::parse(v);
         match url {
             Ok(url) => self.open_url(url),
@@ -297,7 +278,6 @@ impl Window {
 
     fn bind_signals(&self) {
         let imp = self.imp();
-
         imp.url_bar.connect_activate(|url_bar| {
             url_bar
                 .activate_action("win.open-omni", Some(&url_bar.text().to_variant()))
@@ -305,17 +285,6 @@ impl Window {
         });
         imp.back_btn.set_action_name(Some("win.back"));
         imp.add_tab_btn.set_action_name(Some("win.new-tab"));
-        imp.tab_view.connect_selected_page_notify(move |tab_view| {
-            let tab: Tab = tab_view
-                .selected_page()
-                .unwrap()
-                .child()
-                .downcast()
-                .unwrap();
-
-            // FIXME: sender_clone.send(WindowMsg::SwitchTab(tab)).unwrap();
-        });
-
         imp.add_bookmark_btn
             .set_action_name(Some("win.bookmark-current"));
         imp.show_bookmarks_btn

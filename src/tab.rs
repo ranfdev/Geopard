@@ -1,6 +1,3 @@
-use crate::common;
-use crate::common::{glibctx, DrawCtx, HistoryItem, LossyTextRead, PageElement, RequestCtx};
-use crate::gemini;
 use anyhow::{bail, Context, Result};
 use async_fs::File;
 use futures::future::RemoteHandle;
@@ -11,10 +8,15 @@ use glib::subclass::prelude::*;
 use gtk::gdk::prelude::*;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use once_cell::sync::Lazy;
 use std::cell::RefCell;
 use url::Url;
+
+use crate::common;
+use crate::common::{glibctx, HistoryItem, LossyTextRead, PageElement, RequestCtx};
+use crate::draw_ctx::DrawCtx;
+use crate::gemini;
 
 pub mod imp {
 
@@ -28,7 +30,6 @@ pub mod imp {
         pub(crate) clamp: adw::Clamp,
         pub(crate) event_ctrlr_click: RefCell<Option<gtk::GestureClick>>,
         pub(crate) req_handle: RefCell<Option<RemoteHandle<()>>>,
-        pub(crate) load_progress: f64,
     }
 
     #[glib::object_subclass]
@@ -105,7 +106,7 @@ glib::wrapper! {
 }
 impl Tab {
     pub fn new(config: crate::config::Config) -> Self {
-        let mut this: Self = glib::Object::new(&[]).unwrap();
+        let this: Self = glib::Object::new(&[]).unwrap();
         let imp = this.imp();
         use common::MARGIN;
         let text_view = gtk::builders::TextViewBuilder::new()
@@ -121,8 +122,7 @@ impl Tab {
         text_view.add_controller(imp.event_ctrlr_click.borrow().as_ref().unwrap());
 
         imp.scroll_win.set_child(Some(&text_view));
-        imp.draw_ctx
-            .replace(Some(DrawCtx::new(text_view.clone(), config)));
+        imp.draw_ctx.replace(Some(DrawCtx::new(text_view, config)));
 
         this.bind_signals();
         this
@@ -155,12 +155,12 @@ impl Tab {
             item.cache = Some(cache)
         }
     }
-    pub fn open_new_tab(&self, link: &str) -> Result<()> {
-        let url = self.parse_link(&link)?;
+    pub fn open_new_tab(&self, _link: &str) -> Result<()> {
+        // let url = self.parse_link(link)?;
         // FIXME: emit action
         Ok(())
     }
-    fn handle_right_click(&self, x: f64, y: f64) {
+    fn handle_right_click(&self, _x: f64, _y: f64) {
         // FIXME: if let Some(menu) = widget.dynamic_cast_ref::<gtk::PopoverMenu>() {
         //     // let (x, y) = Self::coords_in_widget(text_view);
 
@@ -275,7 +275,7 @@ impl Tab {
         if has_selection {
             return Ok(());
         }
-        let link = Self::extract_linkhandler(&draw_ctx.as_ref().unwrap(), x, y)?;
+        let link = Self::extract_linkhandler(draw_ctx.as_ref().unwrap(), x, y)?;
         let url = self.parse_link(&link)?;
         self.spawn_open(url);
         Ok(())
@@ -303,9 +303,8 @@ impl Tab {
         let event_ctrlr_click = imp.event_ctrlr_click.borrow();
         let event_ctrlr_click = event_ctrlr_click.as_ref().unwrap();
         event_ctrlr_click.connect_released(move |_gsclick, _buttoni, x, y| {
-            match this.handle_click(x, y) {
-                Err(e) => info!("{}", e),
-                _ => {}
+            if let Err(e) = this.handle_click(x, y) {
+                info!("{}", e);
             };
         });
 
@@ -348,7 +347,7 @@ impl Tab {
         }
         Ok(())
     }
-    async fn open_url(mut req: &mut RequestCtx) -> Result<Option<Vec<u8>>> {
+    async fn open_url(req: &mut RequestCtx) -> Result<Option<Vec<u8>>> {
         req.draw_ctx.clear();
         match req.url.scheme() {
             "about" => {
@@ -357,10 +356,10 @@ impl Tab {
                 Ok(None)
             }
             "file" => {
-                Self::open_file_url(&mut req).await?;
+                Self::open_file_url(req).await?;
                 Ok(None)
             }
-            "gemini" => Self::open_gemini_url(&mut req).await,
+            "gemini" => Self::open_gemini_url(req).await,
             _ => {
                 Self::display_url_confirmation(&mut req.draw_ctx, &req.url);
                 Ok(None)
@@ -382,10 +381,10 @@ impl Tab {
             Success(_) => {
                 let body = res.body().context("Body not found")?;
                 let buffered = futures::io::BufReader::new(body);
-                if meta.find("text/gemini").is_some() {
+                if meta.contains("text/gemini") {
                     let res = Self::display_gemini(&mut req.draw_ctx, buffered).await?;
                     Some(res)
-                } else if meta.find("text").is_some() {
+                } else if meta.contains("text") {
                     Self::display_text(&mut req.draw_ctx, buffered).await?;
                     None
                 } else {
@@ -521,7 +520,7 @@ impl Tab {
         let text_buffer = &ctx.text_buffer;
 
         let mut iter = text_buffer.end_iter();
-        ctx.insert_paragraph(&mut iter, &msg);
+        ctx.insert_paragraph(&mut iter, msg);
         ctx.insert_paragraph(&mut iter, "\n");
 
         let text_input = gtk::Entry::new();

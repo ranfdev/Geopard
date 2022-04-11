@@ -31,7 +31,7 @@ pub enum Error {
     #[error("Invalid url: {0:?}")]
     InvalidUrl(#[from] url::ParseError),
     #[error("Tls error: {0:?}")]
-    TlsError(#[from] async_native_tls::Error),
+    Tls(#[from] async_native_tls::Error),
     #[error("Invalid host")]
     InvalidHost,
     #[error("Too many redirections. Last requested redirect was {0}")]
@@ -131,7 +131,7 @@ impl Client {
             loop {
                 match res.status {
                     Status::Redirect(_) => {
-                        let url = Url::parse(&res.meta())?;
+                        let url = Url::parse(res.meta())?;
                         res = Self::fetch_internal(url).await?;
                         n_redirect += 1;
                     }
@@ -150,11 +150,7 @@ impl Client {
             return Err(Error::SchemeNotSupported);
         }
 
-        let port = match url.port() {
-            Some(p) => p,
-            None => 1965,
-        };
-
+        let port = url.port().unwrap_or(1965);
         let host = url.host_str().ok_or(Error::InvalidHost)?;
         let addr = async_net::resolve((host, port))
             .await?

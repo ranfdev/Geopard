@@ -6,14 +6,13 @@ use anyhow::Context;
 use async_fs::File;
 use futures::prelude::*;
 use gio::prelude::*;
-use gtk::Application;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 mod build_config;
 mod common;
-mod component;
 mod config;
+mod draw_ctx;
 mod gemini;
 mod tab;
 mod window;
@@ -24,7 +23,7 @@ async fn read_config() -> anyhow::Result<config::Config> {
     toml::from_str(&async_fs::read_to_string(&*SETTINGS_FILE_PATH).await?)
         .context("Reading config file")
 }
-async fn create_dir_if_not_exists(path: &std::path::PathBuf) -> anyhow::Result<()> {
+async fn create_dir_if_not_exists(path: &std::path::Path) -> anyhow::Result<()> {
     if !path.exists() {
         async_fs::create_dir_all(&*path)
             .await
@@ -33,7 +32,7 @@ async fn create_dir_if_not_exists(path: &std::path::PathBuf) -> anyhow::Result<(
     Ok(())
 }
 async fn init_file_if_not_exists(
-    path: &std::path::PathBuf,
+    path: &std::path::Path,
     text: Option<&[u8]>,
 ) -> anyhow::Result<()> {
     if !path.exists() {
