@@ -209,7 +209,7 @@ impl Window {
             &imp.progress_bar,
             imp.progress_bar.fraction(),
             progress,
-            &adw::SpringParams::new(1.0, 0.05, 15.0),
+            &adw::SpringParams::new(1.0, 1.0, 100.0),
             &adw::CallbackAnimationTarget::new(Some(Box::new(move |v| {
                 progress_bar.set_fraction(v);
                 progress_bar.set_opacity(1.0 - v);

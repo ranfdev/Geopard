@@ -144,17 +144,6 @@ impl DrawCtx {
                 .or_else(|| default_config.fonts.heading.as_ref())
                 .unwrap(),
         );
-        let tag_pre = DrawCtx::create_tag(
-            "pre",
-            self.config
-                .fonts
-                .preformatted
-                .as_ref()
-                .or_else(|| default_config.fonts.preformatted.as_ref())
-                .unwrap(),
-        );
-
-        tag_pre.set_wrap_mode(gtk::WrapMode::None);
         let tag_p = DrawCtx::create_tag(
             "p",
             self.config
@@ -191,7 +180,6 @@ impl DrawCtx {
         tag_table.add(&tag_h1);
         tag_table.add(&tag_h2);
         tag_table.add(&tag_h3);
-        tag_table.add(&tag_pre);
         tag_table.add(&tag_q);
         tag_table.add(&tag_p);
         tag_table.add(&tag_a);
@@ -235,13 +223,41 @@ impl DrawCtx {
     }
 
     pub fn insert_preformatted(&self, mut text_iter: &mut gtk::TextIter, line: &str) {
-        let start = text_iter.offset();
-        self.text_buffer.insert(&mut text_iter, &line);
-        self.text_buffer.apply_tag_by_name(
-            "pre",
-            &self.text_buffer.iter_at_offset(start),
-            &text_iter,
-        );
+        let nested_view = {
+            let text_view = gtk::TextView::new();
+            let text_buffer = text_view.buffer();
+
+            let tag_pre = DrawCtx::create_tag(
+                "pre",
+                self.config
+                    .fonts
+                    .preformatted
+                    .as_ref()
+                    .unwrap_or(&config::Fonts::default_preformatted()),
+            );
+            tag_pre.set_wrap_mode(gtk::WrapMode::None);
+
+            text_buffer.tag_table().add(&tag_pre);
+            text_buffer.insert(&mut text_buffer.end_iter(), &line);
+            text_buffer.apply_tag_by_name(
+                "pre",
+                text_buffer.iter_at_line_index(0, 0).as_ref().unwrap(),
+                &mut text_buffer.end_iter(),
+            );
+            text_view
+        };
+
+        let scrolled_window = gtk::ScrolledWindow::new();
+        scrolled_window.set_child(Some(&nested_view));
+        scrolled_window.set_vscrollbar_policy(gtk::PolicyType::Never);
+        self.insert_widget(&mut text_iter, &scrolled_window);
+
+        let text_view = self.text_view.clone();
+        self.text_view.connect_width_request_notify(move |_| {
+            dbg!("ok");
+            scrolled_window.set_width_request(text_view.allocated_width() - MARGIN * 2)
+        });
+        self.text_buffer.insert(&mut text_iter, "\n");
     }
     pub fn insert_paragraph(&self, mut text_iter: &mut gtk::TextIter, line: &str) {
         let start = text_iter.offset();
@@ -293,7 +309,7 @@ impl DrawCtx {
         self.text_buffer
             .apply_tag(&tag, &self.text_buffer.iter_at_offset(start), &text_iter);
     }
-    pub fn insert_widget(&mut self, text_iter: &mut gtk::TextIter, widget: &impl IsA<gtk::Widget>) {
+    pub fn insert_widget(&self, text_iter: &mut gtk::TextIter, widget: &impl IsA<gtk::Widget>) {
         let anchor = self.text_buffer.create_child_anchor(text_iter);
         self.text_view.add_child_at_anchor(widget, &anchor);
     }

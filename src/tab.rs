@@ -564,6 +564,7 @@ click on the button below\n",
         let mut parser = gemini::Parser::new();
         let mut text_iter = draw_ctx.text_buffer.end_iter();
 
+        let mut preformatted = String::new();
         let mut data = String::with_capacity(1024);
         let mut total = 0;
         let mut n;
@@ -576,24 +577,30 @@ click on the button below\n",
             let line = &data[total..];
             let token = parser.parse_line(line);
             total += n;
-            match token {
-                PageElement::Text(line) => {
-                    draw_ctx.insert_paragraph(&mut text_iter, &line);
+            if let PageElement::Preformatted(line) = token {
+                preformatted.push_str(&line);
+            } else {
+                if !preformatted.is_empty() {
+                    draw_ctx.insert_preformatted(&mut text_iter, &preformatted);
+                    preformatted.clear();
                 }
-                PageElement::Heading(line) => {
-                    draw_ctx.insert_heading(&mut text_iter, &line);
-                }
-                PageElement::Quote(line) => {
-                    draw_ctx.insert_quote(&mut text_iter, &line);
-                }
-                PageElement::Preformatted(line) => {
-                    draw_ctx.insert_preformatted(&mut text_iter, &line);
-                }
-                PageElement::Empty => {
-                    draw_ctx.insert_paragraph(&mut text_iter, "\n");
-                }
-                PageElement::Link(url, label) => {
-                    draw_ctx.insert_link(&mut text_iter, url, label.as_deref());
+                match token {
+                    PageElement::Text(line) => {
+                        draw_ctx.insert_paragraph(&mut text_iter, &line);
+                    }
+                    PageElement::Heading(line) => {
+                        draw_ctx.insert_heading(&mut text_iter, &line);
+                    }
+                    PageElement::Quote(line) => {
+                        draw_ctx.insert_quote(&mut text_iter, &line);
+                    }
+                    PageElement::Empty => {
+                        draw_ctx.insert_paragraph(&mut text_iter, "\n");
+                    }
+                    PageElement::Link(url, label) => {
+                        draw_ctx.insert_link(&mut text_iter, url, label.as_deref());
+                    }
+                    PageElement::Preformatted(_) => unreachable!("handled before"),
                 }
             }
         }
