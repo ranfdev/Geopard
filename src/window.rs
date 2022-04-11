@@ -22,8 +22,6 @@ pub mod imp {
         pub(crate) url_bar: gtk::SearchEntry,
         pub(crate) progress_bar: gtk::ProgressBar,
         pub(crate) back_btn: gtk::Button,
-        pub(crate) add_bookmark_btn: gtk::Button,
-        pub(crate) show_bookmarks_btn: gtk::Button,
         pub(crate) tab_bar: adw::TabBar,
         pub(crate) tab_view: adw::TabView,
         pub(crate) config: RefCell<config::Config>,
@@ -46,7 +44,7 @@ pub mod imp {
 }
 glib::wrapper! {
     pub struct Window(ObjectSubclass<imp::Window>)
-    @extends adw::ApplicationWindow, gtk::Window,
+    @extends adw::ApplicationWindow, gtk::Window, gtk::Widget,
     @implements gio::ActionMap, gio::ActionGroup;
 }
 
@@ -71,27 +69,51 @@ impl Window {
         header_bar.set_show_title_buttons(true);
 
         imp.back_btn.set_icon_name("go-previous-symbolic");
-        imp.add_bookmark_btn.set_icon_name("star-new-symbolic");
-        imp.show_bookmarks_btn.set_icon_name("view-list-symbolic");
         imp.add_tab_btn.set_icon_name("tab-new-symbolic");
+
+        let menu_button = gtk::MenuButton::new();
+        menu_button.set_primary(true);
+        menu_button.set_icon_name("open-menu");
+        let menu_model = gio::Menu::new();
+
+        let menu_model_bookmarks = gio::Menu::new();
+        menu_model_bookmarks.insert(0, Some("All Bookmarks"), Some("win.show-bookmarks"));
+        menu_model_bookmarks.insert(1, Some("Add Bookmark"), Some("win.bookmark-current"));
+        menu_model.insert_section(0, None, &menu_model_bookmarks);
+
+        let menu_model_about = gio::Menu::new();
+        menu_model_about.insert(1, Some("Keyboard Shortcuts"), Some("win.shortcuts"));
+        menu_model_about.insert(2, Some("About"), Some("win.about"));
+        menu_model_about.insert(3, Some("Donate 💝"), Some("win.donate"));
+        menu_model.insert_section(1, None, &menu_model_about);
+
+        menu_button.set_menu_model(Some(&menu_model));
 
         header_bar.pack_start(&imp.back_btn);
         header_bar.pack_start(&imp.add_tab_btn);
-        header_bar.pack_end(&imp.add_bookmark_btn);
-        header_bar.pack_end(&imp.show_bookmarks_btn);
+        header_bar.pack_end(&menu_button);
 
         imp.url_bar.set_hexpand(true);
 
-        header_bar.set_title_widget(Some(&imp.url_bar));
+        let bar_clamp = adw::Clamp::new();
+        bar_clamp.set_child(Some(&imp.url_bar));
+        bar_clamp.set_maximum_size(768);
+        bar_clamp.set_tightening_threshold(720);
+        header_bar.set_title_widget(Some(&bar_clamp));
 
         content.append(&header_bar);
 
-        imp.tab_bar.set_view(Some(&imp.tab_view));
-        content.append(&imp.tab_bar);
-
+        let overlay = gtk::Overlay::new();
+        let content_view = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        overlay.set_child(Some(&content_view));
         imp.progress_bar.add_css_class("osd");
-        content.append(&imp.progress_bar);
-        content.append(&imp.tab_view);
+        imp.progress_bar.set_valign(gtk::Align::Start);
+        overlay.add_overlay(&imp.progress_bar);
+        content.append(&overlay);
+
+        imp.tab_bar.set_view(Some(&imp.tab_view));
+        content_view.append(&imp.tab_bar);
+        content_view.append(&imp.tab_view);
 
         this.set_default_size(800, 600);
         this.set_content(Some(&content));
@@ -109,6 +131,8 @@ impl Window {
         self_action!(self, "bookmark-current", bookmark_current);
         self_action!(self, "close-tab", close_tab);
         self_action!(self, "focus-url-bar", focus_url_bar);
+        self_action!(self, "shortcuts", present_shortcuts);
+        self_action!(self, "about", present_about);
 
         let act_open_page = gio::SimpleAction::new("open-omni", Some(glib::VariantTy::STRING));
         act_open_page.connect_activate(
@@ -332,9 +356,85 @@ impl Window {
         });
         imp.back_btn.set_action_name(Some("win.back"));
         imp.add_tab_btn.set_action_name(Some("win.new-tab"));
-        imp.add_bookmark_btn
-            .set_action_name(Some("win.bookmark-current"));
-        imp.show_bookmarks_btn
-            .set_action_name(Some("win.show-bookmarks"))
     }
+    fn present_shortcuts(&self) {
+        let builder = gtk::Builder::from_string(
+            r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkShortcutsWindow" id="shortcuts-geopard">
+    <property name="modal">1</property>
+    <child>
+      <object class="GtkShortcutsSection">
+        <property name="section-name">shortcuts</property>
+        <child>
+          <object class="GtkShortcutsGroup">
+            <property name="title" translatable="yes">Tabs</property>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="accelerator">&lt;ctrl&gt;T</property>
+                <property name="title" translatable="yes">Open New Tab</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="accelerator">&lt;ctrl&gt;W</property>
+                <property name="title" translatable="yes">Close Current Tab</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="accelerator">&lt;ctrl&gt;U</property>
+                <property name="title" translatable="yes">View Source</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkShortcutsGroup">
+            <property name="title" translatable="yes">Navigation</property>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="accelerator">&lt;alt&gt;Left</property>
+                <property name="direction">ltr</property>
+                <property name="title" translatable="yes">Back</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="accelerator">F6</property>
+                <property name="title" translatable="yes">Focus Url Bar</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkShortcutsGroup">
+            <property name="view">world</property>
+            <property name="title" translatable="yes">Bookmarks</property>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="accelerator">&lt;ctrl&gt;D</property>
+                <property name="title" translatable="yes">Bookmark Current Page</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="accelerator">&lt;ctrl&gt;B</property>
+                <property name="title" translatable="yes">Show All Bookmarks</property>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>
+"#,
+        );
+        let sw: gtk::ShortcutsWindow = builder.object("shortcuts-geopard").unwrap();
+        sw.set_transient_for(Some(self));
+        sw.present();
+    }
+    fn present_about(&self) {}
 }
