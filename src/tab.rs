@@ -5,6 +5,7 @@ use futures::io::BufReader;
 use futures::prelude::*;
 use futures::task::LocalSpawnExt;
 use gtk::gdk::prelude::*;
+use gtk::gio;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
@@ -28,7 +29,8 @@ pub mod imp {
         pub(crate) history: RefCell<Vec<HistoryItem>>,
         pub(crate) scroll_win: gtk::ScrolledWindow,
         pub(crate) clamp: adw::Clamp,
-        pub(crate) event_ctrlr_click: RefCell<Option<gtk::GestureClick>>,
+        pub(crate) left_click_ctrl: RefCell<Option<gtk::GestureClick>>,
+        pub(crate) right_click_ctrl: RefCell<Option<gtk::GestureClick>>,
         pub(crate) req_handle: RefCell<Option<RemoteHandle<()>>>,
     }
 
@@ -56,8 +58,10 @@ pub mod imp {
             self.clamp.set_tightening_threshold(720);
             self.clamp.set_child(Some(&self.scroll_win));
 
-            self.event_ctrlr_click
-                .replace(Some(gtk::GestureClick::new()));
+            self.left_click_ctrl
+                .replace(Some(gtk::GestureClick::builder().button(1).build()));
+            self.right_click_ctrl
+                .replace(Some(gtk::GestureClick::builder().button(3).build()));
             self.gemini_client
                 .replace(gemini::ClientBuilder::new().redirect(true).build());
         }
@@ -119,7 +123,8 @@ impl Tab {
             .cursor_visible(false)
             .wrap_mode(gtk::WrapMode::WordChar)
             .build();
-        text_view.add_controller(imp.event_ctrlr_click.borrow().as_ref().unwrap());
+        text_view.add_controller(imp.left_click_ctrl.borrow().as_ref().unwrap());
+        text_view.add_controller(imp.right_click_ctrl.borrow().as_ref().unwrap());
 
         imp.scroll_win.set_child(Some(&text_view));
         imp.draw_ctx.replace(Some(DrawCtx::new(text_view, config)));
@@ -160,15 +165,25 @@ impl Tab {
         // FIXME: emit action
         Ok(())
     }
-    fn handle_right_click(&self, _x: f64, _y: f64) {
-        // FIXME: if let Some(menu) = widget.dynamic_cast_ref::<gtk::PopoverMenu>() {
-        //     // let (x, y) = Self::coords_in_widget(text_view);
+    fn handle_right_click(&self, x: f64, y: f64) -> Result<()> {
+        let imp = self.imp();
+        let draw_ctx = imp.draw_ctx.borrow();
+        let text_view = &draw_ctx.as_ref().unwrap().text_view;
+        let link = Self::extract_linkhandler(draw_ctx.as_ref().unwrap(), x, y)?;
 
-        //     // if let Ok(handler) = Self::extract_linkhandler(text_view, (x as f64, y as f64)) {
-        //     //     let url = handler.url();
-        //     //     /*FIXME: Self::extend_textview_menu(&menu, url.to_owned(), in_chan.clone());*/
-        //     // }
-        // }
+        let menu = gio::Menu::new();
+        menu.insert(
+            0,
+            Some("Open Link In New Tab"),
+            Some(&format!("win.open-in-new-tab(\"{}\")", link.as_str())),
+        );
+        menu.insert(
+            1,
+            Some("Copy Link"),
+            Some(&format!("win.set-clipboard(\"{}\")", link.as_str())),
+        );
+        text_view.set_extra_menu(Some(&menu));
+        Ok(())
     }
     fn spawn_req(&self, fut: impl Future<Output = ()> + 'static) {
         let imp = self.imp();
@@ -300,18 +315,25 @@ impl Tab {
     fn bind_signals(&self) {
         let imp = self.imp();
         let this = self.clone();
-        let event_ctrlr_click = imp.event_ctrlr_click.borrow();
-        let event_ctrlr_click = event_ctrlr_click.as_ref().unwrap();
-        event_ctrlr_click.connect_released(move |_gsclick, _buttoni, x, y| {
+        let left_click_ctrl = imp.left_click_ctrl.borrow();
+        let left_click_ctrl = left_click_ctrl.as_ref().unwrap();
+        left_click_ctrl.connect_released(move |_ctrl, _n_press, x, y| {
             if let Err(e) = this.handle_click(x, y) {
                 info!("{}", e);
             };
         });
 
         let this = self.clone();
-        event_ctrlr_click.connect_pressed(move |_gsclick, _buttoni, x, y| {
-            this.handle_right_click(x, y);
-        });
+        imp.right_click_ctrl
+            .borrow()
+            .as_ref()
+            .unwrap()
+            .connect_pressed(move |_ctrl, _n_press, x, y| {
+                info!("oke");
+                if let Err(e) = this.handle_right_click(x, y) {
+                    info!("{}", e);
+                };
+            });
     }
     fn extract_linkhandler(draw_ctx: &DrawCtx, x: f64, y: f64) -> Result<String> {
         info!("Extracting linkhandler from clicked text");

@@ -3,6 +3,7 @@ use adw::subclass::application_window::AdwApplicationWindowImpl;
 use anyhow::Context;
 use futures::prelude::*;
 use glib::clone;
+use gtk::gdk;
 use gtk::gio;
 use gtk::glib;
 use gtk::subclass::prelude::*;
@@ -115,6 +116,26 @@ impl Window {
             clone!(@weak self as this => move |_,v| this.open_omni(v.unwrap().get::<String>().unwrap().as_str())),
         );
         self.add_action(&act_open_page);
+
+        let act_open_url = gio::SimpleAction::new("open-url", Some(glib::VariantTy::STRING));
+        act_open_url.connect_activate(
+            clone!(@weak self as this => move |_,v| this.open_url_str(v.unwrap().get::<String>().unwrap().as_str())),
+        );
+        self.add_action(&act_open_url);
+
+        let act_open_in_new_tab =
+            gio::SimpleAction::new("open-in-new-tab", Some(glib::VariantTy::STRING));
+        act_open_in_new_tab.connect_activate(
+            clone!(@weak self as this => move |_,v| this.open_in_new_tab(v.unwrap().get::<String>().unwrap().as_str())),
+        );
+        self.add_action(&act_open_in_new_tab);
+
+        let act_set_clipboard =
+            gio::SimpleAction::new("set-clipboard", Some(glib::VariantTy::STRING));
+        act_set_clipboard.connect_activate(
+            clone!(@weak self as this => move |_,v| this.set_clipboard(v.unwrap().get::<String>().unwrap().as_str())),
+        );
+        self.add_action(&act_set_clipboard);
     }
     fn add_tab(&self) {
         let imp = self.imp();
@@ -232,6 +253,20 @@ impl Window {
             Ok(url) => self.open_url(url),
             Err(e) => error!("Failed to parse url: {:?}", e),
         }
+    }
+    fn open_url_str(&self, v: &str) {
+        let url = Url::parse(v);
+        match url {
+            Ok(url) => self.open_url(url),
+            Err(e) => error!("Failed to parse url: {:?}", e),
+        }
+    }
+    fn open_in_new_tab(&self, v: &str) {
+        self.add_tab();
+        self.open_url_str(v);
+    }
+    fn set_clipboard(&self, v: &str) {
+        gdk::Display::default().unwrap().clipboard().set_text(v);
     }
     //TODO: Reintroduce colors
     //fn set_special_color_from_hash(&self, hash: u64) {
