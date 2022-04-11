@@ -160,9 +160,17 @@ impl Tab {
             item.cache = Some(cache)
         }
     }
-    pub fn open_new_tab(&self, _link: &str) -> Result<()> {
-        // let url = self.parse_link(link)?;
-        // FIXME: emit action
+    pub fn handle_click(&self, x: f64, y: f64) -> Result<()> {
+        let imp = self.imp();
+        let draw_ctx = imp.draw_ctx.borrow();
+        let text_view = &draw_ctx.as_ref().unwrap().text_view;
+        let has_selection = text_view.buffer().has_selection();
+        if has_selection {
+            return Ok(());
+        }
+        let link = Self::extract_linkhandler(draw_ctx.as_ref().unwrap(), x, y)?;
+        let url = self.parse_link(&link)?;
+        self.spawn_open_url(url);
         Ok(())
     }
     fn handle_right_click(&self, x: f64, y: f64) -> Result<()> {
@@ -170,6 +178,7 @@ impl Tab {
         let draw_ctx = imp.draw_ctx.borrow();
         let text_view = &draw_ctx.as_ref().unwrap().text_view;
         let link = Self::extract_linkhandler(draw_ctx.as_ref().unwrap(), x, y)?;
+        let link = self.parse_link(&link)?;
 
         let menu = gio::Menu::new();
         menu.insert(
@@ -185,7 +194,7 @@ impl Tab {
         text_view.set_extra_menu(Some(&menu));
         Ok(())
     }
-    fn spawn_req(&self, fut: impl Future<Output = ()> + 'static) {
+    fn spawn_request(&self, fut: impl Future<Output = ()> + 'static) {
         let imp = self.imp();
         imp.req_handle
             .replace(Some(glibctx().spawn_local_with_handle(fut).unwrap()));
@@ -208,7 +217,7 @@ impl Tab {
 
         let this = self.clone();
         let fut = async move {
-            match Self::spawn_request(&mut req_ctx).await {
+            match Self::send_request(&mut req_ctx).await {
                 Ok(Some(cache)) => {
                     this.add_cache(cache);
                     info!("Page loaded and cached ({})", url.clone());
@@ -225,7 +234,7 @@ impl Tab {
             this.emit_by_name_with_values("progress-changed", &[1.0.to_value()]);
         };
         self.emit_by_name_with_values("progress-changed", &[0.3.to_value()]);
-        self.spawn_req(fut);
+        self.spawn_request(fut);
     }
     fn spawn_open_history(&self, item: HistoryItem) {
         let HistoryItem { url, cache, .. } = item;
@@ -258,7 +267,7 @@ impl Tab {
                 Err(e) => Self::display_error(&mut draw_ctx, e),
             }
         };
-        self.spawn_req(fut);
+        self.spawn_request(fut);
     }
     pub fn back(&self) -> Result<()> {
         let imp = self.imp();
@@ -281,36 +290,6 @@ impl Tab {
         let error_text = format!("Geopard experienced an error:\n {:?}", error);
         ctx.insert_paragraph(&mut ctx.text_buffer.end_iter(), &error_text);
     }
-    pub fn handle_click(&self, x: f64, y: f64) -> Result<()> {
-        let imp = self.imp();
-        let draw_ctx = imp.draw_ctx.borrow();
-        let text_view = &draw_ctx.as_ref().unwrap().text_view;
-        let has_selection = text_view.buffer().has_selection();
-        if has_selection {
-            return Ok(());
-        }
-        let link = Self::extract_linkhandler(draw_ctx.as_ref().unwrap(), x, y)?;
-        let url = self.parse_link(&link)?;
-        self.spawn_open_url(url);
-        Ok(())
-    }
-    /* FIXME: fn extend_textview_menu(menu: &gtk::Menu, url: String, sender: flume::Sender<TabMsg>) {
-        let copy_link_item = gtk::MenuItem::with_label("Copy link");
-        let open_in_tab_item = gtk::MenuItem::with_label("Open in new tab");
-        let url_clone = url.clone();
-        let sender_clone = sender.clone();
-        copy_link_item.connect_activate(move |_| {
-            sender_clone
-                .send(TabMsg::CopyUrl(url_clone.clone()))
-                .unwrap();
-        });
-        open_in_tab_item.connect_activate(move |_| {
-            sender.send(TabMsg::OpenNewTab(url.clone())).unwrap();
-        });
-        menu.prepend(&copy_link_item);
-        menu.prepend(&open_in_tab_item);
-        menu.show_all();
-    }*/
     fn bind_signals(&self) {
         let imp = self.imp();
         let this = self.clone();
@@ -367,7 +346,7 @@ impl Tab {
         }
         Ok(())
     }
-    async fn spawn_request(req: &mut RequestCtx) -> Result<Option<Vec<u8>>> {
+    async fn send_request(req: &mut RequestCtx) -> Result<Option<Vec<u8>>> {
         req.draw_ctx.clear();
         match req.url.scheme() {
             "about" => {
