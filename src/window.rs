@@ -98,15 +98,14 @@ impl Window {
 
         this.bind_signals();
         this.setup_actions();
-        this.add_tab();
-        this.open_url(bookmarks_url());
+        this.open_in_new_tab(bookmarks_url().as_str());
         this
     }
 
     fn setup_actions(&self) {
         self_action!(self, "back", back);
-        self_action!(self, "new-tab", add_tab);
-        self_action!(self, "show-bookmarks", add_tab);
+        self_action!(self, "new-tab", add_tab_focused);
+        self_action!(self, "show-bookmarks", add_tab_focused);
         self_action!(self, "bookmark-current", bookmark_current);
         self_action!(self, "close-tab", close_tab);
         self_action!(self, "focus-url-bar", focus_url_bar);
@@ -137,7 +136,7 @@ impl Window {
         );
         self.add_action(&act_set_clipboard);
     }
-    fn add_tab(&self) {
+    fn add_tab(&self) -> adw::TabPage {
         let imp = self.imp();
         let tab = Tab::new(imp.config.borrow().clone());
         let tab_view = imp.tab_view.clone();
@@ -164,9 +163,13 @@ impl Window {
             }),
         );
 
-        let w = imp.tab_view.append(&tab);
-        imp.tab_view.set_selected_page(&w);
-        self.open_url(bookmarks_url());
+        imp.tab_view.append(&tab)
+    }
+    fn add_tab_focused(&self) {
+        let imp = self.imp();
+        let p = self.add_tab();
+        self.inner_tab(&p).spawn_open_url(bookmarks_url());
+        imp.tab_view.set_selected_page(&p);
     }
     fn close_tab(&self) {
         let imp = self.imp();
@@ -228,7 +231,7 @@ impl Window {
         imp.progress_animation.replace(Some(animation));
     }
     fn open_url(&self, url: Url) {
-        self.current_tab().spawn_open(url);
+        self.current_tab().spawn_open_url(url);
     }
     fn back(&self) {
         match self.current_tab().back() {
@@ -262,11 +265,22 @@ impl Window {
         }
     }
     fn open_in_new_tab(&self, v: &str) {
-        self.add_tab();
-        self.open_url_str(v);
+        let w = self.add_tab();
+        let url = Url::parse(v);
+        match url {
+            Ok(url) => self.inner_tab(&w).spawn_open_url(url),
+            Err(e) => error!("Failed to parse url: {:?}", e),
+        }
     }
     fn set_clipboard(&self, v: &str) {
         gdk::Display::default().unwrap().clipboard().set_text(v);
+    }
+    fn tab_page(&self, tab: &Tab) -> adw::TabPage {
+        let imp = self.imp();
+        imp.tab_view.page(tab)
+    }
+    fn inner_tab(&self, tab: &adw::TabPage) -> Tab {
+        tab.child().downcast().unwrap()
     }
     //TODO: Reintroduce colors
     //fn set_special_color_from_hash(&self, hash: u64) {

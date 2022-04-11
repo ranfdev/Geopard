@@ -190,7 +190,7 @@ impl Tab {
         imp.req_handle
             .replace(Some(glibctx().spawn_local_with_handle(fut).unwrap()));
     }
-    pub fn spawn_open(&self, url: Url) {
+    pub fn spawn_open_url(&self, url: Url) {
         let imp = self.imp();
 
         self.emit_by_name_with_values("progress-changed", &[0.0.to_value()]);
@@ -208,7 +208,7 @@ impl Tab {
 
         let this = self.clone();
         let fut = async move {
-            match Self::open_url(&mut req_ctx).await {
+            match Self::spawn_request(&mut req_ctx).await {
                 Ok(Some(cache)) => {
                     this.add_cache(cache);
                     info!("Page loaded and cached ({})", url.clone());
@@ -231,7 +231,7 @@ impl Tab {
         let HistoryItem { url, cache, .. } = item;
         match cache {
             Some(cache) => self.spawn_open_cached(url, cache),
-            None => self.spawn_open(url),
+            None => self.spawn_open_url(url),
         }
     }
     fn spawn_open_cached(&self, url: Url, cache: Vec<u8>) {
@@ -292,7 +292,7 @@ impl Tab {
         }
         let link = Self::extract_linkhandler(draw_ctx.as_ref().unwrap(), x, y)?;
         let url = self.parse_link(&link)?;
-        self.spawn_open(url);
+        self.spawn_open_url(url);
         Ok(())
     }
     /* FIXME: fn extend_textview_menu(menu: &gtk::Menu, url: String, sender: flume::Sender<TabMsg>) {
@@ -369,7 +369,7 @@ impl Tab {
         }
         Ok(())
     }
-    async fn open_url(req: &mut RequestCtx) -> Result<Option<Vec<u8>>> {
+    async fn spawn_request(req: &mut RequestCtx) -> Result<Option<Vec<u8>>> {
         req.draw_ctx.clear();
         match req.url.scheme() {
             "about" => {
