@@ -276,7 +276,7 @@ impl Tab {
         }
         Ok(())
     }
-    fn display_error(ctx: &mut DrawCtx, error: anyhow::Error) {
+    pub fn display_error(ctx: &mut DrawCtx, error: anyhow::Error) {
         error!("{:?}", error);
         let error_text = format!("Geopard experienced an error:\n {:?}", error);
         ctx.insert_paragraph(&mut ctx.text_buffer.end_iter(), &error_text);

@@ -230,9 +230,6 @@ impl Window {
         animation.play();
         imp.progress_animation.replace(Some(animation));
     }
-    fn open_url(&self, url: Url) {
-        self.current_tab().spawn_open_url(url);
-    }
     fn back(&self) {
         match self.current_tab().back() {
             Err(e) => warn!("{}", e),
@@ -253,14 +250,17 @@ impl Window {
     fn open_omni(&self, v: &str) {
         let url = Url::parse(v);
         match url {
-            Ok(url) => self.open_url(url),
-            Err(e) => error!("Failed to parse url: {:?}", e),
+            Ok(url) => self.current_tab().spawn_open_url(url),
+            Err(e) => error!(
+                "Failed to parse url (will trigger a search in the future): {:?}",
+                e
+            ),
         }
     }
     fn open_url_str(&self, v: &str) {
         let url = Url::parse(v);
         match url {
-            Ok(url) => self.open_url(url),
+            Ok(url) => self.current_tab().spawn_open_url(url),
             Err(e) => error!("Failed to parse url: {:?}", e),
         }
     }
@@ -274,10 +274,6 @@ impl Window {
     }
     fn set_clipboard(&self, v: &str) {
         gdk::Display::default().unwrap().clipboard().set_text(v);
-    }
-    fn tab_page(&self, tab: &Tab) -> adw::TabPage {
-        let imp = self.imp();
-        imp.tab_view.page(tab)
     }
     fn inner_tab(&self, tab: &adw::TabPage) -> Tab {
         tab.child().downcast().unwrap()
