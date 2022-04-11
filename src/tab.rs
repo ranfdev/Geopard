@@ -282,7 +282,6 @@ impl Tab {
         ctx.insert_paragraph(&mut ctx.text_buffer.end_iter(), &error_text);
     }
     pub fn handle_click(&self, x: f64, y: f64) -> Result<()> {
-        dbg!(x, y);
         let imp = self.imp();
         let draw_ctx = imp.draw_ctx.borrow();
         let text_view = &draw_ctx.as_ref().unwrap().text_view;
@@ -329,7 +328,6 @@ impl Tab {
             .as_ref()
             .unwrap()
             .connect_pressed(move |_ctrl, _n_press, x, y| {
-                info!("oke");
                 if let Err(e) = this.handle_right_click(x, y) {
                     info!("{}", e);
                 };

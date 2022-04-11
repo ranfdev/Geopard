@@ -129,11 +129,8 @@ impl DrawCtx {
     pub fn insert_quote(&self, text_iter: &mut gtk::TextIter, line: &str) {
         let start = text_iter.offset();
         self.text_buffer.insert(text_iter, line);
-        self.text_buffer.apply_tag_by_name(
-            "q",
-            &self.text_buffer.iter_at_offset(start),
-            text_iter,
-        );
+        self.text_buffer
+            .apply_tag_by_name("q", &self.text_buffer.iter_at_offset(start), text_iter);
     }
 
     pub fn insert_preformatted(&self, text_iter: &mut gtk::TextIter, line: &str) {
@@ -168,7 +165,6 @@ impl DrawCtx {
 
         let text_view = self.text_view.clone();
         self.text_view.connect_width_request_notify(move |_| {
-            dbg!("ok");
             scrolled_window.set_width_request(text_view.allocated_width() - MARGIN * 2)
         });
         self.text_buffer.insert(text_iter, "\n");
@@ -176,11 +172,8 @@ impl DrawCtx {
     pub fn insert_paragraph(&self, text_iter: &mut gtk::TextIter, line: &str) {
         let start = text_iter.offset();
         self.text_buffer.insert(text_iter, line);
-        self.text_buffer.apply_tag_by_name(
-            "p",
-            &self.text_buffer.iter_at_offset(start),
-            text_iter,
-        );
+        self.text_buffer
+            .apply_tag_by_name("p", &self.text_buffer.iter_at_offset(start), text_iter);
     }
     pub fn insert_link(
         &mut self,
