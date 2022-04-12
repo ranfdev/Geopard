@@ -74,20 +74,7 @@ impl Window {
         let menu_button = gtk::MenuButton::new();
         menu_button.set_primary(true);
         menu_button.set_icon_name("open-menu");
-        let menu_model = gio::Menu::new();
-
-        let menu_model_bookmarks = gio::Menu::new();
-        menu_model_bookmarks.insert(0, Some("All Bookmarks"), Some("win.show-bookmarks"));
-        menu_model_bookmarks.insert(1, Some("Add Bookmark"), Some("win.bookmark-current"));
-        menu_model.insert_section(0, None, &menu_model_bookmarks);
-
-        let menu_model_about = gio::Menu::new();
-        menu_model_about.insert(1, Some("Keyboard Shortcuts"), Some("win.shortcuts"));
-        menu_model_about.insert(2, Some("About"), Some("win.about"));
-        menu_model_about.insert(3, Some("Donate 💝"), Some("win.donate"));
-        menu_model.insert_section(1, None, &menu_model_about);
-
-        menu_button.set_menu_model(Some(&menu_model));
+        menu_button.set_menu_model(Some(&Self::build_menu_common()));
 
         header_bar.pack_start(&imp.back_btn);
         header_bar.pack_start(&imp.add_tab_btn);
@@ -106,14 +93,31 @@ impl Window {
         let overlay = gtk::Overlay::new();
         let content_view = gtk::Box::new(gtk::Orientation::Vertical, 0);
         overlay.set_child(Some(&content_view));
+
+        imp.tab_bar.set_view(Some(&imp.tab_view));
+        content_view.append(&imp.tab_bar);
+        content_view.append(&imp.tab_view);
+
         imp.progress_bar.add_css_class("osd");
         imp.progress_bar.set_valign(gtk::Align::Start);
         overlay.add_overlay(&imp.progress_bar);
         content.append(&overlay);
 
-        imp.tab_bar.set_view(Some(&imp.tab_view));
-        content_view.append(&imp.tab_bar);
-        content_view.append(&imp.tab_view);
+        let bottom_bar = adw::HeaderBar::new();
+        let bottom_entry = gtk::SearchEntry::new();
+        bottom_entry.set_hexpand(true);
+        bottom_bar.set_title_widget(Some(&bottom_entry));
+        let bottom_menu = gtk::MenuButton::new();
+        let bottom_menu_model = Self::build_menu_common();
+        let section = gio::Menu::new();
+        section.append(Some("Back"), Some("win.back"));
+        section.append(Some("New Tab"), Some("win.new-tab"));
+        bottom_menu_model.append_section(None, &section);
+        bottom_menu.set_menu_model(Some(&bottom_menu_model));
+        bottom_menu.set_icon_name("open-menu");
+        bottom_bar.pack_end(&bottom_menu);
+
+        content.append(&bottom_bar);
 
         this.set_default_size(800, 600);
         this.set_content(Some(&content));
@@ -124,6 +128,21 @@ impl Window {
         this
     }
 
+    fn build_menu_common() -> gio::Menu {
+        let menu_model = gio::Menu::new();
+
+        let menu_model_bookmarks = gio::Menu::new();
+        menu_model_bookmarks.append(Some("All Bookmarks"), Some("win.show-bookmarks"));
+        menu_model_bookmarks.append(Some("Add Bookmark"), Some("win.bookmark-current"));
+        menu_model.insert_section(0, None, &menu_model_bookmarks);
+
+        let menu_model_about = gio::Menu::new();
+        menu_model_about.append(Some("Keyboard Shortcuts"), Some("win.shortcuts"));
+        menu_model_about.append(Some("About"), Some("win.about"));
+        menu_model_about.append(Some("Donate 💝"), Some("win.donate"));
+        menu_model.insert_section(1, None, &menu_model_about);
+        menu_model
+    }
     fn setup_actions(&self) {
         self_action!(self, "back", back);
         self_action!(self, "new-tab", add_tab_focused);
