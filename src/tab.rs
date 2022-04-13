@@ -4,6 +4,7 @@ use futures::future::RemoteHandle;
 use futures::io::BufReader;
 use futures::prelude::*;
 use futures::task::LocalSpawnExt;
+use glib_macros::Properties;
 use gtk::gdk::prelude::*;
 use gtk::gio;
 use gtk::glib;
@@ -22,7 +23,7 @@ use crate::gemini;
 pub mod imp {
 
     pub use super::*;
-    #[derive(Debug, Default)]
+    #[derive(Debug, Default, Properties)]
     pub struct Tab {
         pub(crate) gemini_client: RefCell<gemini::Client>,
         pub(crate) draw_ctx: RefCell<Option<DrawCtx>>,
@@ -32,6 +33,12 @@ pub mod imp {
         pub(crate) left_click_ctrl: RefCell<Option<gtk::GestureClick>>,
         pub(crate) right_click_ctrl: RefCell<Option<gtk::GestureClick>>,
         pub(crate) req_handle: RefCell<Option<RemoteHandle<()>>>,
+        #[prop(get, set)]
+        pub(crate) progress: RefCell<f64>,
+        #[prop(get)]
+        pub(crate) title: RefCell<String>,
+        #[prop(get)]
+        pub(crate) url: RefCell<String>,
     }
 
     #[glib::object_subclass]
@@ -72,34 +79,32 @@ pub mod imp {
 
         fn signals() -> &'static [glib::subclass::Signal] {
             static SIGNALS: Lazy<Vec<glib::subclass::Signal>> = Lazy::new(|| {
-                vec![
-                    glib::subclass::Signal::builder(
-                        "open-background-tab",
-                        &[],
-                        <()>::static_type().into(),
-                    )
-                    .build(),
-                    glib::subclass::Signal::builder(
-                        "title-changed",
-                        &[String::static_type().into()],
-                        <()>::static_type().into(),
-                    )
-                    .build(),
-                    glib::subclass::Signal::builder(
-                        "url-changed",
-                        &[String::static_type().into()],
-                        <()>::static_type().into(),
-                    )
-                    .build(),
-                    glib::subclass::Signal::builder(
-                        "progress-changed",
-                        &[f64::static_type().into()],
-                        <()>::static_type().into(),
-                    )
-                    .build(),
-                ]
+                vec![glib::subclass::Signal::builder(
+                    "open-background-tab",
+                    &[],
+                    <()>::static_type().into(),
+                )
+                .build()]
             });
             SIGNALS.as_ref()
+        }
+
+        fn properties() -> &'static [glib::ParamSpec] {
+            Self::derived_properties()
+        }
+
+        fn set_property(
+            &self,
+            obj: &Self::Type,
+            id: usize,
+            value: &glib::Value,
+            pspec: &glib::ParamSpec,
+        ) {
+            self.derived_set_property(obj, id, value, pspec).unwrap()
+        }
+
+        fn property(&self, obj: &Self::Type, id: usize, pspec: &glib::ParamSpec) -> glib::Value {
+            self.derived_property(obj, id, pspec).unwrap()
         }
     }
     impl WidgetImpl for Tab {}
@@ -108,6 +113,7 @@ glib::wrapper! {
     pub struct Tab(ObjectSubclass<imp::Tab>)
         @extends gtk::Widget;
 }
+pub use imp::TabPropertiesExt;
 impl Tab {
     pub fn new(config: crate::config::Config) -> Self {
         let this: Self = glib::Object::new(&[]).unwrap();
@@ -202,7 +208,7 @@ impl Tab {
     pub fn spawn_open_url(&self, url: Url) {
         let imp = self.imp();
 
-        self.emit_by_name_with_values("progress-changed", &[0.0.to_value()]);
+        self.set_progress(0.0);
         let scroll_progress = imp.scroll_win.vadjustment().value();
         let mut history = imp.history.borrow_mut();
         if let Some(item) = history.last_mut() {
@@ -229,11 +235,13 @@ impl Tab {
                     Self::display_error(&mut req_ctx.draw_ctx, e);
                 }
             }
-            this.emit_by_name_with_values("title-changed", &[url.to_string().to_value()]);
-            this.emit_by_name_with_values("url-changed", &[url.to_string().to_value()]);
-            this.emit_by_name_with_values("progress-changed", &[1.0.to_value()]);
+            *this.imp().title.borrow_mut() = url.to_string();
+            this.notify("title");
+            *this.imp().url.borrow_mut() = url.to_string();
+            this.notify("url");
+            this.set_progress(1.0);
         };
-        self.emit_by_name_with_values("progress-changed", &[0.3.to_value()]);
+        self.set_progress(0.3);
         self.spawn_request(fut);
     }
     fn spawn_open_history(&self, item: HistoryItem) {
@@ -253,8 +261,12 @@ impl Tab {
 
         let mut draw_ctx = imp.draw_ctx.borrow().clone().unwrap();
         let this = self.clone();
-        self.emit_by_name_with_values("title-changed", &[url.as_str().to_value()]);
-        self.emit_by_name_with_values("url-changed", &[url.as_str().to_value()]);
+        *self.imp().title.borrow_mut() = url.to_string();
+        self.notify("title");
+
+        *self.imp().url.borrow_mut() = url.to_string();
+        self.notify("url");
+
         let fut = async move {
             let buf = BufReader::new(cache.as_slice());
             draw_ctx.clear();

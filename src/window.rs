@@ -3,23 +3,26 @@ use adw::subclass::application_window::AdwApplicationWindowImpl;
 use anyhow::Context;
 use futures::prelude::*;
 use glib::clone;
+use glib_macros::Properties;
 use gtk::gdk;
 use gtk::gio;
 use gtk::glib;
 use gtk::subclass::prelude::*;
 use log::{error, info, warn};
 use std::cell::RefCell;
+use std::marker::PhantomData;
 use url::Url;
 
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
 use crate::config;
-use crate::tab::Tab;
+use crate::tab::{Tab, TabPropertiesExt};
 
 pub mod imp {
     use super::*;
-    #[derive(Debug, Default)]
+    #[derive(Debug, Default, Properties)]
     pub struct Window {
         pub(crate) url_bar: gtk::SearchEntry,
+        pub(crate) bottom_entry: gtk::SearchEntry,
         pub(crate) progress_bar: gtk::ProgressBar,
         pub(crate) back_btn: gtk::Button,
         pub(crate) tab_bar: adw::TabBar,
@@ -27,6 +30,43 @@ pub mod imp {
         pub(crate) config: RefCell<config::Config>,
         pub(crate) add_tab_btn: gtk::Button,
         pub(crate) progress_animation: RefCell<Option<adw::SpringAnimation>>,
+        pub(crate) binded_tab_properties: RefCell<Vec<glib::Binding>>,
+        #[prop(get, set)]
+        pub(crate) url: RefCell<String>,
+        #[prop(get = Self::progress_animated, set = Self::set_progress_animated)]
+        pub(crate) progress: PhantomData<f64>,
+    }
+
+    impl Window {
+        fn progress_animated(&self) -> f64 {
+            self.progress_animation
+                .borrow()
+                .as_ref()
+                .map(|a| a.value_to())
+                .unwrap_or(0.0)
+        }
+        fn set_progress_animated(&self, progress: f64) {
+            if let Some(animation) = self.progress_animation.borrow().as_ref() {
+                animation.pause()
+            }
+            if progress == 0.0 {
+                self.progress_bar.set_fraction(0.0);
+                return;
+            }
+            let progress_bar = self.progress_bar.clone();
+            let animation = adw::SpringAnimation::new(
+                &self.progress_bar,
+                self.progress_bar.fraction(),
+                progress,
+                &adw::SpringParams::new(1.0, 1.0, 100.0),
+                &adw::CallbackAnimationTarget::new(Some(Box::new(move |v| {
+                    progress_bar.set_fraction(v);
+                    progress_bar.set_opacity(1.0 - v);
+                }))),
+            );
+            animation.play();
+            self.progress_animation.replace(Some(animation));
+        }
     }
 
     #[glib::object_subclass]
@@ -36,7 +76,25 @@ pub mod imp {
         type ParentType = adw::ApplicationWindow;
     }
 
-    impl ObjectImpl for Window {}
+    impl ObjectImpl for Window {
+        fn properties() -> &'static [glib::ParamSpec] {
+            Self::derived_properties()
+        }
+
+        fn set_property(
+            &self,
+            obj: &Self::Type,
+            id: usize,
+            value: &glib::Value,
+            pspec: &glib::ParamSpec,
+        ) {
+            Self::derived_set_property(self, obj, id, value, pspec).unwrap();
+        }
+
+        fn property(&self, obj: &Self::Type, id: usize, pspec: &glib::ParamSpec) -> glib::Value {
+            Self::derived_property(self, obj, id, pspec).unwrap()
+        }
+    }
     impl WidgetImpl for Window {}
     impl WindowImpl for Window {}
     impl ApplicationWindowImpl for Window {}
@@ -72,7 +130,6 @@ impl Window {
         imp.add_tab_btn.set_icon_name("tab-new-symbolic");
 
         let menu_button = gtk::MenuButton::new();
-        menu_button.set_primary(true);
         menu_button.set_icon_name("open-menu");
         menu_button.set_menu_model(Some(&Self::build_menu_common()));
 
@@ -90,12 +147,13 @@ impl Window {
 
         content.append(&header_bar);
 
+        imp.tab_bar.set_view(Some(&imp.tab_view));
+        content.append(&imp.tab_bar);
+
         let overlay = gtk::Overlay::new();
         let content_view = gtk::Box::new(gtk::Orientation::Vertical, 0);
         overlay.set_child(Some(&content_view));
 
-        imp.tab_bar.set_view(Some(&imp.tab_view));
-        content_view.append(&imp.tab_bar);
         content_view.append(&imp.tab_view);
 
         imp.progress_bar.add_css_class("osd");
@@ -104,9 +162,11 @@ impl Window {
         content.append(&overlay);
 
         let bottom_bar = adw::HeaderBar::new();
-        let bottom_entry = gtk::SearchEntry::new();
-        bottom_entry.set_hexpand(true);
-        bottom_bar.set_title_widget(Some(&bottom_entry));
+        bottom_bar.set_show_end_title_buttons(false);
+        bottom_bar.set_show_start_title_buttons(false);
+
+        imp.bottom_entry.set_hexpand(true);
+        bottom_bar.set_title_widget(Some(&imp.bottom_entry));
         let bottom_menu = gtk::MenuButton::new();
         let bottom_menu_model = Self::build_menu_common();
         let section = gio::Menu::new();
@@ -182,31 +242,28 @@ impl Window {
     fn add_tab(&self) -> adw::TabPage {
         let imp = self.imp();
         let tab = Tab::new(imp.config.borrow().clone());
-        let tab_view = imp.tab_view.clone();
-        tab.connect_local("title-changed", false, move |values| {
-            let title: String = values[1].get().unwrap();
-            let gtab: Tab = values[0].get().unwrap();
-            let page = tab_view.page(&gtab);
-            page.set_title(&title);
-            None
+        let page = imp.tab_view.append(&tab);
+        tab.bind_property("title", &page, "title").build();
+        page
+    }
+    fn page_switched(&self, _tab_view: &adw::TabView) {
+        let imp = self.imp();
+        let mut btp = imp.binded_tab_properties.borrow_mut();
+        imp.tab_view.selected_page().map(|page| {
+            let tab = self.inner_tab(&page);
+            btp.drain(0..).for_each(|binding| binding.unbind());
+            btp.extend([
+                tab.bind_property("url", &imp.url_bar, "text")
+                    .flags(glib::BindingFlags::SYNC_CREATE)
+                    .build(),
+                tab.bind_property("url", &imp.bottom_entry, "text")
+                    .flags(glib::BindingFlags::SYNC_CREATE)
+                    .build(),
+                tab.bind_property("progress", self, "progress")
+                    .flags(glib::BindingFlags::SYNC_CREATE)
+                    .build(),
+            ]);
         });
-        let url_bar = imp.url_bar.clone();
-        tab.connect_local("url-changed", false, move |values| {
-            let title: String = values[1].get().unwrap();
-            url_bar.set_text(&title);
-            None
-        });
-        tab.connect_local(
-            "progress-changed",
-            false,
-            clone!(@weak self as this  => @default-panic, move |values| {
-                let p: f64 = values[1].get().unwrap();
-                this.set_progress(p);
-                None
-            }),
-        );
-
-        imp.tab_view.append(&tab)
     }
     fn add_tab_focused(&self) {
         let imp = self.imp();
@@ -248,30 +305,6 @@ impl Window {
             .child()
             .downcast()
             .unwrap()
-    }
-    fn set_progress(&self, progress: f64) {
-        let imp = self.imp();
-        info!("progress {}", progress);
-        if let Some(animation) = imp.progress_animation.borrow().as_ref() {
-            animation.pause();
-        }
-        if progress == 0.0 {
-            imp.progress_bar.set_fraction(0.0);
-            return;
-        }
-        let progress_bar = imp.progress_bar.clone();
-        let animation = adw::SpringAnimation::new(
-            &imp.progress_bar,
-            imp.progress_bar.fraction(),
-            progress,
-            &adw::SpringParams::new(1.0, 1.0, 100.0),
-            &adw::CallbackAnimationTarget::new(Some(Box::new(move |v| {
-                progress_bar.set_fraction(v);
-                progress_bar.set_opacity(1.0 - v);
-            }))),
-        );
-        animation.play();
-        imp.progress_animation.replace(Some(animation));
     }
     fn back(&self) {
         match self.current_tab().back() {
@@ -375,6 +408,9 @@ impl Window {
         });
         imp.back_btn.set_action_name(Some("win.back"));
         imp.add_tab_btn.set_action_name(Some("win.new-tab"));
+        imp.tab_view.connect_selected_page_notify(
+            clone!(@weak self as this => move |tab_view| this.page_switched(tab_view)),
+        );
     }
     fn present_shortcuts(&self) {
         let builder = gtk::Builder::from_string(
