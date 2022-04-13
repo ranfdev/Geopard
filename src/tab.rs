@@ -209,6 +209,11 @@ impl Tab {
         let imp = self.imp();
 
         self.set_progress(0.0);
+        *imp.title.borrow_mut() = url.to_string();
+        self.notify("title");
+        *imp.url.borrow_mut() = url.to_string();
+        self.notify("url");
+
         let scroll_progress = imp.scroll_win.vadjustment().value();
         let mut history = imp.history.borrow_mut();
         if let Some(item) = history.last_mut() {
@@ -235,10 +240,6 @@ impl Tab {
                     Self::display_error(&mut req_ctx.draw_ctx, e);
                 }
             }
-            *this.imp().title.borrow_mut() = url.to_string();
-            this.notify("title");
-            *this.imp().url.borrow_mut() = url.to_string();
-            this.notify("url");
             this.set_progress(1.0);
         };
         self.set_progress(0.3);
