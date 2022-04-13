@@ -22,9 +22,15 @@ pub mod imp {
     #[derive(Debug, Default, Properties)]
     pub struct Window {
         pub(crate) url_bar: gtk::SearchEntry,
+        pub(crate) bottom_bar: adw::HeaderBar,
+        pub(crate) bottom_bar_revealer: gtk::Revealer,
         pub(crate) bottom_entry: gtk::SearchEntry,
+        pub(crate) flat_header: adw::HeaderBar,
+        pub(crate) window_title: adw::WindowTitle,
+        pub(crate) squeezer: adw::Squeezer,
         pub(crate) progress_bar: gtk::ProgressBar,
         pub(crate) back_btn: gtk::Button,
+        pub(crate) menu_btn: gtk::MenuButton,
         pub(crate) tab_bar: adw::TabBar,
         pub(crate) tab_view: adw::TabView,
         pub(crate) config: RefCell<config::Config>,
@@ -123,20 +129,21 @@ impl Window {
         imp.config.replace(config);
 
         let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        let header_bar = gtk::HeaderBar::new();
-        header_bar.set_show_title_buttons(true);
+
+        let header_bar = adw::HeaderBar::new();
 
         imp.back_btn.set_icon_name("go-previous-symbolic");
         imp.add_tab_btn.set_icon_name("tab-new-symbolic");
 
-        let menu_button = gtk::MenuButton::new();
-        menu_button.set_icon_name("open-menu");
-        menu_button.set_menu_model(Some(&Self::build_menu_common()));
+        imp.menu_btn.set_icon_name("open-menu");
+        imp.menu_btn
+            .set_menu_model(Some(&Self::build_menu_common()));
 
         header_bar.pack_start(&imp.back_btn);
         header_bar.pack_start(&imp.add_tab_btn);
-        header_bar.pack_end(&menu_button);
+        header_bar.pack_end(&imp.menu_btn);
 
+        imp.url_bar.set_width_request(360);
         imp.url_bar.set_hexpand(true);
 
         let bar_clamp = adw::Clamp::new();
@@ -145,7 +152,15 @@ impl Window {
         bar_clamp.set_tightening_threshold(720);
         header_bar.set_title_widget(Some(&bar_clamp));
 
-        content.append(&header_bar);
+        imp.squeezer
+            .set_transition_type(adw::SqueezerTransitionType::Crossfade);
+
+        imp.window_title.set_title("Geopard");
+        imp.flat_header.set_title_widget(Some(&imp.window_title));
+        imp.squeezer.add(&header_bar);
+        imp.squeezer.add(&imp.flat_header);
+
+        content.append(&imp.squeezer);
 
         imp.tab_bar.set_view(Some(&imp.tab_view));
         content.append(&imp.tab_bar);
@@ -161,13 +176,11 @@ impl Window {
         overlay.add_overlay(&imp.progress_bar);
         content.append(&overlay);
 
-        let bottom_bar = adw::HeaderBar::new();
-        bottom_bar.set_show_end_title_buttons(false);
-        bottom_bar.set_show_start_title_buttons(false);
+        imp.bottom_bar.set_show_end_title_buttons(false);
+        imp.bottom_bar.set_show_start_title_buttons(false);
 
-        imp.bottom_entry.set_hexpand(true);
-        bottom_bar.set_title_widget(Some(&imp.bottom_entry));
         let bottom_menu = gtk::MenuButton::new();
+        bottom_menu.add_css_class("flat");
         let bottom_menu_model = Self::build_menu_common();
         let section = gio::Menu::new();
         section.append(Some("Back"), Some("win.back"));
@@ -175,12 +188,22 @@ impl Window {
         bottom_menu_model.append_section(None, &section);
         bottom_menu.set_menu_model(Some(&bottom_menu_model));
         bottom_menu.set_icon_name("open-menu");
-        bottom_bar.pack_end(&bottom_menu);
 
-        content.append(&bottom_bar);
+        imp.bottom_entry.set_hexpand(true);
+
+        let bar_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        bar_box.set_hexpand(true);
+        bar_box.append(&imp.bottom_entry);
+        bar_box.append(&bottom_menu);
+        imp.bottom_bar.set_title_widget(Some(&bar_box));
+
+        imp.bottom_bar_revealer.set_child(Some(&imp.bottom_bar));
+
+        content.append(&imp.bottom_bar_revealer);
 
         this.set_default_size(800, 600);
         this.set_content(Some(&content));
+        this.squeezer_changed();
 
         this.bind_signals();
         this.setup_actions();
@@ -246,10 +269,10 @@ impl Window {
         tab.bind_property("title", &page, "title").build();
         page
     }
-    fn page_switched(&self, _tab_view: &adw::TabView) {
+    fn page_switched(&self, tab_view: &adw::TabView) {
         let imp = self.imp();
         let mut btp = imp.binded_tab_properties.borrow_mut();
-        imp.tab_view.selected_page().map(|page| {
+        tab_view.selected_page().map(|page| {
             let tab = self.inner_tab(&page);
             btp.drain(0..).for_each(|binding| binding.unbind());
             btp.extend([
@@ -399,6 +422,18 @@ impl Window {
     //    );
     //}
 
+    fn squeezer_changed(&self) {
+        let imp = self.imp();
+        let title_visible = imp
+            .squeezer
+            .visible_child()
+            .map(|child| child.downcast().ok())
+            .flatten()
+            .map(|w: adw::HeaderBar| w == self.imp().flat_header)
+            .unwrap_or(false);
+
+        imp.bottom_bar_revealer.set_reveal_child(title_visible);
+    }
     fn bind_signals(&self) {
         let imp = self.imp();
         imp.url_bar.connect_activate(|url_bar| {
@@ -410,6 +445,12 @@ impl Window {
         imp.add_tab_btn.set_action_name(Some("win.new-tab"));
         imp.tab_view.connect_selected_page_notify(
             clone!(@weak self as this => move |tab_view| this.page_switched(tab_view)),
+        );
+        let is_window_title_visible = |_: &glib::Binding, child: &glib::Value| {
+            dbg!(&child);
+        };
+        imp.squeezer.connect_visible_child_notify(
+            clone!(@weak self as this => move |_| this.squeezer_changed()),
         );
     }
     fn present_shortcuts(&self) {
