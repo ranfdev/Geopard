@@ -16,25 +16,20 @@ use url::Url;
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
 use crate::config;
 use crate::tab::{Tab, TabPropertiesExt};
+use crate::{self_action, view};
 
 pub mod imp {
     use super::*;
     #[derive(Debug, Default, Properties)]
     pub struct Window {
         pub(crate) url_bar: gtk::SearchEntry,
-        pub(crate) bottom_bar: adw::HeaderBar,
         pub(crate) bottom_bar_revealer: gtk::Revealer,
         pub(crate) bottom_entry: gtk::SearchEntry,
-        pub(crate) flat_header: adw::HeaderBar,
-        pub(crate) window_title: adw::WindowTitle,
+        pub(crate) header_small: adw::HeaderBar,
         pub(crate) squeezer: adw::Squeezer,
         pub(crate) progress_bar: gtk::ProgressBar,
-        pub(crate) back_btn: gtk::Button,
-        pub(crate) menu_btn: gtk::MenuButton,
-        pub(crate) tab_bar: adw::TabBar,
         pub(crate) tab_view: adw::TabView,
         pub(crate) config: RefCell<config::Config>,
-        pub(crate) add_tab_btn: gtk::Button,
         pub(crate) progress_animation: RefCell<Option<adw::SpringAnimation>>,
         pub(crate) binded_tab_properties: RefCell<Vec<glib::Binding>>,
         #[prop(get, set)]
@@ -112,118 +107,120 @@ glib::wrapper! {
     @implements gio::ActionMap, gio::ActionGroup;
 }
 
-macro_rules! self_action {
-    ($self:ident, $name:literal, $method:ident) => {
-        {
-            let this = &$self;
-            let action = gio::SimpleAction::new($name, None);
-            action.connect_activate(clone!(@weak this => move |_,_| this.$method()));
-            $self.add_action(&action);
-        }
-    }
-}
 impl Window {
     pub fn new(app: &adw::Application, config: config::Config) -> Self {
         let this: Self = glib::Object::new(&[("application", app)]).unwrap();
         let imp = this.imp();
         imp.config.replace(config);
 
-        let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
-
-        let header_bar = adw::HeaderBar::new();
-
-        imp.back_btn.set_icon_name("go-previous-symbolic");
-        imp.add_tab_btn.set_icon_name("tab-new-symbolic");
-
-        imp.menu_btn.set_icon_name("open-menu");
-        imp.menu_btn
-            .set_menu_model(Some(&Self::build_menu_common()));
-
-        header_bar.pack_start(&imp.back_btn);
-        header_bar.pack_start(&imp.add_tab_btn);
-        header_bar.pack_end(&imp.menu_btn);
-
         imp.url_bar.set_width_request(360);
         imp.url_bar.set_hexpand(true);
-
-        let bar_clamp = adw::Clamp::new();
-        bar_clamp.set_child(Some(&imp.url_bar));
-        bar_clamp.set_maximum_size(768);
-        bar_clamp.set_tightening_threshold(720);
-        header_bar.set_title_widget(Some(&bar_clamp));
-
-        imp.squeezer
-            .set_transition_type(adw::SqueezerTransitionType::Crossfade);
-
-        imp.window_title.set_title("Geopard");
-        imp.flat_header.set_title_widget(Some(&imp.window_title));
-        imp.squeezer.add(&header_bar);
-        imp.squeezer.add(&imp.flat_header);
-
-        content.append(&imp.squeezer);
-
-        imp.tab_bar.set_view(Some(&imp.tab_view));
-        content.append(&imp.tab_bar);
-
-        let overlay = gtk::Overlay::new();
-        let content_view = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        overlay.set_child(Some(&content_view));
-
-        content_view.append(&imp.tab_view);
-
         imp.progress_bar.add_css_class("osd");
         imp.progress_bar.set_valign(gtk::Align::Start);
-        overlay.add_overlay(&imp.progress_bar);
-        content.append(&overlay);
 
-        imp.bottom_bar.set_show_end_title_buttons(false);
-        imp.bottom_bar.set_show_start_title_buttons(false);
-
-        let bottom_menu = gtk::MenuButton::new();
-        bottom_menu.add_css_class("flat");
-        let bottom_menu_model = Self::build_menu_common();
-        let section = gio::Menu::new();
-        section.append(Some("Back"), Some("win.back"));
-        section.append(Some("New Tab"), Some("win.new-tab"));
-        bottom_menu_model.append_section(None, &section);
-        bottom_menu.set_menu_model(Some(&bottom_menu_model));
-        bottom_menu.set_icon_name("open-menu");
+        view!(
+            header_small = (imp.header_small.clone()) {
+                set_title_widget: Some(&(w = adw::WindowTitle {
+                    set_title: "Geopard",
+                })),
+            }
+            header_bar = adw::HeaderBar {
+                pack_start: &(b = gtk::Button {
+                    set_icon_name: "go-previous-symbolic",
+                    set_action_name: Some("win.back"),
+                }),
+                pack_start: &(b = gtk::Button {
+                    set_icon_name: "tab-new-symbolic",
+                    set_action_name: Some("win.new-tab"),
+                }),
+                pack_end: &(b = gtk::MenuButton {
+                    set_icon_name: "open-menu",
+                    set_menu_model: Some(&Self::build_menu_common()),
+                }),
+                set_title_widget: Some(&(c = adw::Clamp {
+                    set_child: Some(&(se = (imp.url_bar.clone()) {
+                        set_hexpand: true,
+                        connect_activate: |url_bar| {
+                            url_bar
+                                .activate_action("win.open-omni", Some(&url_bar.text().to_variant()))
+                                .unwrap();
+                        },
+                    })),
+                    set_maximum_size: 768,
+                    set_tightening_threshold: 720,
+                })),
+            }
+            mobile_section = gio::Menu {
+                append(Some("Back"), Some("win.back")),
+                append(Some("New Tab"), Some("win.new-tab")),
+            }
+            bottom_bar = adw::HeaderBar {
+                set_show_end_title_buttons: false,
+                set_show_start_title_buttons: false,
+                pack_start: &(b = gtk::Button {
+                    set_icon_name: "go-previous-symbolic",
+                    set_action_name: Some("win.back"),
+                }),
+                pack_start: &(b = gtk::Button {
+                    set_icon_name: "go-next-symbolic",
+                    set_action_name: Some("win.next"),
+                }),
+                pack_end: &(b = gtk::Button {
+                    set_icon_name: "tab-new-symbolic",
+                    set_action_name: Some("win.new-tab"),
+                }),
+            }
+            tab_view = (imp.tab_view.clone()) {
+                connect_selected_page_notify:
+                    clone!(@weak this => move |tab_view| this.page_switched(tab_view)),
+            }
+            content = gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                append: &(squeezer = (imp.squeezer.clone()) {
+                    add: &header_bar,
+                    add: &header_small,
+                    connect_visible_child_notify:
+                        clone!(@weak this => move |_| this.squeezer_changed()),
+                }),
+                append: &(tab_bar = adw::TabBar {
+                    set_view: Some(&tab_view),
+                }),
+                append: &(overlay = gtk::Overlay {
+                    set_child: Some(&tab_view),
+                    add_overlay: &imp.progress_bar,
+                }),
+                append: &imp.bottom_bar_revealer,
+            }
+        );
 
         imp.bottom_entry.set_hexpand(true);
-
-        let bar_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        bar_box.set_hexpand(true);
-        bar_box.append(&imp.bottom_entry);
-        bar_box.append(&bottom_menu);
-        imp.bottom_bar.set_title_widget(Some(&bar_box));
-
-        imp.bottom_bar_revealer.set_child(Some(&imp.bottom_bar));
-
-        content.append(&imp.bottom_bar_revealer);
+        imp.bottom_bar_revealer.set_child(Some(&bottom_bar));
 
         this.set_default_size(800, 600);
         this.set_content(Some(&content));
         this.squeezer_changed();
 
-        this.bind_signals();
         this.setup_actions();
         this.open_in_new_tab(bookmarks_url().as_str());
         this
     }
 
     fn build_menu_common() -> gio::Menu {
-        let menu_model = gio::Menu::new();
-
-        let menu_model_bookmarks = gio::Menu::new();
-        menu_model_bookmarks.append(Some("All Bookmarks"), Some("win.show-bookmarks"));
-        menu_model_bookmarks.append(Some("Add Bookmark"), Some("win.bookmark-current"));
-        menu_model.insert_section(0, None, &menu_model_bookmarks);
-
-        let menu_model_about = gio::Menu::new();
-        menu_model_about.append(Some("Keyboard Shortcuts"), Some("win.shortcuts"));
-        menu_model_about.append(Some("About"), Some("win.about"));
-        menu_model_about.append(Some("Donate 💝"), Some("win.donate"));
-        menu_model.insert_section(1, None, &menu_model_about);
+        view!(
+            bookmarks = gio::Menu {
+                append(Some("All Bookmarks"), Some("win.show-bookmarks")),
+                append(Some("Add Bookmark"), Some("win.bookmark-current")),
+            }
+            about = gio::Menu {
+                append(Some("Keyboard Shortcuts"), Some("win.shortcuts")),
+                append(Some("About"), Some("win.about")),
+                append(Some("Donate 💝"), Some("win.donate")),
+            }
+            menu_model = gio::Menu {
+                append_section(None, &bookmarks),
+                append_section(None, &about),
+            }
+        );
         menu_model
     }
     fn setup_actions(&self) {
@@ -429,29 +426,10 @@ impl Window {
             .visible_child()
             .map(|child| child.downcast().ok())
             .flatten()
-            .map(|w: adw::HeaderBar| w == self.imp().flat_header)
+            .map(|w: adw::HeaderBar| w == self.imp().header_small)
             .unwrap_or(false);
 
         imp.bottom_bar_revealer.set_reveal_child(title_visible);
-    }
-    fn bind_signals(&self) {
-        let imp = self.imp();
-        imp.url_bar.connect_activate(|url_bar| {
-            url_bar
-                .activate_action("win.open-omni", Some(&url_bar.text().to_variant()))
-                .unwrap();
-        });
-        imp.back_btn.set_action_name(Some("win.back"));
-        imp.add_tab_btn.set_action_name(Some("win.new-tab"));
-        imp.tab_view.connect_selected_page_notify(
-            clone!(@weak self as this => move |tab_view| this.page_switched(tab_view)),
-        );
-        let is_window_title_visible = |_: &glib::Binding, child: &glib::Value| {
-            dbg!(&child);
-        };
-        imp.squeezer.connect_visible_child_notify(
-            clone!(@weak self as this => move |_| this.squeezer_changed()),
-        );
     }
     fn present_shortcuts(&self) {
         let builder = gtk::Builder::from_string(

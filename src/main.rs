@@ -14,6 +14,7 @@ mod common;
 mod config;
 mod draw_ctx;
 mod gemini;
+mod macros;
 mod tab;
 mod window;
 
