@@ -23,8 +23,8 @@ pub mod imp {
     #[derive(Debug, Default, Properties)]
     pub struct Window {
         pub(crate) url_bar: gtk::SearchEntry,
+        pub(crate) small_url_bar: gtk::SearchEntry,
         pub(crate) bottom_bar_revealer: gtk::Revealer,
-        pub(crate) bottom_entry: gtk::SearchEntry,
         pub(crate) header_small: adw::HeaderBar,
         pub(crate) squeezer: adw::Squeezer,
         pub(crate) progress_bar: gtk::ProgressBar,
@@ -36,6 +36,7 @@ pub mod imp {
         pub(crate) url: RefCell<String>,
         #[prop(get = Self::progress_animated, set = Self::set_progress_animated)]
         pub(crate) progress: PhantomData<f64>,
+        pub(crate) scroll_ctrl: gtk::EventControllerScroll,
     }
 
     impl Window {
@@ -113,15 +114,21 @@ impl Window {
         let imp = this.imp();
         imp.config.replace(config);
 
-        imp.url_bar.set_width_request(360);
-        imp.url_bar.set_hexpand(true);
         imp.progress_bar.add_css_class("osd");
         imp.progress_bar.set_valign(gtk::Align::Start);
 
+        let menu_model = Self::build_menu_common();
         view!(
             header_small = (imp.header_small.clone()) {
-                set_title_widget: Some(&(w = adw::WindowTitle {
-                    set_title: "Geopard",
+                set_show_end_title_buttons(false),
+                set_title_widget: Some(&(se = (imp.small_url_bar.clone()) {
+                    set_hexpand: true,
+                    connect_activate: |url_bar| {
+                        url_bar
+                            .activate_action("win.open-omni", Some(&url_bar.text().to_variant()))
+                            .unwrap();
+                    },
+                    bind "text" this "url",
                 })),
             }
             header_bar = adw::HeaderBar {
@@ -135,24 +142,22 @@ impl Window {
                 }),
                 pack_end: &(b = gtk::MenuButton {
                     set_icon_name: "open-menu",
-                    set_menu_model: Some(&Self::build_menu_common()),
+                    set_menu_model: Some(&menu_model),
                 }),
                 set_title_widget: Some(&(c = adw::Clamp {
                     set_child: Some(&(se = (imp.url_bar.clone()) {
                         set_hexpand: true,
+                        set_width_request: 360,
                         connect_activate: |url_bar| {
                             url_bar
                                 .activate_action("win.open-omni", Some(&url_bar.text().to_variant()))
                                 .unwrap();
                         },
+                        bind "text" this "url",
                     })),
                     set_maximum_size: 768,
                     set_tightening_threshold: 720,
                 })),
-            }
-            mobile_section = gio::Menu {
-                append(Some("Back"), Some("win.back")),
-                append(Some("New Tab"), Some("win.new-tab")),
             }
             bottom_bar = adw::HeaderBar {
                 set_show_end_title_buttons: false,
@@ -164,6 +169,14 @@ impl Window {
                 pack_start: &(b = gtk::Button {
                     set_icon_name: "go-next-symbolic",
                     set_action_name: Some("win.next"),
+                }),
+                set_title_widget: Some(&(b = gtk::Button {
+                    set_icon_name: "system-search-symbolic",
+                    set_action_name: Some("win.focus-url-bar"),
+                })),
+                pack_end: &(b = gtk::MenuButton {
+                    set_icon_name: "open-menu",
+                    set_menu_model: Some(&menu_model),
                 }),
                 pack_end: &(b = gtk::Button {
                     set_icon_name: "tab-new-symbolic",
@@ -177,6 +190,7 @@ impl Window {
             content = gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 append: &(squeezer = (imp.squeezer.clone()) {
+                    set_transition_type: adw::SqueezerTransitionType::Crossfade,
                     add: &header_bar,
                     add: &header_small,
                     connect_visible_child_notify:
@@ -188,19 +202,20 @@ impl Window {
                 append: &(overlay = gtk::Overlay {
                     set_child: Some(&tab_view),
                     add_overlay: &imp.progress_bar,
+                    add_overlay: &(b = (imp.bottom_bar_revealer.clone()) {
+                        set_transition_type: gtk::RevealerTransitionType::SlideUp,
+                        set_child: Some(&bottom_bar),
+                        set_valign: gtk::Align::End,
+                    }),
                 }),
-                append: &imp.bottom_bar_revealer,
             }
         );
-
-        imp.bottom_entry.set_hexpand(true);
-        imp.bottom_bar_revealer.set_child(Some(&bottom_bar));
 
         this.set_default_size(800, 600);
         this.set_content(Some(&content));
         this.squeezer_changed();
 
-        this.setup_actions();
+        this.setup_actions_signals();
         this.open_in_new_tab(bookmarks_url().as_str());
         this
     }
@@ -223,7 +238,9 @@ impl Window {
         );
         menu_model
     }
-    fn setup_actions(&self) {
+    fn setup_actions_signals(&self) {
+        let imp = self.imp();
+
         self_action!(self, "back", back);
         self_action!(self, "new-tab", add_tab_focused);
         self_action!(self, "show-bookmarks", add_tab_focused);
@@ -258,6 +275,18 @@ impl Window {
             clone!(@weak self as this => move |_,v| this.set_clipboard(v.unwrap().get::<String>().unwrap().as_str())),
         );
         self.add_action(&act_set_clipboard);
+
+        self.add_controller(&imp.scroll_ctrl);
+        imp.scroll_ctrl
+            .set_propagation_phase(gtk::PropagationPhase::Capture);
+        imp.scroll_ctrl
+            .set_flags(gtk::EventControllerScrollFlags::VERTICAL);
+        imp.scroll_ctrl.connect_scroll(
+            clone!(@weak self as this => @default-panic, move |_, _, y| {
+                this.imp().bottom_bar_revealer.set_reveal_child(y < 0.0 && this.is_small_screen());
+                    return gtk::Inhibit(false);
+            }),
+        );
     }
     fn add_tab(&self) -> adw::TabPage {
         let imp = self.imp();
@@ -273,10 +302,7 @@ impl Window {
             let tab = self.inner_tab(&page);
             btp.drain(0..).for_each(|binding| binding.unbind());
             btp.extend([
-                tab.bind_property("url", &imp.url_bar, "text")
-                    .flags(glib::BindingFlags::SYNC_CREATE)
-                    .build(),
-                tab.bind_property("url", &imp.bottom_entry, "text")
+                tab.bind_property("url", self, "url")
                     .flags(glib::BindingFlags::SYNC_CREATE)
                     .build(),
                 tab.bind_property("progress", self, "progress")
@@ -298,7 +324,11 @@ impl Window {
     }
     fn focus_url_bar(&self) {
         let imp = self.imp();
-        imp.url_bar.grab_focus();
+        if self.is_small_screen() {
+            imp.small_url_bar.grab_focus();
+        } else {
+            imp.url_bar.grab_focus();
+        }
     }
 
     async fn append_bookmark(url: &str) -> anyhow::Result<()> {
@@ -419,17 +449,19 @@ impl Window {
     //    );
     //}
 
-    fn squeezer_changed(&self) {
+    fn is_small_screen(&self) -> bool {
         let imp = self.imp();
-        let title_visible = imp
-            .squeezer
+        imp.squeezer
             .visible_child()
             .map(|child| child.downcast().ok())
             .flatten()
             .map(|w: adw::HeaderBar| w == self.imp().header_small)
-            .unwrap_or(false);
-
-        imp.bottom_bar_revealer.set_reveal_child(title_visible);
+            .unwrap_or(false)
+    }
+    fn squeezer_changed(&self) {
+        let imp = self.imp();
+        imp.bottom_bar_revealer
+            .set_reveal_child(self.is_small_screen());
     }
     fn present_shortcuts(&self) {
         let builder = gtk::Builder::from_string(

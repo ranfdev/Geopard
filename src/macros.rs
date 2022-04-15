@@ -61,7 +61,7 @@ macro_rules! view {
         $obj.$member($($e),+);
         view!(@expand-build $obj $($tt)*);
     };
-    (@expand-build $obj:ident bind $prop:literal $from_ty:ident $source:literal $($tt:tt)*) => {
-        $from_ty.bind_property($obj, $source, $prop);
+    (@expand-build $obj:ident bind $prop:literal $from_ty:ident $source:literal, $($tt:tt)*) => {
+        $from_ty.bind_property($source, &$obj, $prop).build();
     }
 }

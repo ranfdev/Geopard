@@ -123,7 +123,7 @@ impl Tab {
             .top_margin(MARGIN * 2)
             .left_margin(MARGIN)
             .right_margin(MARGIN)
-            .bottom_margin(MARGIN)
+            .bottom_margin(MARGIN * 4)
             .indent(2)
             .editable(false)
             .cursor_visible(false)
