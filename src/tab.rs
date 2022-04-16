@@ -13,6 +13,9 @@ use gtk::subclass::prelude::*;
 use log::{debug, error, info};
 use once_cell::sync::Lazy;
 use std::cell::RefCell;
+use std::marker::PhantomData;
+use std::pin::Pin;
+use std::rc::Rc;
 use url::Url;
 
 use crate::common;
@@ -20,6 +23,12 @@ use crate::common::{glibctx, HistoryItem, LossyTextRead, PageElement, RequestCtx
 use crate::draw_ctx::DrawCtx;
 use crate::gemini;
 
+#[derive(Clone, glib::Boxed, Default)]
+#[boxed_type(name = "GeopardHistoryStatus")]
+pub struct HistoryStatus {
+    current: usize,
+    available: usize,
+}
 pub mod imp {
 
     pub use super::*;
@@ -28,11 +37,14 @@ pub mod imp {
         pub(crate) gemini_client: RefCell<gemini::Client>,
         pub(crate) draw_ctx: RefCell<Option<DrawCtx>>,
         pub(crate) history: RefCell<Vec<HistoryItem>>,
+        pub(crate) current_hi: RefCell<Option<usize>>,
         pub(crate) scroll_win: gtk::ScrolledWindow,
         pub(crate) clamp: adw::Clamp,
         pub(crate) left_click_ctrl: RefCell<Option<gtk::GestureClick>>,
         pub(crate) right_click_ctrl: RefCell<Option<gtk::GestureClick>>,
         pub(crate) req_handle: RefCell<Option<RemoteHandle<()>>>,
+        #[prop(get = Self::history_status, builder(HistoryStatus::static_type()))]
+        pub(crate) history_status: PhantomData<HistoryStatus>,
         #[prop(get, set)]
         pub(crate) progress: RefCell<f64>,
         #[prop(get)]
@@ -107,6 +119,14 @@ pub mod imp {
             self.derived_property(obj, id, pspec).unwrap()
         }
     }
+    impl Tab {
+        fn history_status(&self) -> HistoryStatus {
+            HistoryStatus {
+                current: self.current_hi.borrow().unwrap_or(0),
+                available: self.history.borrow().len(),
+            }
+        }
+    }
     impl WidgetImpl for Tab {}
 }
 glib::wrapper! {
@@ -142,7 +162,7 @@ impl Tab {
         let imp = self.imp();
         &imp.scroll_win
     }
-    pub fn build_request_ctx(&self, url: Url) -> RequestCtx {
+    fn build_request_ctx(&self, url: Url) -> RequestCtx {
         let imp = self.imp();
         RequestCtx {
             draw_ctx: imp.draw_ctx.borrow().clone().unwrap(),
@@ -159,12 +179,6 @@ impl Tab {
             .context("No items in history")?
             .url
             .clone())
-    }
-    pub fn add_cache(&self, cache: Vec<u8>) {
-        let imp = self.imp();
-        if let Some(item) = imp.history.borrow_mut().last_mut() {
-            item.cache = Some(cache)
-        }
     }
     pub fn handle_click(&self, x: f64, y: f64) -> Result<()> {
         let imp = self.imp();
@@ -200,12 +214,41 @@ impl Tab {
         text_view.set_extra_menu(Some(&menu));
         Ok(())
     }
+    pub fn spawn_open_url(&self, url: Url) {
+        let i = self.add_to_history(HistoryItem {
+            url: url.clone(),
+            cache: Default::default(),
+            scroll_progress: 0.0,
+        });
+        let cache_space = Rc::downgrade(&self.imp().history.borrow()[i].cache);
+        let this = self.clone();
+        let fut = async move {
+            let cache = this.open_url(url).await;
+            cache_space.upgrade().map(|rc| rc.replace(cache));
+        };
+        self.spawn_request(fut);
+    }
+    fn add_to_history(&self, item: HistoryItem) -> usize {
+        let imp = self.imp();
+        let mut history = imp.history.borrow_mut();
+        let i = *imp.current_hi.borrow();
+        if let Some(i) = i {
+            let scroll_progress = imp.scroll_win.vadjustment().value();
+            history[i].scroll_progress = scroll_progress;
+            history.truncate(i + 1);
+        };
+        history.push(item);
+        let i = history.len() - 1;
+        imp.current_hi.replace(Some(i));
+        self.log_history_position();
+        i
+    }
     fn spawn_request(&self, fut: impl Future<Output = ()> + 'static) {
         let imp = self.imp();
         imp.req_handle
             .replace(Some(glibctx().spawn_local_with_handle(fut).unwrap()));
     }
-    pub fn spawn_open_url(&self, url: Url) {
+    fn open_url(&self, url: Url) -> impl Future<Output = Option<Vec<u8>>> {
         let imp = self.imp();
 
         self.set_progress(0.0);
@@ -214,89 +257,95 @@ impl Tab {
         *imp.url.borrow_mut() = url.to_string();
         self.notify("url");
 
-        let scroll_progress = imp.scroll_win.vadjustment().value();
-        let mut history = imp.history.borrow_mut();
-        if let Some(item) = history.last_mut() {
-            item.scroll_progress = scroll_progress;
-        }
-        history.push(HistoryItem {
-            url: url.clone(),
-            cache: None,
-            scroll_progress: 0.0,
-        });
         let mut req_ctx = self.build_request_ctx(url.clone());
 
         let this = self.clone();
         let fut = async move {
-            match Self::send_request(&mut req_ctx).await {
+            let cache = match Self::send_request(&mut req_ctx).await {
                 Ok(Some(cache)) => {
-                    this.add_cache(cache);
-                    info!("Page loaded and cached ({})", url.clone());
+                    info!("Page loaded, can be cached ({})", url.clone());
+                    Some(cache)
                 }
                 Ok(_) => {
                     info!("Page loaded ({})", url.clone());
+                    None
                 }
                 Err(e) => {
                     Self::display_error(&mut req_ctx.draw_ctx, e);
+                    None
                 }
-            }
+            };
             this.set_progress(1.0);
+            cache
         };
         self.set_progress(0.3);
-        self.spawn_request(fut);
+        fut
     }
-    fn spawn_open_history(&self, item: HistoryItem) {
+    fn open_history(&self, item: HistoryItem) -> Pin<Box<dyn Future<Output = ()>>> {
         let HistoryItem { url, cache, .. } = item;
-        match cache {
-            Some(cache) => self.spawn_open_cached(url, cache),
-            None => self.spawn_open_url(url),
+        let cache = cache.borrow();
+        match &*cache {
+            Some(cache) => Box::pin(self.open_cached(url, cache.clone())),
+            None => Box::pin(self.open_url(url).map(|_| {})),
         }
     }
-    fn spawn_open_cached(&self, url: Url, cache: Vec<u8>) {
+    fn open_cached(&self, url: Url, cache: Vec<u8>) -> impl Future<Output = ()> {
         let imp = self.imp();
-        imp.history.borrow_mut().push(HistoryItem {
-            url: url.clone(),
-            cache: None,
-            scroll_progress: 0.0,
-        });
-
         let mut draw_ctx = imp.draw_ctx.borrow().clone().unwrap();
-        let this = self.clone();
+
         *self.imp().title.borrow_mut() = url.to_string();
         self.notify("title");
 
         *self.imp().url.borrow_mut() = url.to_string();
         self.notify("url");
 
-        let fut = async move {
-            let buf = BufReader::new(cache.as_slice());
+        async move {
+            let buf = BufReader::new(&*cache);
             draw_ctx.clear();
             let res = Self::display_gemini(&mut draw_ctx, buf).await;
             match res {
-                Ok(cache) => {
+                Ok(_) => {
                     info!("Loaded {} from cache", &url);
-                    this.add_cache(cache);
                 }
                 Err(e) => Self::display_error(&mut draw_ctx, e),
             }
-        };
-        self.spawn_request(fut);
-    }
-    pub fn back(&self) -> Result<()> {
-        let imp = self.imp();
-        let item = {
-            let mut history = imp.history.borrow_mut();
-            if history.len() <= 1 {
-                bail!("Already at last item in history");
-            }
-            history.pop();
-            history.pop()
-        };
-        match item {
-            Some(item) => self.spawn_open_history(item),
-            None => unreachable!(),
         }
-        Ok(())
+    }
+    fn log_history_position(&self) {
+        let i = self.imp().current_hi.borrow();
+        info!("history position: {i:?}");
+    }
+    pub fn previous(&self) -> Result<()> {
+        let imp = self.imp();
+        let i = {
+            imp.current_hi
+                .borrow()
+                .map(|i| i.checked_sub(1))
+                .flatten()
+                .context("going back in history")?
+        };
+        imp.current_hi.replace(Some(i));
+        self.log_history_position();
+
+        let h = { imp.history.borrow_mut().get(i).cloned() };
+        h.map(|x| self.spawn_request(self.open_history(x)))
+            .context("retrieving previous item from history")
+    }
+    pub fn next(&self) -> Result<()> {
+        let imp = self.imp();
+        let i = {
+            imp.current_hi
+                .borrow()
+                .map(|i| i + 1)
+                .filter(|i| *i < imp.history.borrow().len())
+                .context("going forward in history")?
+        };
+        imp.current_hi.replace(Some(i));
+        self.log_history_position();
+
+        let h = { imp.history.borrow_mut().get(i).cloned() };
+        h.map(|x| self.spawn_request(self.open_history(x)))
+            .context("retrieving previous item from history")
     }
     pub fn display_error(ctx: &mut DrawCtx, error: anyhow::Error) {
         error!("{:?}", error);

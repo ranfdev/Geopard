@@ -4,7 +4,6 @@ use crate::config;
 use glib::IsA;
 use gtk::glib;
 use gtk::prelude::*;
-use log::{debug, info};
 
 #[derive(Debug, Clone)]
 pub struct DrawCtx {
@@ -181,7 +180,6 @@ impl DrawCtx {
         link: String,
         label: Option<&str>,
     ) {
-        debug!("Inserting link");
         let start = text_iter.offset();
         let default_config = &config::DEFAULT_CONFIG;
 
@@ -205,8 +203,6 @@ impl DrawCtx {
         Self::set_linkhandler(&tag, link.clone());
 
         let label = label.unwrap_or(&link);
-        info!("Setted url {:?} to tag", Self::linkhandler(&tag));
-        debug!("Link set successfully");
         self.insert_paragraph(text_iter, label);
         self.insert_paragraph(text_iter, "\n");
 

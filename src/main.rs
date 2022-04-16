@@ -83,12 +83,17 @@ fn main() {
         windows.borrow_mut().push(window);
     });
 
-    application.set_accels_for_action("win.back", &["<Alt>Left"]);
+    application.set_accels_for_action("win.previous", &["<Alt>Left"]);
+    application.set_accels_for_action("win.next", &["<Alt>Right"]);
     application.set_accels_for_action("win.show-bookmarks", &["<Ctrl>b"]);
     application.set_accels_for_action("win.bookmark-current", &["<Ctrl>d"]);
     application.set_accels_for_action("win.new-tab", &["<Ctrl>t"]);
     application.set_accels_for_action("win.close-tab", &["<Ctrl>w"]);
     application.set_accels_for_action("win.focus-url-bar", &["F6"]);
+    application.set_accels_for_action("win.shortcuts", &["<Ctrl>question"]);
+    // Sadly Tab doesn't work as an accelerator in gtk...
+    application.set_accels_for_action("win.focus-next-tab", &["<Ctrl>Tab"]);
+    application.set_accels_for_action("win.focus-previous-tab", &["<Ctrl><Shift>Tab"]);
     // FIXME: win.view-source
     let ret = application.run();
     std::process::exit(ret);

@@ -3,6 +3,8 @@ use futures::prelude::*;
 use gtk::glib;
 use once_cell::sync::Lazy;
 use std::borrow::Cow;
+use std::cell::RefCell;
+use std::rc::Rc;
 use url::Url;
 
 use crate::gemini;
@@ -74,7 +76,7 @@ pub enum PageElement {
 #[derive(Debug, Clone, PartialEq)]
 pub struct HistoryItem {
     pub url: url::Url,
-    pub cache: Option<Vec<u8>>,
+    pub cache: Rc<RefCell<Option<Vec<u8>>>>,
     pub scroll_progress: f64,
 }
 

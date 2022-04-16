@@ -10,12 +10,13 @@ use gtk::glib;
 use gtk::subclass::prelude::*;
 use log::{error, info, warn};
 use std::cell::RefCell;
+use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use url::Url;
 
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
 use crate::config;
-use crate::tab::{Tab, TabPropertiesExt};
+use crate::tab::Tab;
 use crate::{self_action, view};
 
 pub mod imp {
@@ -134,7 +135,11 @@ impl Window {
             header_bar = adw::HeaderBar {
                 pack_start: &(b = gtk::Button {
                     set_icon_name: "go-previous-symbolic",
-                    set_action_name: Some("win.back"),
+                    set_action_name: Some("win.previous"),
+                }),
+                pack_start: &(b = gtk::Button {
+                    set_icon_name: "go-next-symbolic",
+                    set_action_name: Some("win.next"),
                 }),
                 pack_start: &(b = gtk::Button {
                     set_icon_name: "tab-new-symbolic",
@@ -164,7 +169,7 @@ impl Window {
                 set_show_start_title_buttons: false,
                 pack_start: &(b = gtk::Button {
                     set_icon_name: "go-previous-symbolic",
-                    set_action_name: Some("win.back"),
+                    set_action_name: Some("win.previous"),
                 }),
                 pack_start: &(b = gtk::Button {
                     set_icon_name: "go-next-symbolic",
@@ -241,7 +246,8 @@ impl Window {
     fn setup_actions_signals(&self) {
         let imp = self.imp();
 
-        self_action!(self, "back", back);
+        self_action!(self, "previous", previous);
+        self_action!(self, "next", next);
         self_action!(self, "new-tab", add_tab_focused);
         self_action!(self, "show-bookmarks", add_tab_focused);
         self_action!(self, "bookmark-current", bookmark_current);
@@ -249,6 +255,8 @@ impl Window {
         self_action!(self, "focus-url-bar", focus_url_bar);
         self_action!(self, "shortcuts", present_shortcuts);
         self_action!(self, "about", present_about);
+        self_action!(self, "focus-tab-previous", focus_tab_previous);
+        self_action!(self, "focus-tab-next", focus_tab_next);
 
         let act_open_page = gio::SimpleAction::new("open-omni", Some(glib::VariantTy::STRING));
         act_open_page.connect_activate(
@@ -284,7 +292,28 @@ impl Window {
         imp.scroll_ctrl.connect_scroll(
             clone!(@weak self as this => @default-panic, move |_, _, y| {
                 this.imp().bottom_bar_revealer.set_reveal_child(y < 0.0 && this.is_small_screen());
-                    return gtk::Inhibit(false);
+                    gtk::Inhibit(false)
+            }),
+        );
+        self.connect_local(
+            "notify::url",
+            false,
+            clone!(@weak self as this => @default-panic, move |_| {
+                let mut s = std::collections::hash_map::DefaultHasher::new();
+                let url = this.imp().url.borrow();
+                let url = if let Ok(domain) = Url::parse(&url) {
+                    if let Some(domain) = domain.domain() {
+                        domain.to_string()
+                    } else {
+                        url.to_string()
+                    }
+                } else {
+                    url.to_string()
+                };
+                url.hash(&mut s);
+                let h = s.finish();
+                Self::set_special_color_from_hash(h);
+                None
             }),
         );
     }
@@ -298,8 +327,9 @@ impl Window {
     fn page_switched(&self, tab_view: &adw::TabView) {
         let imp = self.imp();
         let mut btp = imp.binded_tab_properties.borrow_mut();
-        tab_view.selected_page().map(|page| {
+        if let Some(page) = tab_view.selected_page() {
             let tab = self.inner_tab(&page);
+
             btp.drain(0..).for_each(|binding| binding.unbind());
             btp.extend([
                 tab.bind_property("url", self, "url")
@@ -309,7 +339,7 @@ impl Window {
                     .flags(glib::BindingFlags::SYNC_CREATE)
                     .build(),
             ]);
-        });
+        };
     }
     fn add_tab_focused(&self) {
         let imp = self.imp();
@@ -356,10 +386,16 @@ impl Window {
             .downcast()
             .unwrap()
     }
-    fn back(&self) {
-        match self.current_tab().back() {
+    fn previous(&self) {
+        match self.current_tab().previous() {
             Err(e) => warn!("{}", e),
             Ok(_) => info!("went back"),
+        }
+    }
+    fn next(&self) {
+        match self.current_tab().next() {
+            Err(e) => warn!("{}", e),
+            Ok(_) => info!("went forward"),
         }
     }
     fn bookmark_current(&self) {
@@ -404,50 +440,32 @@ impl Window {
     fn inner_tab(&self, tab: &adw::TabPage) -> Tab {
         tab.child().downcast().unwrap()
     }
-    //TODO: Reintroduce colors
-    //fn set_special_color_from_hash(&self, hash: u64) {
-    //    let color1 = Color(
-    //        (hash & 255) as u8,
-    //        (hash >> 8 & 255) as u8,
-    //        (hash >> 16 & 255) as u8,
-    //    );
+    fn set_special_color_from_hash(hash: u64) {
+        let hue = hash % 360;
+        let stylesheet = format!(
+            "
+            @define-color view_bg_color hsl({hue}, 100%, 98%);
+            @define-color view_fg_color hsl({hue}, 100%, 12%);
+            @define-color window_bg_color hsl({hue}, 100%, 98%);
+            @define-color window_fg_color hsl({hue}, 100%, 12%);
+            @define-color headerbar_bg_color hsl({hue}, 100%, 96%);
+            @define-color headerbar_fg_color hsl({hue}, 100%, 12%);
+            ",
+        );
+        Self::add_stylesheet(&stylesheet);
+    }
+    fn add_stylesheet(stylesheet: &str) {
+        // TODO: Adding a provider and keeping it in memory forever
+        // is a memory leak. Fortunately, it's small. Yes, I should fix this
 
-    //    let hash = hash >> 24;
-    //    let color2 = Color(
-    //        (hash & 255) as u8,
-    //        (hash >> 8 & 255) as u8,
-    //        (hash >> 16 & 255) as u8,
-    //    );
-
-    //    let stylesheet = format!(
-    //        "
-    //        headerbar {{
-    //            transition: 500ms;
-    //            background: linear-gradient(#{:x}, #{:x});
-    //        }}
-    //        text {{
-    //            transition: 500ms;
-    //            background: rgba({},{},{}, 0.05);
-    //        }}
-    //        ",
-    //        color1, color2, color2.0, color2.1, color2.2
-    //    );
-    //    Self::add_stylesheet(&stylesheet);
-    //}
-    //fn add_stylesheet(stylesheet: &str) {
-    //    // TODO: Adding a provider and keeping it in memory forever
-    //    // is a memory leak. Fortunately, it's small
-
-    //    let provider = gtk::CssProvider::new();
-    //    provider
-    //        .load_from_data(stylesheet.as_bytes())
-    //        .expect("Failed loading stylesheet");
-    //    gtk::StyleContext::add_provider_for_screen(
-    //        &gdk::Screen::default().unwrap(),
-    //        &provider,
-    //        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    //    );
-    //}
+        let provider = gtk::CssProvider::new();
+        provider.load_from_data(stylesheet.as_bytes());
+        gtk::StyleContext::add_provider_for_display(
+            &gdk::Display::default().unwrap(),
+            &provider,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+    }
 
     fn is_small_screen(&self) -> bool {
         let imp = self.imp();
@@ -512,6 +530,12 @@ impl Window {
                 <property name="title" translatable="yes">Focus Url Bar</property>
               </object>
             </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="accelerator">&lt;ctrl&gt;question</property>
+                <property name="title" translatable="yes">Show Keyboard Shortcuts</property>
+              </object>
+            </child>
           </object>
         </child>
         <child>
@@ -543,4 +567,12 @@ impl Window {
         sw.present();
     }
     fn present_about(&self) {}
+    fn focus_tab_next(&self) {
+        let imp = self.imp();
+        imp.tab_view.select_next_page();
+    }
+    fn focus_tab_previous(&self) {
+        let imp = self.imp();
+        imp.tab_view.select_previous_page();
+    }
 }
