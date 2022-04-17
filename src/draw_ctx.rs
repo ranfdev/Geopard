@@ -35,7 +35,8 @@ impl DrawCtx {
                 .or_else(|| default_config.fonts.heading.as_ref())
                 .unwrap()
         });
-        tag_h1.set_size_points(tag_h1.size_points() * 1.4);
+        tag_h1.set_scale(2.0);
+        tag_h1.set_sentence(true);
 
         let tag_h2 = DrawCtx::create_tag("h2", {
             self.config
@@ -45,7 +46,8 @@ impl DrawCtx {
                 .or_else(|| default_config.fonts.heading.as_ref())
                 .unwrap()
         });
-        tag_h1.set_size_points(tag_h1.size_points() * 1.2);
+        tag_h2.set_scale(1.5);
+        tag_h1.set_sentence(true);
 
         let tag_h3 = DrawCtx::create_tag(
             "h3",
@@ -56,6 +58,9 @@ impl DrawCtx {
                 .or_else(|| default_config.fonts.heading.as_ref())
                 .unwrap(),
         );
+        tag_h2.set_scale(1.4);
+        tag_h1.set_sentence(true);
+
         let tag_p = DrawCtx::create_tag(
             "p",
             self.config
@@ -111,7 +116,6 @@ impl DrawCtx {
     pub fn create_tag(name: &str, config: &crate::config::Font) -> gtk::TextTag {
         gtk::builders::TextTagBuilder::new()
             .family(&config.family)
-            .size_points(config.size as f64)
             .weight(config.weight)
             .name(name)
             .build()
@@ -178,7 +182,6 @@ impl DrawCtx {
 
         let tag = gtk::builders::TextTagBuilder::new()
             .family(&config.family)
-            .size_points(config.size as f64)
             .weight(config.weight)
             .build();
 

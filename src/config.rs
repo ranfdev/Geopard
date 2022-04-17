@@ -1,3 +1,5 @@
+// Not sure if I want to keep this
+
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
@@ -14,7 +16,6 @@ pub static DEFAULT_CONFIG: Lazy<Config> = Lazy::new(|| Config {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Font {
     pub family: String,
-    pub size: i32,
     pub weight: i32,
 }
 
@@ -31,7 +32,6 @@ impl Fonts {
     pub fn default_heading() -> Font {
         Font {
             family: String::from("Cantarell"),
-            size: 18,
             weight: 800,
         }
     }
@@ -39,7 +39,6 @@ impl Fonts {
     pub fn default_preformatted() -> Font {
         Font {
             family: String::from("monospace"),
-            size: 13,
             weight: 500,
         }
     }
@@ -47,7 +46,6 @@ impl Fonts {
     pub fn default_quote() -> Font {
         Font {
             family: String::from("Cantarell"),
-            size: 13,
             weight: 500,
         }
     }
@@ -55,7 +53,6 @@ impl Fonts {
     pub fn default_paragraph() -> Font {
         Font {
             family: String::from("Cantarell"),
-            size: 13,
             weight: 500,
         }
     }
