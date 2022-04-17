@@ -4,12 +4,13 @@
 , gtk4
 , libadwaita
 , pango
-, rust
 , rustc
 , rustPlatform
 , openssl
 , pkg-config
 , lib
+, wrapGAppsHook
+, meson
 }:
 
 rustPlatform.buildRustPackage rec {
@@ -17,7 +18,7 @@ rustPlatform.buildRustPackage rec {
   version = "1.0.0-alpha";
 
   src = lib.cleanSource ../.;
-  cargoSha256 = "0b77w95bj6avnxgs5ia93hhq3jr9cmbpa5zw8i37s688633il15x";
+  cargoSha256 = "sha256-X2gVBKl37+FnDlzAQnLN6I99pEliytW/pMgMY6tJPd4=";
 
   nativeBuildInputs = [
     cargo
@@ -32,11 +33,13 @@ rustPlatform.buildRustPackage rec {
     libadwaita
     pango
     openssl
+    wrapGAppsHook
+    meson
   ];
 
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://git.ranfdev.com/Geopard";
     description = "Browse the geminiverse";
     longDescription = ''
