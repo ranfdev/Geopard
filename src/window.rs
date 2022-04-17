@@ -192,6 +192,7 @@ impl Window {
                 }),
             }
             tab_view = (imp.tab_view.clone()) {
+                set_vexpand: true,
                 connect_selected_page_notify:
                     clone!(@weak this => move |tab_view| this.page_switched(tab_view)),
             }
@@ -381,6 +382,9 @@ impl Window {
         let imp = self.imp();
         imp.tab_view
             .close_page(&imp.tab_view.page(&self.current_tab()));
+        if imp.tab_view.n_pages() == 0 {
+            std::process::exit(0); // TODO: maybe there's a better way for gtk apps...
+        }
     }
     fn focus_url_bar(&self) {
         let imp = self.imp();
@@ -474,9 +478,9 @@ impl Window {
         let hue = hash % 360;
         let stylesheet = format!(
             "
-            @define-color view_bg_color hsl({hue}, 100%, 98%);
+            @define-color view_bg_color hsl({hue}, 100%, 99%);
             @define-color view_fg_color hsl({hue}, 100%, 12%);
-            @define-color window_bg_color hsl({hue}, 100%, 98%);
+            @define-color window_bg_color hsl({hue}, 100%, 99%);
             @define-color window_fg_color hsl({hue}, 100%, 12%);
             @define-color headerbar_bg_color hsl({hue}, 100%, 96%);
             @define-color headerbar_fg_color hsl({hue}, 100%, 12%);

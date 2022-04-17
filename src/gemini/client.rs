@@ -159,7 +159,7 @@ impl Client {
             .ok_or(Error::InvalidHost)?;
         let tcp_s = TcpStream::connect(addr).await?;
         let mut tls_s = async_native_tls::TlsConnector::new()
-            .danger_accept_invalid_certs(true)
+            .danger_accept_invalid_certs(true) // FIXME: handle certs
             .connect(host, tcp_s)
             .await?;
 
@@ -205,15 +205,16 @@ impl Client {
             };
         };
 
-        let status: u8 = std::str::from_utf8(&buffer[0..2])?
+        let status: u8 = std::str::from_utf8(buffer.get(0..2).unwrap_or(&[]))?
             .parse()
             .map_err(|_| Error::InvalidProtocolData(InvalidStatus.into()))?;
 
         let status = Status::try_from(status)
             .map_err(|_| Error::InvalidProtocolData(InvalidStatus.into()))?;
 
+        let meta_buffer = &buffer.get(3..meta_end).unwrap_or(&[]);
         // Split the part of the buffer containing the meta
-        let meta = String::from_utf8_lossy(&buffer[3..meta_end]).to_string();
+        let meta = String::from_utf8_lossy(meta_buffer).to_string();
 
         buffer.truncate(n_read);
         buffer.shrink_to_fit();
