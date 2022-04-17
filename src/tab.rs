@@ -23,11 +23,11 @@ use crate::common::{glibctx, HistoryItem, LossyTextRead, PageElement, RequestCtx
 use crate::draw_ctx::DrawCtx;
 use crate::gemini;
 
-#[derive(Clone, glib::Boxed, Default)]
+#[derive(Clone, Debug, glib::Boxed, Default)]
 #[boxed_type(name = "GeopardHistoryStatus")]
 pub struct HistoryStatus {
-    current: usize,
-    available: usize,
+    pub(crate) current: usize,
+    pub(crate) available: usize,
 }
 pub mod imp {
 
@@ -230,16 +230,20 @@ impl Tab {
     }
     fn add_to_history(&self, item: HistoryItem) -> usize {
         let imp = self.imp();
-        let mut history = imp.history.borrow_mut();
-        let i = *imp.current_hi.borrow();
-        if let Some(i) = i {
-            let scroll_progress = imp.scroll_win.vadjustment().value();
-            history[i].scroll_progress = scroll_progress;
-            history.truncate(i + 1);
+        let i = {
+            let mut history = imp.history.borrow_mut();
+            let i = *imp.current_hi.borrow();
+            if let Some(i) = i {
+                let scroll_progress = imp.scroll_win.vadjustment().value();
+                history[i].scroll_progress = scroll_progress;
+                history.truncate(i + 1);
+            };
+            history.push(item);
+            let i = history.len() - 1;
+            imp.current_hi.replace(Some(i));
+            i
         };
-        history.push(item);
-        let i = history.len() - 1;
-        imp.current_hi.replace(Some(i));
+        self.notify("history-status");
         self.log_history_position();
         i
     }
@@ -293,6 +297,9 @@ impl Tab {
         let imp = self.imp();
         let mut draw_ctx = imp.draw_ctx.borrow().clone().unwrap();
 
+        *self.imp().progress.borrow_mut() = 0.0;
+        self.notify("progress");
+
         *self.imp().title.borrow_mut() = url.to_string();
         self.notify("title");
 
@@ -326,6 +333,7 @@ impl Tab {
         };
         imp.current_hi.replace(Some(i));
         self.log_history_position();
+        self.notify("history-status");
 
         let h = { imp.history.borrow_mut().get(i).cloned() };
         h.map(|x| self.spawn_request(self.open_history(x)))
@@ -342,6 +350,7 @@ impl Tab {
         };
         imp.current_hi.replace(Some(i));
         self.log_history_position();
+        self.notify("history-status");
 
         let h = { imp.history.borrow_mut().get(i).cloned() };
         h.map(|x| self.spawn_request(self.open_history(x)))

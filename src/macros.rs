@@ -6,6 +6,7 @@ macro_rules! self_action {
             let action = gio::SimpleAction::new($name, None);
             action.connect_activate(clone!(@weak this => move |_,_| this.$method()));
             $self.add_action(&action);
+            action
         }
     }
 }

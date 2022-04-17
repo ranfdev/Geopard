@@ -16,6 +16,7 @@ use url::Url;
 
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
 use crate::config;
+use crate::tab::HistoryStatus;
 use crate::tab::Tab;
 use crate::{self_action, view};
 
@@ -38,6 +39,8 @@ pub mod imp {
         #[prop(get = Self::progress_animated, set = Self::set_progress_animated)]
         pub(crate) progress: PhantomData<f64>,
         pub(crate) scroll_ctrl: gtk::EventControllerScroll,
+        pub(crate) action_previous: RefCell<Option<gio::SimpleAction>>,
+        pub(crate) action_next: RefCell<Option<gio::SimpleAction>>,
     }
 
     impl Window {
@@ -246,8 +249,11 @@ impl Window {
     fn setup_actions_signals(&self) {
         let imp = self.imp();
 
-        self_action!(self, "previous", previous);
-        self_action!(self, "next", next);
+        let action_previous = self_action!(self, "previous", previous);
+        let action_next = self_action!(self, "next", next);
+        imp.action_previous.borrow_mut().replace(action_previous);
+        imp.action_next.borrow_mut().replace(action_next);
+
         self_action!(self, "new-tab", add_tab_focused);
         self_action!(self, "show-bookmarks", add_tab_focused);
         self_action!(self, "bookmark-current", bookmark_current);
@@ -338,6 +344,30 @@ impl Window {
                 tab.bind_property("progress", self, "progress")
                     .flags(glib::BindingFlags::SYNC_CREATE)
                     .build(),
+                tab.bind_property(
+                    "history-status",
+                    imp.action_next.borrow().as_ref().unwrap(),
+                    "enabled",
+                )
+                .flags(glib::BindingFlags::SYNC_CREATE)
+                .transform_to(|_, v| {
+                    let v: HistoryStatus = v.get().unwrap();
+                    let res = v.current + 1 < v.available;
+                    Some(res.to_value())
+                })
+                .build(),
+                tab.bind_property(
+                    "history-status",
+                    imp.action_previous.borrow().as_ref().unwrap(),
+                    "enabled",
+                )
+                .flags(glib::BindingFlags::SYNC_CREATE)
+                .transform_to(|_, v| {
+                    let v: HistoryStatus = v.get().unwrap();
+                    let res = v.available >= 1 && v.current > 0;
+                    Some(res.to_value())
+                })
+                .build(),
             ]);
         };
     }
