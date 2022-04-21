@@ -1,0 +1,71 @@
+using Gtk 4.0;
+Gtk.ShortcutsWindow help_overlay {
+  modal: true;
+
+  Gtk.ShortcutsSection {
+    Gtk.ShortcutsGroup {
+      title: C_("shortcut window", "General");
+
+      Gtk.ShortcutsShortcut {
+        title: C_("shortcut window", "Shortcuts");
+        action-name: "win.show-help-overlay";
+      }
+
+      Gtk.ShortcutsShortcut {
+        title: C_("shortcut window", "Preferences");
+        action-name: "win.preferences";
+      }
+    }
+    Gtk.ShortcutsGroup {
+      title: C_("shortcut window", "Tabs");
+
+      Gtk.ShortcutsShortcut {
+        title: C_("shortcut window", "Open New Tab");
+        action-name: "win.new-tab";
+      }
+
+      Gtk.ShortcutsShortcut {
+        title: C_("shortcut window", "Close Current Tab");
+        action-name: "win.close-tab";
+      }
+
+      Gtk.ShortcutsShortcut {
+        title: C_("shortcut window", "View Source");
+        action-name: "win.view-source";
+      }
+    }
+    Gtk.ShortcutsGroup {
+      title: C_("shortcut window", "Navigation");
+
+      Gtk.ShortcutsShortcut {
+        title: C_("shortcut window", "Previous Tab");
+        action-name: "win.previous";
+      }
+
+      Gtk.ShortcutsShortcut {
+        title: C_("shortcut window", "Next Tab");
+        action-name: "win.next";
+      }
+
+      Gtk.ShortcutsShortcut {
+        title: C_("shortcut window", "Focus Url Bar");
+        action-name: "win.focus-url-bar";
+      }
+
+    }
+    Gtk.ShortcutsGroup {
+      title: C_("shortcut window", "Bookmarks");
+
+      Gtk.ShortcutsShortcut {
+        title: C_("shortcut window", "Bookmark Current Page");
+        action-name: "win.bookmark-current";
+      }
+
+      Gtk.ShortcutsShortcut {
+        title: C_("shortcut window", "Show All Bookmarks");
+        action-name: "win.show-bookmarks";
+      }
+    }
+  }
+}
+

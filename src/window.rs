@@ -13,6 +13,9 @@ use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use url::Url;
+use gtk::prelude::*;
+use gtk::CompositeTemplate;
+use gtk::TemplateChild;
 
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
 use crate::config;
@@ -22,15 +25,23 @@ use crate::{self_action, view};
 
 pub mod imp {
     use super::*;
-    #[derive(Debug, Default, Properties)]
+    #[derive(Debug, Default, Properties, CompositeTemplate)]
+    #[template(resource = "/com/ranfdev/Geopard/ui/window.ui")]
     pub struct Window {
-        pub(crate) url_bar: gtk::SearchEntry,
-        pub(crate) small_url_bar: gtk::SearchEntry,
-        pub(crate) bottom_bar_revealer: gtk::Revealer,
-        pub(crate) header_small: adw::HeaderBar,
-        pub(crate) squeezer: adw::Squeezer,
-        pub(crate) progress_bar: gtk::ProgressBar,
-        pub(crate) tab_view: adw::TabView,
+        #[template_child]
+        pub(crate) url_bar: TemplateChild<gtk::SearchEntry>,
+        #[template_child]
+        pub(crate) small_url_bar: TemplateChild<gtk::SearchEntry>,
+        #[template_child]
+        pub(crate) bottom_bar_revealer: TemplateChild<gtk::Revealer>,
+        #[template_child]
+        pub(crate) header_small: TemplateChild<adw::HeaderBar>,
+        #[template_child]
+        pub(crate) squeezer: TemplateChild<adw::Squeezer>,
+        #[template_child]
+        pub(crate) progress_bar: TemplateChild<gtk::ProgressBar>,
+        #[template_child]
+        pub(crate) tab_view: TemplateChild<adw::TabView>,
         pub(crate) config: RefCell<config::Config>,
         pub(crate) progress_animation: RefCell<Option<adw::SpringAnimation>>,
         pub(crate) binded_tab_properties: RefCell<Vec<glib::Binding>>,
@@ -61,7 +72,7 @@ pub mod imp {
             }
             let progress_bar = self.progress_bar.clone();
             let animation = adw::SpringAnimation::new(
-                &self.progress_bar,
+                &*self.progress_bar,
                 self.progress_bar.fraction(),
                 progress,
                 &adw::SpringParams::new(1.0, 1.0, 100.0),
@@ -80,6 +91,16 @@ pub mod imp {
         const NAME: &'static str = "GeopardWindow";
         type Type = super::Window;
         type ParentType = adw::ApplicationWindow;
+
+        fn class_init(klass: &mut Self::Class) {
+            Self::bind_template(klass);
+        }
+
+
+        fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
+            obj.init_template();
+        }
+
     }
 
     impl ObjectImpl for Window {
@@ -118,134 +139,19 @@ impl Window {
         let imp = this.imp();
         imp.config.replace(config);
 
-        imp.progress_bar.add_css_class("osd");
-        imp.progress_bar.set_valign(gtk::Align::Start);
-
-        let menu_model = Self::build_menu_common();
-        view!(
-            header_small = (imp.header_small.clone()) {
-                set_show_end_title_buttons(false),
-                set_title_widget: Some(&(se = (imp.small_url_bar.clone()) {
-                    set_hexpand: true,
-                    connect_activate: |url_bar| {
-                        url_bar
-                            .activate_action("win.open-omni", Some(&url_bar.text().to_variant()))
-                            .unwrap();
-                    },
-                    bind "text" this "url",
-                })),
-            }
-            header_bar = adw::HeaderBar {
-                pack_start: &(b = gtk::Button {
-                    set_icon_name: "go-previous-symbolic",
-                    set_action_name: Some("win.previous"),
-                }),
-                pack_start: &(b = gtk::Button {
-                    set_icon_name: "go-next-symbolic",
-                    set_action_name: Some("win.next"),
-                }),
-                pack_start: &(b = gtk::Button {
-                    set_icon_name: "tab-new-symbolic",
-                    set_action_name: Some("win.new-tab"),
-                }),
-                pack_end: &(b = gtk::MenuButton {
-                    set_icon_name: "open-menu",
-                    set_menu_model: Some(&menu_model),
-                }),
-                set_title_widget: Some(&(c = adw::Clamp {
-                    set_child: Some(&(se = (imp.url_bar.clone()) {
-                        set_hexpand: true,
-                        set_width_request: 360,
-                        connect_activate: |url_bar| {
-                            url_bar
-                                .activate_action("win.open-omni", Some(&url_bar.text().to_variant()))
-                                .unwrap();
-                        },
-                        bind "text" this "url",
-                    })),
-                    set_maximum_size: 768,
-                    set_tightening_threshold: 720,
-                })),
-            }
-            bottom_bar = adw::HeaderBar {
-                set_show_end_title_buttons: false,
-                set_show_start_title_buttons: false,
-                pack_start: &(b = gtk::Button {
-                    set_icon_name: "go-previous-symbolic",
-                    set_action_name: Some("win.previous"),
-                }),
-                pack_start: &(b = gtk::Button {
-                    set_icon_name: "go-next-symbolic",
-                    set_action_name: Some("win.next"),
-                }),
-                set_title_widget: Some(&(b = gtk::Button {
-                    set_icon_name: "system-search-symbolic",
-                    set_action_name: Some("win.focus-url-bar"),
-                })),
-                pack_end: &(b = gtk::MenuButton {
-                    set_icon_name: "open-menu",
-                    set_menu_model: Some(&menu_model),
-                }),
-                pack_end: &(b = gtk::Button {
-                    set_icon_name: "tab-new-symbolic",
-                    set_action_name: Some("win.new-tab"),
-                }),
-            }
-            tab_view = (imp.tab_view.clone()) {
-                set_vexpand: true,
-                connect_selected_page_notify:
-                    clone!(@weak this => move |tab_view| this.page_switched(tab_view)),
-            }
-            content = gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-                append: &(squeezer = (imp.squeezer.clone()) {
-                    set_transition_type: adw::SqueezerTransitionType::Crossfade,
-                    add: &header_bar,
-                    add: &header_small,
-                    connect_visible_child_notify:
-                        clone!(@weak this => move |_| this.squeezer_changed()),
-                }),
-                append: &(tab_bar = adw::TabBar {
-                    set_view: Some(&tab_view),
-                }),
-                append: &(overlay = gtk::Overlay {
-                    set_child: Some(&tab_view),
-                    add_overlay: &imp.progress_bar,
-                    add_overlay: &(b = (imp.bottom_bar_revealer.clone()) {
-                        set_transition_type: gtk::RevealerTransitionType::SlideUp,
-                        set_child: Some(&bottom_bar),
-                        set_valign: gtk::Align::End,
-                    }),
-                }),
-            }
-        );
-
-        this.set_default_size(800, 600);
-        this.set_content(Some(&content));
+        this.bind_signals();
         this.squeezer_changed();
-
         this.setup_actions_signals();
         this.open_in_new_tab(bookmarks_url().as_str());
         this
     }
-
-    fn build_menu_common() -> gio::Menu {
-        view!(
-            bookmarks = gio::Menu {
-                append(Some("All Bookmarks"), Some("win.show-bookmarks")),
-                append(Some("Add Bookmark"), Some("win.bookmark-current")),
-            }
-            about = gio::Menu {
-                append(Some("Keyboard Shortcuts"), Some("win.shortcuts")),
-                append(Some("About"), Some("win.about")),
-                append(Some("Donate 💝"), Some("win.donate")),
-            }
-            menu_model = gio::Menu {
-                append_section(None, &bookmarks),
-                append_section(None, &about),
-            }
-        );
-        menu_model
+    fn bind_signals(&self) {
+        self.imp().tab_view.connect_selected_page_notify(clone!(@weak self as this => @default-panic, move |tab_view| {
+          this.page_switched(tab_view);
+        }));
+        self.imp().squeezer.connect_visible_child_notify(clone!(@weak self as this => @default-panic, move |_sq| {
+            this.squeezer_changed();
+        }));
     }
     fn setup_actions_signals(&self) {
         let imp = self.imp();
@@ -507,7 +413,7 @@ impl Window {
             .visible_child()
             .map(|child| child.downcast().ok())
             .flatten()
-            .map(|w: adw::HeaderBar| w == self.imp().header_small)
+            .map(|w: adw::HeaderBar| w == self.imp().header_small.get())
             .unwrap_or(false)
     }
     fn squeezer_changed(&self) {
@@ -516,89 +422,7 @@ impl Window {
             .set_reveal_child(self.is_small_screen());
     }
     fn present_shortcuts(&self) {
-        let builder = gtk::Builder::from_string(
-            r#"
-<?xml version="1.0" encoding="UTF-8"?>
-<interface>
-  <object class="GtkShortcutsWindow" id="shortcuts-geopard">
-    <property name="modal">1</property>
-    <child>
-      <object class="GtkShortcutsSection">
-        <property name="section-name">shortcuts</property>
-        <child>
-          <object class="GtkShortcutsGroup">
-            <property name="title" translatable="yes">Tabs</property>
-            <child>
-              <object class="GtkShortcutsShortcut">
-                <property name="accelerator">&lt;ctrl&gt;T</property>
-                <property name="title" translatable="yes">Open New Tab</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut">
-                <property name="accelerator">&lt;ctrl&gt;W</property>
-                <property name="title" translatable="yes">Close Current Tab</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut">
-                <property name="accelerator">&lt;ctrl&gt;U</property>
-                <property name="title" translatable="yes">View Source</property>
-              </object>
-            </child>
-          </object>
-        </child>
-        <child>
-          <object class="GtkShortcutsGroup">
-            <property name="title" translatable="yes">Navigation</property>
-            <child>
-              <object class="GtkShortcutsShortcut">
-                <property name="accelerator">&lt;alt&gt;Left</property>
-                <property name="direction">ltr</property>
-                <property name="title" translatable="yes">Back</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut">
-                <property name="accelerator">F6</property>
-                <property name="title" translatable="yes">Focus Url Bar</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut">
-                <property name="accelerator">&lt;ctrl&gt;question</property>
-                <property name="title" translatable="yes">Show Keyboard Shortcuts</property>
-              </object>
-            </child>
-          </object>
-        </child>
-        <child>
-          <object class="GtkShortcutsGroup">
-            <property name="view">world</property>
-            <property name="title" translatable="yes">Bookmarks</property>
-            <child>
-              <object class="GtkShortcutsShortcut">
-                <property name="accelerator">&lt;ctrl&gt;D</property>
-                <property name="title" translatable="yes">Bookmark Current Page</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut">
-                <property name="accelerator">&lt;ctrl&gt;B</property>
-                <property name="title" translatable="yes">Show All Bookmarks</property>
-              </object>
-            </child>
-          </object>
-        </child>
-      </object>
-    </child>
-  </object>
-</interface>
-"#,
-        );
-        let sw: gtk::ShortcutsWindow = builder.object("shortcuts-geopard").unwrap();
-        sw.set_transient_for(Some(self));
-        sw.present();
+        gtk::Builder::from_resource("/com/ranfdev/Geopard/ui/shortcuts.ui");
     }
     fn present_about(&self) {}
     fn focus_tab_next(&self) {

@@ -9,7 +9,6 @@ use gtk::gio;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-mod build_config;
 mod common;
 mod config;
 mod draw_ctx;
@@ -44,6 +43,7 @@ async fn init_file_if_not_exists(
         if let Some(text) = text {
             file.write_all(text).await?;
         }
+        file.flush().await?;
     }
     Ok(())
 }
@@ -63,11 +63,15 @@ fn main() {
     gtk::init().unwrap();
     env_logger::init();
 
-    let application = adw::Application::new(
-        Some(build_config::APP_ID),
-        gio::ApplicationFlags::FLAGS_NONE,
-    );
-    println!("{}", build_config::APP_ID);
+    let res = gio::Resource::load(config::RESOURCES_FILE).expect("Could not load gresource file");
+    gio::resources_register(&res);
+
+    let application = adw::Application::builder()
+        .application_id(config::APP_ID)
+        .resource_base_path("/com/ranfdev/Geopard/")
+        .build();
+
+    println!("{}", config::APP_ID);
 
     let config = futures::executor::block_on(async {
         create_base_files().await.unwrap();
@@ -90,7 +94,6 @@ fn main() {
     application.set_accels_for_action("win.new-tab", &["<Ctrl>t"]);
     application.set_accels_for_action("win.close-tab", &["<Ctrl>w"]);
     application.set_accels_for_action("win.focus-url-bar", &["F6"]);
-    application.set_accels_for_action("win.shortcuts", &["<Ctrl>question"]);
     // Sadly Tab doesn't work as an accelerator in gtk...
     application.set_accels_for_action("win.focus-next-tab", &["<Ctrl>Tab"]);
     application.set_accels_for_action("win.focus-previous-tab", &["<Ctrl><Shift>Tab"]);

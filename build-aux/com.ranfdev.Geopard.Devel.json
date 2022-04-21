@@ -1,7 +1,7 @@
 {
-    "app-id" : "com.ranfdev.GeopardDevel",
-    "runtime" : "org.gnome.Platform",
-    "runtime-version" : "master",
+    "app-id" : "com.ranfdev.Geopard.Devel",
+    "runtime" : "org.gnome.Sdk",
+    "runtime-version" : "42",
     "sdk" : "org.gnome.Sdk",
     "sdk-extensions" : [
         "org.freedesktop.Sdk.Extension.rust-stable"
@@ -21,13 +21,10 @@
         "build-args" : [
             "--share=network"
         ],
-        "env" : {
-            "RUSTFLAGS" : "--remap-path-prefix =../",
-            "CARGO_HOME" : "/run/build/Geopard/cargo"
-        }
+        "env" : {        }
     },
     "modules" : [
-    	{
+        {
             "name" : "libsass",
             "cleanup" : [
                 "*"
@@ -93,12 +90,10 @@
             ],
             "sources" : [
                 {
-                    "type" : "git",
-                    "url" : "../",
-                    "branch" : "master"
+                    "type" : "dir",
+                    "url" : "../"
                 }
             ]
         }
     ]
 }
-
