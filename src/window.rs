@@ -45,9 +45,9 @@ pub mod imp {
         pub(crate) config: RefCell<config::Config>,
         pub(crate) progress_animation: RefCell<Option<adw::SpringAnimation>>,
         pub(crate) binded_tab_properties: RefCell<Vec<glib::Binding>>,
-        #[prop(get, set)]
+        #[property(get, set)]
         pub(crate) url: RefCell<String>,
-        #[prop(get = Self::progress_animated, set = Self::set_progress_animated)]
+        #[property(get = Self::progress_animated, set = Self::set_progress_animated)]
         pub(crate) progress: PhantomData<f64>,
         pub(crate) scroll_ctrl: gtk::EventControllerScroll,
         pub(crate) action_previous: RefCell<Option<gio::SimpleAction>>,

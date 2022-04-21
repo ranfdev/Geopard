@@ -43,13 +43,13 @@ pub mod imp {
         pub(crate) left_click_ctrl: RefCell<Option<gtk::GestureClick>>,
         pub(crate) right_click_ctrl: RefCell<Option<gtk::GestureClick>>,
         pub(crate) req_handle: RefCell<Option<RemoteHandle<()>>>,
-        #[prop(get = Self::history_status, builder(HistoryStatus::static_type()))]
+        #[property(get = Self::history_status, builder(HistoryStatus::static_type()))]
         pub(crate) history_status: PhantomData<HistoryStatus>,
-        #[prop(get, set)]
+        #[property(get, set)]
         pub(crate) progress: RefCell<f64>,
-        #[prop(get)]
+        #[property(get)]
         pub(crate) title: RefCell<String>,
-        #[prop(get)]
+        #[property(get)]
         pub(crate) url: RefCell<String>,
     }
 

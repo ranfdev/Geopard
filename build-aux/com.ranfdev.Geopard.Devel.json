@@ -90,8 +90,9 @@
             ],
             "sources" : [
                 {
-                    "type" : "dir",
-                    "url" : "../"
+                    "type" : "git",
+                    "url" : "../",
+                    "branch": "master"
                 }
             ]
         }
