@@ -265,7 +265,7 @@ impl Tab {
 
         let this = self.clone();
         let fut = async move {
-            let cache = match Self::send_request(&mut req_ctx).await {
+            let cache = match this.send_request(&mut req_ctx).await {
                 Ok(Some(cache)) => {
                     info!("Page loaded, can be cached ({})", url.clone());
                     Some(cache)
@@ -306,10 +306,11 @@ impl Tab {
         *self.imp().url.borrow_mut() = url.to_string();
         self.notify("url");
 
+        let this = self.clone();
         async move {
             let buf = BufReader::new(&*cache);
             draw_ctx.clear();
-            let res = Self::display_gemini(&mut draw_ctx, buf).await;
+            let res = this.display_gemini(&mut draw_ctx, buf).await;
             match res {
                 Ok(_) => {
                     info!("Loaded {} from cache", &url);
@@ -400,16 +401,18 @@ impl Tab {
 
         Err(anyhow::Error::msg("Clicked text doesn't have a link tag"))
     }
-    async fn open_file_url(req: &mut RequestCtx) -> Result<()> {
+    async fn open_file_url(&self, req: &mut RequestCtx) -> Result<()> {
         let path = req
             .url
             .to_file_path()
             .map_err(|_| anyhow::Error::msg("Can't convert link to file path"))?;
+
+        let this = self.clone();
         let file = File::open(&path).await?;
         let lines = BufReader::new(file);
         match path.extension().map(|x| x.to_str()) {
             Some(Some("gmi")) | Some(Some("gemini")) => {
-                Self::display_gemini(&mut req.draw_ctx, lines).await?;
+                this.display_gemini(&mut req.draw_ctx, lines).await?;
             }
             _ => {
                 Self::display_text(&mut req.draw_ctx, lines).await?;
@@ -417,32 +420,35 @@ impl Tab {
         }
         Ok(())
     }
-    async fn send_request(req: &mut RequestCtx) -> Result<Option<Vec<u8>>> {
+    async fn send_request(&self, req: &mut RequestCtx) -> Result<Option<Vec<u8>>> {
         req.draw_ctx.clear();
+        let this = self.clone();
         match req.url.scheme() {
             "about" => {
                 let reader = futures::io::BufReader::new(common::ABOUT_PAGE.as_bytes());
-                Self::display_gemini(&mut req.draw_ctx, reader).await?;
+                this.display_gemini(&mut req.draw_ctx, reader).await?;
                 Ok(None)
             }
             "file" => {
-                Self::open_file_url(req).await?;
+                self.open_file_url(req).await?;
                 Ok(None)
             }
-            "gemini" => Self::open_gemini_url(req).await,
+            "gemini" => self.open_gemini_url(req).await,
             _ => {
                 Self::display_url_confirmation(&mut req.draw_ctx, &req.url);
                 Ok(None)
             }
         }
     }
-    async fn open_gemini_url(req: &mut RequestCtx) -> anyhow::Result<Option<Vec<u8>>> {
+    async fn open_gemini_url(&self, req: &mut RequestCtx) -> anyhow::Result<Option<Vec<u8>>> {
         let res: gemini::Response = req.gemini_client.fetch(req.url.as_str()).await?;
 
         use gemini::Status::*;
         let meta = res.meta().to_owned();
         let status = res.status();
         debug!("Status: {:?}", &status);
+
+        let this = self.clone();
         let res = match status {
             Input(_) => {
                 Self::display_input(&mut req.draw_ctx, req.url.clone(), &meta);
@@ -452,7 +458,7 @@ impl Tab {
                 let body = res.body().context("Body not found")?;
                 let buffered = futures::io::BufReader::new(body);
                 if meta.contains("text/gemini") {
-                    let res = Self::display_gemini(&mut req.draw_ctx, buffered).await?;
+                    let res = this.display_gemini(&mut req.draw_ctx, buffered).await?;
                     Some(res)
                 } else if meta.contains("text") {
                     Self::display_text(&mut req.draw_ctx, buffered).await?;
@@ -627,9 +633,12 @@ click on the button below\n",
         // FIXME: Handle open
     }
     async fn display_gemini<T: AsyncBufRead + Unpin>(
+        &self,
         draw_ctx: &mut DrawCtx,
         mut reader: T,
     ) -> anyhow::Result<Vec<u8>> {
+        let imp = self.imp();
+
         let mut parser = gemini::Parser::new();
         let mut text_iter = draw_ctx.text_buffer.end_iter();
 
@@ -637,6 +646,8 @@ click on the button below\n",
         let mut data = String::with_capacity(1024);
         let mut total = 0;
         let mut n;
+
+        let mut title_updated = false;
 
         loop {
             n = reader.read_line_lossy(&mut data).await?;
@@ -649,6 +660,8 @@ click on the button below\n",
             if let PageElement::Preformatted(line) = token {
                 preformatted.push_str(&line);
             } else {
+                // preformatted text is handled different hoping to add scrollbars for it,
+                // in the future, maybe
                 if !preformatted.is_empty() {
                     draw_ctx.insert_preformatted(&mut text_iter, &preformatted);
                     preformatted.clear();
@@ -659,6 +672,11 @@ click on the button below\n",
                     }
                     PageElement::Heading(line) => {
                         draw_ctx.insert_heading(&mut text_iter, &line);
+                        if !title_updated {
+                            title_updated = true;
+                            imp.title.replace(line.trim_end().trim_start_matches("#").to_string());
+                            self.notify("title");
+                        }
                     }
                     PageElement::Quote(line) => {
                         draw_ctx.insert_quote(&mut text_iter, &line);
