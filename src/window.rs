@@ -7,15 +7,15 @@ use glib_macros::Properties;
 use gtk::gdk;
 use gtk::gio;
 use gtk::glib;
+use gtk::prelude::*;
 use gtk::subclass::prelude::*;
+use gtk::CompositeTemplate;
+use gtk::TemplateChild;
 use log::{error, info, warn};
 use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use url::Url;
-use gtk::prelude::*;
-use gtk::CompositeTemplate;
-use gtk::TemplateChild;
 
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
 use crate::config;
@@ -96,11 +96,9 @@ pub mod imp {
             Self::bind_template(klass);
         }
 
-
         fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
             obj.init_template();
         }
-
     }
 
     impl ObjectImpl for Window {
@@ -146,12 +144,16 @@ impl Window {
         this
     }
     fn bind_signals(&self) {
-        self.imp().tab_view.connect_selected_page_notify(clone!(@weak self as this => @default-panic, move |tab_view| {
-          this.page_switched(tab_view);
-        }));
-        self.imp().squeezer.connect_visible_child_notify(clone!(@weak self as this => @default-panic, move |_sq| {
-            this.squeezer_changed();
-        }));
+        self.imp().tab_view.connect_selected_page_notify(
+            clone!(@weak self as this => @default-panic, move |tab_view| {
+              this.page_switched(tab_view);
+            }),
+        );
+        self.imp().squeezer.connect_visible_child_notify(
+            clone!(@weak self as this => @default-panic, move |_sq| {
+                this.squeezer_changed();
+            }),
+        );
     }
     fn setup_actions_signals(&self) {
         let imp = self.imp();
