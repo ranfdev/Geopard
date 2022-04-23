@@ -16,7 +16,7 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
 use url::Url;
-use glib::Properties;
+use glib::{clone, Properties};
 
 use crate::common;
 use crate::common::{glibctx, HistoryItem, LossyTextRead, PageElement, RequestCtx};
@@ -42,6 +42,7 @@ pub mod imp {
         pub(crate) clamp: adw::Clamp,
         pub(crate) left_click_ctrl: RefCell<Option<gtk::GestureClick>>,
         pub(crate) right_click_ctrl: RefCell<Option<gtk::GestureClick>>,
+        pub(crate) motion_ctrl: RefCell<Option<gtk::EventControllerMotion>>,
         pub(crate) req_handle: RefCell<Option<RemoteHandle<()>>>,
         #[property(get = Self::history_status, builder(HistoryStatus::static_type()))]
         pub(crate) history_status: PhantomData<HistoryStatus>,
@@ -81,6 +82,8 @@ pub mod imp {
                 .replace(Some(gtk::GestureClick::builder().button(1).build()));
             self.right_click_ctrl
                 .replace(Some(gtk::GestureClick::builder().button(3).build()));
+            self.motion_ctrl
+                .replace(Some(gtk::EventControllerMotion::new()));
             self.gemini_client
                 .replace(gemini::ClientBuilder::new().redirect(true).build());
         }
@@ -151,6 +154,7 @@ impl Tab {
             .build();
         text_view.add_controller(imp.left_click_ctrl.borrow().as_ref().unwrap());
         text_view.add_controller(imp.right_click_ctrl.borrow().as_ref().unwrap());
+        text_view.add_controller(imp.motion_ctrl.borrow().as_ref().unwrap());
 
         imp.scroll_win.set_child(Some(&text_view));
         imp.draw_ctx.replace(Some(DrawCtx::new(text_view, config)));
@@ -212,6 +216,22 @@ impl Tab {
             Some(&format!("win.set-clipboard(\"{}\")", link.as_str())),
         );
         text_view.set_extra_menu(Some(&menu));
+        Ok(())
+    }
+    fn handle_motion(&self, x: f64, y: f64) -> Result<()> {
+        let imp = self.imp();
+        let draw_ctx = imp.draw_ctx.borrow();
+        let draw_ctx = draw_ctx.as_ref().unwrap();
+        let link = Self::extract_linkhandler(draw_ctx, x, y);
+        match link {
+            Ok(_) => {
+                draw_ctx.text_view.set_cursor_from_name(Some("pointer"));
+            }
+            Err(_) => {
+                draw_ctx.text_view.set_cursor_from_name(Some("text"));
+            }
+        }
+
         Ok(())
     }
     pub fn spawn_open_url(&self, url: Url) {
@@ -373,16 +393,25 @@ impl Tab {
             };
         });
 
-        let this = self.clone();
+
         imp.right_click_ctrl
             .borrow()
             .as_ref()
             .unwrap()
-            .connect_pressed(move |_ctrl, _n_press, x, y| {
+            .connect_pressed(clone!(@weak self as this => @default-panic, move |_ctrl, _n_press, x, y| {
                 if let Err(e) = this.handle_right_click(x, y) {
                     info!("{}", e);
                 };
-            });
+            }));
+
+
+        imp.motion_ctrl
+            .borrow()
+            .as_ref()
+            .unwrap()
+            .connect_motion(clone!(@weak self as this => @default-panic,move |_ctrl, x, y|  {
+                let _ = this.handle_motion(x, y);
+            }));
     }
     fn extract_linkhandler(draw_ctx: &DrawCtx, x: f64, y: f64) -> Result<String> {
         info!("Extracting linkhandler from clicked text");
@@ -393,13 +422,11 @@ impl Tab {
             .iter_at_location(x as i32, y as i32)
             .context("Can't get text iter where clicked")?;
 
-        for tag in iter.tags() {
-            if let Some(link) = DrawCtx::linkhandler(&tag) {
-                return Ok(link.clone());
-            }
-        }
-
-        Err(anyhow::Error::msg("Clicked text doesn't have a link tag"))
+        iter.tags()
+            .iter()
+            .find_map(DrawCtx::linkhandler)
+            .cloned()
+            .ok_or(anyhow::Error::msg("Clicked text doesn't have a link tag"))
     }
     async fn open_file_url(&self, req: &mut RequestCtx) -> Result<()> {
         let path = req
