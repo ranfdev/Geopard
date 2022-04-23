@@ -15,7 +15,7 @@ impl DrawCtx {
         let text_buffer = gtk::TextBuffer::new(None);
         text_view.set_buffer(Some(&text_buffer));
 
-        let this = Self {
+        let mut this = Self {
             text_view,
             text_buffer,
             config,
@@ -24,9 +24,9 @@ impl DrawCtx {
         this
     }
 
-    pub fn init_tags(&self) -> gtk::TextTagTable {
+    pub fn init_tags(&mut self) -> gtk::TextTagTable {
         let default_config = &config::DEFAULT_CONFIG;
-        let tag_table = gtk::TextTagTable::new();
+        let tag_table = self.text_buffer.tag_table();
         let tag_h1 = DrawCtx::create_tag("h1", {
             self.config
                 .fonts
@@ -219,8 +219,5 @@ impl DrawCtx {
     pub fn clear(&mut self) {
         let b = &self.text_buffer;
         b.delete(&mut b.start_iter(), &mut b.end_iter());
-
-        self.text_buffer = gtk::TextBuffer::new(Some(&self.init_tags()));
-        self.text_view.set_buffer(Some(&self.text_buffer));
     }
 }

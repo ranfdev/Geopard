@@ -493,7 +493,6 @@ dependencies = [
  "async-trait",
  "env_logger",
  "futures",
- "glib-macros",
  "gtk4",
  "libadwaita",
  "log",
@@ -508,7 +507,7 @@ dependencies = [
 [[package]]
 name = "gio"
 version = "0.16.0"
-source = "git+https://github.com/ranfdev/gtk-rs-core.git?branch=props_macro#5bfd53e410e20168b630c51729a143ce2ab0ffdf"
+source = "git+https://github.com/ranfdev/gtk-rs-core.git?branch=props_macro#053180b33e17737fdcb0e773f12b1f47a728e32f"
 dependencies = [
  "bitflags",
  "futures-channel",
@@ -524,7 +523,7 @@ dependencies = [
 [[package]]
 name = "gio-sys"
 version = "0.16.0"
-source = "git+https://github.com/ranfdev/gtk-rs-core.git?branch=props_macro#5bfd53e410e20168b630c51729a143ce2ab0ffdf"
+source = "git+https://github.com/ranfdev/gtk-rs-core.git?branch=props_macro#053180b33e17737fdcb0e773f12b1f47a728e32f"
 dependencies = [
  "glib-sys",
  "gobject-sys",
@@ -536,7 +535,7 @@ dependencies = [
 [[package]]
 name = "glib"
 version = "0.16.0"
-source = "git+https://github.com/ranfdev/gtk-rs-core.git?branch=props_macro#5bfd53e410e20168b630c51729a143ce2ab0ffdf"
+source = "git+https://github.com/ranfdev/gtk-rs-core.git?branch=props_macro#053180b33e17737fdcb0e773f12b1f47a728e32f"
 dependencies = [
  "bitflags",
  "futures-channel",
@@ -556,7 +555,7 @@ dependencies = [
 [[package]]
 name = "glib-macros"
 version = "0.16.0"
-source = "git+https://github.com/ranfdev/gtk-rs-core.git?branch=props_macro#5bfd53e410e20168b630c51729a143ce2ab0ffdf"
+source = "git+https://github.com/ranfdev/gtk-rs-core.git?branch=props_macro#053180b33e17737fdcb0e773f12b1f47a728e32f"
 dependencies = [
  "anyhow",
  "heck",
@@ -570,7 +569,7 @@ dependencies = [
 [[package]]
 name = "glib-sys"
 version = "0.16.0"
-source = "git+https://github.com/ranfdev/gtk-rs-core.git?branch=props_macro#5bfd53e410e20168b630c51729a143ce2ab0ffdf"
+source = "git+https://github.com/ranfdev/gtk-rs-core.git?branch=props_macro#053180b33e17737fdcb0e773f12b1f47a728e32f"
 dependencies = [
  "libc",
  "system-deps",
@@ -579,7 +578,7 @@ dependencies = [
 [[package]]
 name = "gobject-sys"
 version = "0.16.0"
-source = "git+https://github.com/ranfdev/gtk-rs-core.git?branch=props_macro#5bfd53e410e20168b630c51729a143ce2ab0ffdf"
+source = "git+https://github.com/ranfdev/gtk-rs-core.git?branch=props_macro#053180b33e17737fdcb0e773f12b1f47a728e32f"
 dependencies = [
  "glib-sys",
  "libc",
@@ -873,7 +872,7 @@ dependencies = [
 [[package]]
 name = "pango"
 version = "0.16.0"
-source = "git+https://github.com/ranfdev/gtk-rs-core.git?branch=props_macro#5bfd53e410e20168b630c51729a143ce2ab0ffdf"
+source = "git+https://github.com/ranfdev/gtk-rs-core.git?branch=props_macro#053180b33e17737fdcb0e773f12b1f47a728e32f"
 dependencies = [
  "bitflags",
  "glib",
@@ -885,7 +884,7 @@ dependencies = [
 [[package]]
 name = "pango-sys"
 version = "0.16.0"
-source = "git+https://github.com/ranfdev/gtk-rs-core.git?branch=props_macro#5bfd53e410e20168b630c51729a143ce2ab0ffdf"
+source = "git+https://github.com/ranfdev/gtk-rs-core.git?branch=props_macro#053180b33e17737fdcb0e773f12b1f47a728e32f"
 dependencies = [
  "glib-sys",
  "gobject-sys",

@@ -4,7 +4,6 @@ use futures::future::RemoteHandle;
 use futures::io::BufReader;
 use futures::prelude::*;
 use futures::task::LocalSpawnExt;
-use glib_macros::Properties;
 use gtk::gdk::prelude::*;
 use gtk::gio;
 use gtk::glib;
@@ -17,6 +16,7 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
 use url::Url;
+use glib::Properties;
 
 use crate::common;
 use crate::common::{glibctx, HistoryItem, LossyTextRead, PageElement, RequestCtx};
@@ -310,7 +310,7 @@ impl Tab {
         async move {
             let buf = BufReader::new(&*cache);
             draw_ctx.clear();
-            let res = this.display_gemini(&mut draw_ctx, buf).await;
+            let res = this.display_gemini(buf).await;
             match res {
                 Ok(_) => {
                     info!("Loaded {} from cache", &url);
@@ -412,7 +412,7 @@ impl Tab {
         let lines = BufReader::new(file);
         match path.extension().map(|x| x.to_str()) {
             Some(Some("gmi")) | Some(Some("gemini")) => {
-                this.display_gemini(&mut req.draw_ctx, lines).await?;
+                this.display_gemini(lines).await?;
             }
             _ => {
                 Self::display_text(&mut req.draw_ctx, lines).await?;
@@ -426,7 +426,7 @@ impl Tab {
         match req.url.scheme() {
             "about" => {
                 let reader = futures::io::BufReader::new(common::ABOUT_PAGE.as_bytes());
-                this.display_gemini(&mut req.draw_ctx, reader).await?;
+                this.display_gemini(reader).await?;
                 Ok(None)
             }
             "file" => {
@@ -458,7 +458,7 @@ impl Tab {
                 let body = res.body().context("Body not found")?;
                 let buffered = futures::io::BufReader::new(body);
                 if meta.contains("text/gemini") {
-                    let res = this.display_gemini(&mut req.draw_ctx, buffered).await?;
+                    let res = this.display_gemini(buffered).await?;
                     Some(res)
                 } else if meta.contains("text") {
                     Self::display_text(&mut req.draw_ctx, buffered).await?;
@@ -634,10 +634,10 @@ click on the button below\n",
     }
     async fn display_gemini<T: AsyncBufRead + Unpin>(
         &self,
-        draw_ctx: &mut DrawCtx,
         mut reader: T,
     ) -> anyhow::Result<Vec<u8>> {
         let imp = self.imp();
+        let mut draw_ctx = imp.draw_ctx.borrow().clone().unwrap();
 
         let mut parser = gemini::Parser::new();
         let mut text_iter = draw_ctx.text_buffer.end_iter();
