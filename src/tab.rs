@@ -477,13 +477,8 @@ impl Tab {
     }
     fn parse_link(&self, link: &str) -> Result<Url, url::ParseError> {
         let imp = self.imp();
-        let current_url = imp
-            .history
-            .borrow_mut()
-            .last()
-            .expect("History item not found")
-            .url
-            .clone();
+        let current_url = Url::parse(&imp
+            .url.borrow())?;
         let link_url = Url::options().base_url(Some(&current_url)).parse(link)?;
         Ok(link_url)
     }
