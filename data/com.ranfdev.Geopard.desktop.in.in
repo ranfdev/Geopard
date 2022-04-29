@@ -4,7 +4,7 @@ Comment=A gemini browser
 Type=Application
 Exec=geopard
 Terminal=false
-Categories=GNOME;GTK;
+Categories=GNOME;GTK;Network;
 Keywords=Gnome;GTK;browser;gemini;rust;
 # Translators: Do NOT translate or transliterate this text (this is an icon file name)!
 Icon=@icon@

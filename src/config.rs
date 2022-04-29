@@ -4,7 +4,7 @@ pub const LOCALEDIR: &str = "/app/share/locale";
 pub const PKGDATADIR: &str = "/app/share/geopard";
 pub const PROFILE: &str = "Devel";
 pub const RESOURCES_FILE: &str = concat!("/app/share/geopard", "/resources.gresource");
-pub const VERSION: &str = "1.0.0-alpha-9d527e8";
+pub const VERSION: &str = "1.0.0-alpha-a6cb0a0";
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
