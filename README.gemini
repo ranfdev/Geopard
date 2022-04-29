@@ -1,5 +1,5 @@
 # About geopard
-Geopard is a gtk3 gemini client
+Geopard is a gtk4 gemini client
 
 ## Some notable features
 - Colors! 
@@ -8,7 +8,7 @@ Geopard is a gtk3 gemini client
 - Fast (async core + caching).
   Streams content by default. That means you can open pages even when you have
   connection speeds of Kb/s.
-  It also caches pages in the history, so you can go back in an instant
+  It also caches pages in the history, so you can go back/forward in an instant
         
 
 - Can download binary files.
@@ -18,12 +18,13 @@ Geopard is a gtk3 gemini client
 - It works. Until I find another bug
 
 ## Technical details
-Under the hood, it uses gtk3 and rust. Everything related to IO is asynchronous.
+Under the hood, it uses gtk4 and rust. Everything related to IO is asynchronous.
 To do that, it makes use of rust async/await capabilities and the async-std crate.
 
 # How to change settings
 You should find the configuration files in ~/.config/geopard/
-If you use flatpak, they are in ~/.var/app/com.ranfdev.Geopard/config/geopard/
+If you use flatpak, they are in ~/.var/app/com.ranfdev.Geopard/config/geopard/.
+In the future I will probably introduce a settings GUI.
 
 ## How to build
 ### With Flatpak
@@ -31,6 +32,7 @@ If you have gnome-builder installed, use it to the open the folder of the source
 code and hit the run button.
 
 ### Build with Nix
+** currently broken **
 If you have the 
 => https://nixos.org/ nix
 package manager, you can simply do:
@@ -44,7 +46,7 @@ nix-build nix/default.nix
 Clone this repo.
 
 Install these development packages:
-- gtk3
+- gtk4
 - glib
 - rust (with cargo)
 - openssl

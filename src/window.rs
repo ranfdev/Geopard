@@ -165,6 +165,7 @@ impl Window {
         self_action!(self, "about", present_about);
         self_action!(self, "focus-tab-previous", focus_tab_previous);
         self_action!(self, "focus-tab-next", focus_tab_next);
+        self_action!(self, "donate", donate);
 
         let act_open_page = gio::SimpleAction::new("open-omni", Some(glib::VariantTy::STRING));
         act_open_page.connect_activate(
@@ -448,7 +449,12 @@ impl Window {
     fn present_shortcuts(&self) {
         gtk::Builder::from_resource("/com/ranfdev/Geopard/ui/shortcuts.ui");
     }
-    fn present_about(&self) {}
+    fn present_about(&self) {
+        self.open_url_str("about://help");
+    }
+    fn donate(&self) {
+        gtk::show_uri(None::<&gtk::Window>, "https://github.com/sponsors/ranfdev", 0);
+    }
     fn focus_tab_next(&self) {
         let imp = self.imp();
         imp.tab_view.select_next_page();
