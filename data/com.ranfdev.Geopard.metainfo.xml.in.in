@@ -28,18 +28,17 @@
   <url type="bugtracker">https://github.com/ranfdev/Geopard/issues/</url>
   <content_rating type="oars-1.0" />
   <releases>
-     <release version="1.0.0" date="2022-04-29">
+    <release version="1.0.0-alpha" date="2021-04-01">
+      This is the first working flatpak release. Some features (colors, caching)
+      are missing.
+    </release>
+    <release version="1.0.0" date="2022-04-29">
       First release on flathub! You get all the most important features:
        - colors
        - caching
        - search
        :D
     </release>
-    <release version="1.0.0-alpha" date="2021-04-01">
-      This is the first working flatpak release. Some features (colors, caching)
-      are missing.
-    </release>
-    <release version="0.1.0" date="2020-07-10" />
   </releases>
   <kudos>
      <!--
