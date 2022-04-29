@@ -1,6 +1,6 @@
 [package]
 name = "geopard"
-version = "1.0.0-alpha"
+version = "1.0.0"
 authors = ["ranfdev <ranfdev@gmail.com>"]
 edition = "2021"
 

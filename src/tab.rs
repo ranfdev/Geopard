@@ -33,6 +33,7 @@ pub mod imp {
 
     pub use super::*;
     #[derive(Debug, Default, Properties)]
+    #[properties(wrapper_type = super::Tab)]
     pub struct Tab {
         pub(crate) gemini_client: RefCell<gemini::Client>,
         pub(crate) draw_ctx: RefCell<Option<DrawCtx>>,
@@ -136,7 +137,7 @@ glib::wrapper! {
     pub struct Tab(ObjectSubclass<imp::Tab>)
         @extends gtk::Widget;
 }
-pub use imp::TabPropertiesExt;
+
 impl Tab {
     pub fn new(config: crate::config::Config) -> Self {
         let this: Self = glib::Object::new(&[]).unwrap();
@@ -173,16 +174,6 @@ impl Tab {
             gemini_client: imp.gemini_client.borrow().clone(),
             url,
         }
-    }
-    pub fn url(&self) -> Result<url::Url> {
-        let imp = self.imp();
-        Ok(imp
-            .history
-            .borrow_mut()
-            .last()
-            .context("No items in history")?
-            .url
-            .clone())
     }
     pub fn handle_click(&self, x: f64, y: f64) -> Result<()> {
         let imp = self.imp();
@@ -275,7 +266,7 @@ impl Tab {
     fn open_url(&self, url: Url) -> impl Future<Output = Option<Vec<u8>>> {
         let imp = self.imp();
 
-        self.set_progress(0.0);
+        self.set_progress(&0.0);
         *imp.title.borrow_mut() = url.to_string();
         self.notify("title");
         *imp.url.borrow_mut() = url.to_string();
@@ -299,10 +290,10 @@ impl Tab {
                     None
                 }
             };
-            this.set_progress(1.0);
+            this.set_progress(&1.0);
             cache
         };
-        self.set_progress(0.3);
+        self.set_progress(&0.3);
         fut
     }
     fn open_history(&self, item: HistoryItem) -> Pin<Box<dyn Future<Output = ()>>> {

@@ -1,10 +1,10 @@
-pub const APP_ID: &str = "com.ranfdev.Geopard.Devel";
+pub const APP_ID: &str = "com.ranfdev.Geopard";
 pub const GETTEXT_PACKAGE: &str = "geopard";
 pub const LOCALEDIR: &str = "/app/share/locale";
 pub const PKGDATADIR: &str = "/app/share/geopard";
-pub const PROFILE: &str = "Devel";
+pub const PROFILE: &str = "";
 pub const RESOURCES_FILE: &str = concat!("/app/share/geopard", "/resources.gresource");
-pub const VERSION: &str = "1.0.0-alpha-a6cb0a0";
+pub const VERSION: &str = "1.0.0";
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};

@@ -27,6 +27,7 @@ pub mod imp {
     use super::*;
     #[derive(Debug, Default, Properties, CompositeTemplate)]
     #[template(resource = "/com/ranfdev/Geopard/ui/window.ui")]
+    #[properties(wrapper_type = super::Window)]
     pub struct Window {
         #[template_child]
         pub(crate) url_bar: TemplateChild<gtk::SearchEntry>,
