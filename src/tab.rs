@@ -629,7 +629,7 @@ impl Tab {
             let mut url = url.clone();
             url.set_query(Some(&query));
             text_input
-                .activate_action("win.open-omni", Some(&url.to_string().to_variant()))
+                .activate_action("win.open-url", Some(&url.to_string().to_variant()))
                 .unwrap();
         });
         ctx.insert_widget(&mut iter, &text_input);

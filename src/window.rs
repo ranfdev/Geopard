@@ -143,23 +143,10 @@ impl Window {
             &*imp.style_provider.borrow(),
             gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
-        this.bind_signals();
         this.squeezer_changed();
         this.setup_actions_signals();
         this.open_in_new_tab(bookmarks_url().as_str());
         this
-    }
-    fn bind_signals(&self) {
-        self.imp().tab_view.connect_selected_page_notify(
-            clone!(@weak self as this => @default-panic, move |tab_view| {
-              this.page_switched(tab_view);
-            }),
-        );
-        self.imp().squeezer.connect_visible_child_notify(
-            clone!(@weak self as this => @default-panic, move |_sq| {
-                this.squeezer_changed();
-            }),
-        );
     }
     fn setup_actions_signals(&self) {
         let imp = self.imp();
@@ -224,6 +211,28 @@ impl Window {
                 None
             }),
         );
+
+        imp.tab_view.connect_selected_page_notify(
+            clone!(@weak self as this => @default-panic, move |tab_view| {
+              this.page_switched(tab_view);
+            }),
+        );
+        imp.squeezer.connect_visible_child_notify(
+            clone!(@weak self as this => @default-panic, move |_sq| {
+                this.squeezer_changed();
+            }),
+        );
+        imp.url_bar.connect_activate(
+            clone!(@weak self as this => @default-panic, move |_sq| {
+                this.open_omni(this.imp().url_bar.text().as_str());
+            })
+        );
+        imp.small_url_bar.connect_activate(
+            clone!(@weak self as this => @default-panic, move |_sq| {
+                this.open_omni(this.imp().small_url_bar.text().as_str());
+            })
+        );
+
         adw::StyleManager::default().connect_dark_notify(clone!(@weak self as this => @default-panic, move |_| {
             this.set_special_color_from_hash();
         }));
@@ -346,15 +355,11 @@ impl Window {
             }
         });
     }
-    // this should also handle search requests
     fn open_omni(&self, v: &str) {
-        let url = Url::parse(v);
+        let url = Url::parse(v).or_else(|_| Url::parse(&format!("gemini://geminispace.info/search?{}", v)));
         match url {
             Ok(url) => self.current_tab().spawn_open_url(url),
-            Err(e) => error!(
-                "Failed to parse url (will trigger a search in the future): {:?}",
-                e
-            ),
+            Err(e) => error!("Failed to open from omni bar"),
         }
     }
     fn open_url_str(&self, v: &str) {
