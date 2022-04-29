@@ -15,6 +15,7 @@ use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use url::Url;
+use std::cell::Cell;
 
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
 use crate::config;
@@ -51,6 +52,7 @@ pub mod imp {
         pub(crate) scroll_ctrl: gtk::EventControllerScroll,
         pub(crate) action_previous: RefCell<Option<gio::SimpleAction>>,
         pub(crate) action_next: RefCell<Option<gio::SimpleAction>>,
+        pub(crate) style_provider: RefCell<gtk::CssProvider>,
     }
 
     impl Window {
@@ -136,6 +138,11 @@ impl Window {
         let imp = this.imp();
         imp.config.replace(config);
 
+        gtk::StyleContext::add_provider_for_display(
+            &gdk::Display::default().unwrap(),
+            &*imp.style_provider.borrow(),
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
         this.bind_signals();
         this.squeezer_changed();
         this.setup_actions_signals();
@@ -213,23 +220,13 @@ impl Window {
             "notify::url",
             false,
             clone!(@weak self as this => @default-panic, move |_| {
-                let mut s = std::collections::hash_map::DefaultHasher::new();
-                let url = this.imp().url.borrow();
-                let url = if let Ok(domain) = Url::parse(&url) {
-                    if let Some(domain) = domain.domain() {
-                        domain.to_string()
-                    } else {
-                        url.to_string()
-                    }
-                } else {
-                    url.to_string()
-                };
-                url.hash(&mut s);
-                let h = s.finish();
-                Self::set_special_color_from_hash(h);
+                this.set_special_color_from_hash();
                 None
             }),
         );
+        adw::StyleManager::default().connect_dark_notify(clone!(@weak self as this => @default-panic, move |_| {
+            this.set_special_color_from_hash();
+        }));
     }
     fn add_tab(&self) -> adw::TabPage {
         let imp = self.imp();
@@ -381,30 +378,51 @@ impl Window {
     fn inner_tab(&self, tab: &adw::TabPage) -> Tab {
         tab.child().downcast().unwrap()
     }
-    fn set_special_color_from_hash(hash: u64) {
+    fn set_special_color_from_hash(&self) {
+        let imp = self.imp();
+        let url = imp.url.borrow();
+        let url = if let Ok(domain) = Url::parse(&url) {
+            if let Some(domain) = domain.domain() {
+                domain.to_string()
+            } else {
+                url.to_string()
+            }
+        } else {
+            url.to_string()
+        };
+        let hash = {
+            let mut s = std::collections::hash_map::DefaultHasher::new();
+            url.hash(&mut s);
+            s.finish()
+        };
         let hue = hash % 360;
-        let stylesheet = format!(
-            "
-            @define-color view_bg_color hsl({hue}, 100%, 99%);
-            @define-color view_fg_color hsl({hue}, 100%, 12%);
-            @define-color window_bg_color hsl({hue}, 100%, 99%);
-            @define-color window_fg_color hsl({hue}, 100%, 12%);
-            @define-color headerbar_bg_color hsl({hue}, 100%, 96%);
-            @define-color headerbar_fg_color hsl({hue}, 100%, 12%);
-            ",
-        );
-        Self::add_stylesheet(&stylesheet);
-    }
-    fn add_stylesheet(stylesheet: &str) {
-        // TODO: Adding a provider and keeping it in memory forever
-        // is a memory leak. Fortunately, it's small. Yes, I should fix this
+        let stylesheet =
+            if adw::StyleManager::default().is_dark() {
+                format!("
+                    @define-color view_bg_color hsl({hue}, 20%, 8%);
+                    @define-color view_fg_color hsl({hue}, 100%, 98%);
+                    @define-color window_bg_color hsl({hue}, 20%, 8%);
+                    @define-color window_fg_color hsl({hue}, 100%, 98%);
+                    @define-color headerbar_bg_color hsl({hue}, 80%, 10%);
+                    @define-color headerbar_fg_color hsl({hue}, 100%, 98%);
+                ")
+            } else {
+                format!(
+                    "
+                    @define-color view_bg_color hsl({hue}, 100%, 99%);
+                    @define-color view_fg_color hsl({hue}, 100%, 12%);
+                    @define-color window_bg_color hsl({hue}, 100%, 99%);
+                    @define-color window_fg_color hsl({hue}, 100%, 12%);
+                    @define-color headerbar_bg_color hsl({hue}, 100%, 96%);
+                    @define-color headerbar_fg_color hsl({hue}, 100%, 12%);
+                    "
+                )
+            };
 
-        let provider = gtk::CssProvider::new();
-        provider.load_from_data(stylesheet.as_bytes());
-        gtk::StyleContext::add_provider_for_display(
-            &gdk::Display::default().unwrap(),
-            &provider,
-            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        imp.style_provider.borrow().load_from_data(stylesheet.as_bytes());
+        // FIXME: Should add a method on `Tab`...
+        self.current_tab().imp().draw_ctx.borrow().as_ref().unwrap().set_link_color(
+            &self.style_context().lookup_color("accent_color").unwrap()
         );
     }
 
