@@ -11,11 +11,11 @@ use gtk::subclass::prelude::*;
 use gtk::CompositeTemplate;
 use gtk::TemplateChild;
 use log::{error, info, warn};
+use std::cell::Cell;
 use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use url::Url;
-use std::cell::Cell;
 
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
 use crate::config;
@@ -224,20 +224,21 @@ impl Window {
                 this.squeezer_changed();
             }),
         );
-        imp.url_bar.connect_activate(
-            clone!(@weak self as this => @default-panic, move |_sq| {
+        imp.url_bar
+            .connect_activate(clone!(@weak self as this => @default-panic, move |_sq| {
                 this.open_omni(this.imp().url_bar.text().as_str());
-            })
-        );
+            }));
         imp.small_url_bar.connect_activate(
             clone!(@weak self as this => @default-panic, move |_sq| {
                 this.open_omni(this.imp().small_url_bar.text().as_str());
-            })
+            }),
         );
 
-        adw::StyleManager::default().connect_dark_notify(clone!(@weak self as this => @default-panic, move |_| {
-            this.set_special_color_from_hash();
-        }));
+        adw::StyleManager::default().connect_dark_notify(
+            clone!(@weak self as this => @default-panic, move |_| {
+                this.set_special_color_from_hash();
+            }),
+        );
     }
     fn add_tab(&self) -> adw::TabPage {
         let imp = self.imp();
@@ -358,7 +359,8 @@ impl Window {
         });
     }
     fn open_omni(&self, v: &str) {
-        let url = Url::parse(v).or_else(|_| Url::parse(&format!("gemini://geminispace.info/search?{}", v)));
+        let url = Url::parse(v)
+            .or_else(|_| Url::parse(&format!("gemini://geminispace.info/search?{}", v)));
         match url {
             Ok(url) => self.current_tab().spawn_open_url(url),
             Err(e) => error!("Failed to open from omni bar"),
@@ -403,19 +405,20 @@ impl Window {
             s.finish()
         };
         let hue = hash % 360;
-        let stylesheet =
-            if adw::StyleManager::default().is_dark() {
-                format!("
+        let stylesheet = if adw::StyleManager::default().is_dark() {
+            format!(
+                "
                     @define-color view_bg_color hsl({hue}, 20%, 8%);
                     @define-color view_fg_color hsl({hue}, 100%, 98%);
                     @define-color window_bg_color hsl({hue}, 20%, 8%);
                     @define-color window_fg_color hsl({hue}, 100%, 98%);
                     @define-color headerbar_bg_color hsl({hue}, 80%, 10%);
                     @define-color headerbar_fg_color hsl({hue}, 100%, 98%);
-                ")
-            } else {
-                format!(
-                    "
+                "
+            )
+        } else {
+            format!(
+                "
                     @define-color view_bg_color hsl({hue}, 100%, 99%);
                     @define-color view_fg_color hsl({hue}, 100%, 12%);
                     @define-color window_bg_color hsl({hue}, 100%, 99%);
@@ -423,14 +426,20 @@ impl Window {
                     @define-color headerbar_bg_color hsl({hue}, 100%, 96%);
                     @define-color headerbar_fg_color hsl({hue}, 100%, 12%);
                     "
-                )
-            };
+            )
+        };
 
-        imp.style_provider.borrow().load_from_data(stylesheet.as_bytes());
+        imp.style_provider
+            .borrow()
+            .load_from_data(stylesheet.as_bytes());
         // FIXME: Should add a method on `Tab`...
-        self.current_tab().imp().draw_ctx.borrow().as_ref().unwrap().set_link_color(
-            &self.style_context().lookup_color("accent_color").unwrap()
-        );
+        self.current_tab()
+            .imp()
+            .draw_ctx
+            .borrow()
+            .as_ref()
+            .unwrap()
+            .set_link_color(&self.style_context().lookup_color("accent_color").unwrap());
     }
 
     fn is_small_screen(&self) -> bool {
@@ -454,7 +463,11 @@ impl Window {
         self.open_url_str("about://help");
     }
     fn donate(&self) {
-        gtk::show_uri(None::<&gtk::Window>, "https://github.com/sponsors/ranfdev", 0);
+        gtk::show_uri(
+            None::<&gtk::Window>,
+            "https://github.com/sponsors/ranfdev",
+            0,
+        );
     }
     fn focus_tab_next(&self) {
         let imp = self.imp();

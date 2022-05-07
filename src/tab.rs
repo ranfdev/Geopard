@@ -4,6 +4,7 @@ use futures::future::RemoteHandle;
 use futures::io::BufReader;
 use futures::prelude::*;
 use futures::task::LocalSpawnExt;
+use glib::{clone, Properties};
 use gtk::gdk::prelude::*;
 use gtk::gio;
 use gtk::glib;
@@ -16,7 +17,6 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
 use url::Url;
-use glib::{clone, Properties};
 
 use crate::common;
 use crate::common::{glibctx, HistoryItem, LossyTextRead, PageElement, RequestCtx};
@@ -384,25 +384,23 @@ impl Tab {
             };
         });
 
-
         imp.right_click_ctrl
             .borrow()
             .as_ref()
             .unwrap()
-            .connect_pressed(clone!(@weak self as this => @default-panic, move |_ctrl, _n_press, x, y| {
-                if let Err(e) = this.handle_right_click(x, y) {
-                    info!("{}", e);
-                };
-            }));
+            .connect_pressed(
+                clone!(@weak self as this => @default-panic, move |_ctrl, _n_press, x, y| {
+                    if let Err(e) = this.handle_right_click(x, y) {
+                        info!("{}", e);
+                    };
+                }),
+            );
 
-
-        imp.motion_ctrl
-            .borrow()
-            .as_ref()
-            .unwrap()
-            .connect_motion(clone!(@weak self as this => @default-panic,move |_ctrl, x, y|  {
+        imp.motion_ctrl.borrow().as_ref().unwrap().connect_motion(
+            clone!(@weak self as this => @default-panic,move |_ctrl, x, y|  {
                 let _ = this.handle_motion(x, y);
-            }));
+            }),
+        );
     }
     fn extract_linkhandler(draw_ctx: &DrawCtx, x: f64, y: f64) -> Result<String> {
         info!("Extracting linkhandler from clicked text");
@@ -495,8 +493,7 @@ impl Tab {
     }
     fn parse_link(&self, link: &str) -> Result<Url, url::ParseError> {
         let imp = self.imp();
-        let current_url = Url::parse(&imp
-            .url.borrow())?;
+        let current_url = Url::parse(&imp.url.borrow())?;
         let link_url = Url::options().base_url(Some(&current_url)).parse(link)?;
         Ok(link_url)
     }
@@ -548,7 +545,6 @@ impl Tab {
         ctx.insert_paragraph(
             &mut text_iter,
             "to interrupt the download, leave this page\n",
-
         );
 
         let mark = ctx.text_buffer.create_mark(None, &text_iter, true);
@@ -688,7 +684,8 @@ click on the button below\n",
                         draw_ctx.insert_heading(&mut text_iter, &line);
                         if !title_updated {
                             title_updated = true;
-                            imp.title.replace(line.trim_end().trim_start_matches("#").to_string());
+                            imp.title
+                                .replace(line.trim_end().trim_start_matches("#").to_string());
                             self.notify("title");
                         }
                     }

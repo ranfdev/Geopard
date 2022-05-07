@@ -121,7 +121,11 @@ impl DrawCtx {
             .build()
     }
     pub fn set_link_color(&self, color: &gtk::gdk::RGBA) {
-        self.text_buffer.tag_table().lookup("a").unwrap().set_foreground_rgba(Some(color));
+        self.text_buffer
+            .tag_table()
+            .lookup("a")
+            .unwrap()
+            .set_foreground_rgba(Some(color));
     }
     pub fn insert_heading(&self, text_iter: &mut gtk::TextIter, line: &str) {
         let n = line.chars().filter(|c| *c == '#').count();
@@ -188,7 +192,12 @@ impl DrawCtx {
             .weight(config.weight)
             .build();
 
-        tag.set_foreground_rgba(self.text_view.style_context().lookup_color("accent_color").as_ref());
+        tag.set_foreground_rgba(
+            self.text_view
+                .style_context()
+                .lookup_color("accent_color")
+                .as_ref(),
+        );
         tag.set_underline(gtk::pango::Underline::Low);
 
         Self::set_linkhandler(&tag, link.clone());
