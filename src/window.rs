@@ -36,7 +36,7 @@ pub mod imp {
         #[template_child]
         pub(crate) bottom_bar_revealer: TemplateChild<gtk::Revealer>,
         #[template_child]
-        pub(crate) header_small: TemplateChild<adw::HeaderBar>,
+        pub(crate) header_small: TemplateChild<gtk::WindowHandle>,
         #[template_child]
         pub(crate) squeezer: TemplateChild<adw::Squeezer>,
         #[template_child]
@@ -448,7 +448,7 @@ impl Window {
             .visible_child()
             .map(|child| child.downcast().ok())
             .flatten()
-            .map(|w: adw::HeaderBar| w == self.imp().header_small.get())
+            .map(|w: gtk::WindowHandle| w == self.imp().header_small.get())
             .unwrap_or(false)
     }
     fn squeezer_changed(&self) {

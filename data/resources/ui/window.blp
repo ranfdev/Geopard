@@ -31,23 +31,37 @@ template GeopardWindow: Adw.ApplicationWindow {
           tightening-threshold: 720;
           width-request: 360;
           Gtk.SearchEntry url_bar {
-	    hexpand: true;
-	    text: bind GeopardWindow.url;
-	  }
-	}
+            hexpand: true;
+            text: bind GeopardWindow.url;
+          }
+        }
         [end]
         Gtk.MenuButton {
           icon-name: "open-menu";
           menu-model: primary_menu;
-	}
+        }
       }
-      Adw.HeaderBar header_small {
-        show-end-title-buttons: false;
-        show-start-title-buttons: false;
-        [title]
-        Gtk.SearchEntry small_url_bar {
-          hexpand: true;
-          text: bind GeopardWindow.url;
+      Gtk.WindowHandle header_small {
+        Gtk.Box {
+          margin-top: 6;
+          margin-bottom: 6;
+          margin-start: 6;
+          margin-end: 6;
+          spacing: 6;
+          styles ["headerbar"]
+          Gtk.WindowControls ws {
+            side: start;
+            visible: bind ws.empty inverted;
+          }
+          [title]
+          Gtk.SearchEntry small_url_bar {
+            hexpand: true;
+            text: bind GeopardWindow.url;
+          }
+          Gtk.WindowControls we {
+            side: end;
+            visible: bind we.empty inverted;
+          }
         }
       }
     }
@@ -56,22 +70,22 @@ template GeopardWindow: Adw.ApplicationWindow {
     }
     Gtk.Overlay {
       Adw.TabView tab_view {
-      	vexpand: true;
-      	hexpand: true;
+        vexpand: true;
+        hexpand: true;
       }
       [overlay]
       Gtk.ProgressBar progress_bar {
-      	styles ["osd"]
-      	valign: start;
-      	text: bind GeopardWindow.progress;
+        styles ["osd"]
+        valign: start;
+        text: bind GeopardWindow.progress;
       }
       [overlay]
       Gtk.Revealer bottom_bar_revealer {
         transition-type: slide_up;
         valign: end;
-	[child]
-	Adw.HeaderBar bottom_bar {
-	  show-end-title-buttons: false;
+        [child]
+        Adw.HeaderBar bottom_bar {
+          show-end-title-buttons: false;
           show-start-title-buttons: false;
           [start]
           Gtk.Button {
