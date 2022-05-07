@@ -7,7 +7,28 @@
   <name>Geopard</name>
   <summary>A gemini browser</summary>
   <description>
-    <p>A fast gemini browser with colors</p>
+    <p>Geopard is a browser for the gemini protocol, that is, a lighter alternative to the web.
+       Use Geopard to browse the space and reach hundreds of gemini capsules! Read stories, download files, play games...</p>
+    <p>Features</p>
+    <ul>
+      <li>
+        <p>Colors!
+        The browser will have a different color for each domain you visit.</p>
+      </li>
+      <li>
+        <p>Fast (async core + caching).
+        Streams content by default. That means you can open pages even when you have
+        connection speeds of Kb/s.
+        It also caches pages in the history, so you can go back in an instant</p>
+      </li>
+      <li>
+        <p>Can download binary files.
+        The download will start as soon as you open the corresponding link.
+        You can always cancel it by opening another page.</p>
+      </li>
+      <li>Bookmarks</li>
+      <li>Search</li>
+    </ul>
   </description>
 
   <screenshots>
@@ -27,19 +48,33 @@
   <url type="homepage">https://ranfdev.com/projects/Geopard</url>
   <url type="bugtracker">https://github.com/ranfdev/Geopard/issues/</url>
   <content_rating type="oars-1.0" />
+
   <releases>
+    <release version="1.0.1" date="2022-05-07">
+      <description>
+        Changes:
+        - Fix downloads by granting access to download folder
+        - Improve download progress handling
+        - Show close button on small window sizes
+      </description>
+    </release>
     <release version="1.0.0-alpha" date="2021-04-01">
-      This is the first working flatpak release. Some features (colors, caching)
-      are missing.
+      <description>
+        This is the first working flatpak release. Some features (colors, caching)
+        are missing.
+      </description>
     </release>
     <release version="1.0.0" date="2022-04-29">
-      First release on flathub! You get all the most important features:
-       - colors
-       - caching
-       - search
-       :D
+      <description>
+        First release on flathub! You get all the most important features:
+         - colors
+         - caching
+         - search
+         :D
+      </description>
     </release>
   </releases>
+
   <kudos>
      <!--
        GNOME Software kudos:
@@ -48,6 +83,12 @@
      <kudo>ModernToolkit</kudo>
      <kudo>HiDpiIcon</kudo>
   </kudos>
+
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+
+
   <developer_name>Lorenzo Miglietta</developer_name>
   <update_contact>ranfdev@gmail.com</update_contact>
   <translation type="gettext">@gettext-package@</translation>
