@@ -11,6 +11,7 @@
         "devel"
     ],
     "finish-args" : [
+        "--share=ipc",
         "--socket=fallback-x11",
         "--socket=wayland",
         "--device=dri",
@@ -21,7 +22,9 @@
         "build-args" : [
             "--share=network"
         ],
-        "env" : {        }
+        "env" : {
+          "RUST_LOG": "info"
+        }
     },
     "modules" : [
         {
