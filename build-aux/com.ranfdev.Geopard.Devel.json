@@ -15,7 +15,8 @@
         "--socket=fallback-x11",
         "--socket=wayland",
         "--device=dri",
-        "--share=network"
+        "--share=network",
+        "--filesystem=xdg-download/Geopard"
     ],
     "build-options" : {
         "append-path" : "/usr/lib/sdk/rust-stable/bin",

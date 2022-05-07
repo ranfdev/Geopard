@@ -10,7 +10,15 @@ use url::Url;
 use crate::gemini;
 
 pub static DOWNLOAD_PATH: Lazy<std::path::PathBuf> =
-    Lazy::new(|| glib::user_special_dir(glib::UserDirectory::Downloads).unwrap());
+    Lazy::new(|| {
+        let mut download_path = glib::user_special_dir(glib::UserDirectory::Downloads)
+            .expect("Can't access download directory");
+        download_path.push("Geopard");
+        if !download_path.exists() {
+            std::fs::create_dir(&download_path).expect("Can't create download folder");
+        }
+        download_path
+    });
 
 pub static ABOUT_PAGE: &str = std::include_str!("../../README.gemini");
 
