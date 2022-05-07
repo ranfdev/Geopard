@@ -11,6 +11,7 @@ use std::rc::Rc;
 
 mod common;
 mod config;
+mod build_config;
 mod draw_ctx;
 mod gemini;
 mod macros;

@@ -1,10 +1,4 @@
-pub const APP_ID: &str = "com.ranfdev.Geopard";
-pub const GETTEXT_PACKAGE: &str = "geopard";
-pub const LOCALEDIR: &str = "/app/share/locale";
-pub const PKGDATADIR: &str = "/app/share/geopard";
-pub const PROFILE: &str = "";
-pub const RESOURCES_FILE: &str = concat!("/app/share/geopard", "/resources.gresource");
-pub const VERSION: &str = "1.0.0";
+pub use crate::build_config::*;
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
