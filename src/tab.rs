@@ -534,7 +534,6 @@ impl Tab {
         url: Url,
         mut stream: T,
     ) -> anyhow::Result<()> {
-        // FIXME: iter moves
         let d_path = Self::download_path(&url)?;
 
         let mut buffer = Vec::with_capacity(8192);
@@ -549,7 +548,11 @@ impl Tab {
         ctx.insert_paragraph(
             &mut text_iter,
             "to interrupt the download, leave this page\n",
+
         );
+
+        let mark = ctx.text_buffer.create_mark(None, &text_iter, true);
+
         ctx.insert_paragraph(&mut text_iter, "downloaded\t KB\n");
 
         let mut file = File::create(&d_path).await?;
@@ -560,13 +563,11 @@ impl Tab {
                     file.write_all(&buffer[..n]).await?;
                     read += n;
                     debug!("lines {}", ctx.text_buffer.line_count());
-                    let old_line_iter = ctx
-                        .text_buffer
-                        .iter_at_line(ctx.text_buffer.line_count() - 2);
+                    let mut progress_info_iter = ctx.text_buffer.iter_at_mark(&mark);
                     ctx.text_buffer
-                        .delete(&mut old_line_iter.unwrap(), &mut ctx.text_buffer.end_iter());
+                        .delete(&mut progress_info_iter, &mut ctx.text_buffer.end_iter());
                     ctx.insert_paragraph(
-                        &mut old_line_iter.unwrap(),
+                        &mut progress_info_iter,
                         &format!("downloaded\t {}KB\n", read / 1000),
                     );
                 }
