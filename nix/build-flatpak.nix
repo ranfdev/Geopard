@@ -1,4 +1,4 @@
-{flatpak-builder, flatpak, stdenv, jq, dbus, docker, bash, writeShellApplication, writeTextFile}: 
+{flatpak-builder, flatpak, stdenv, jq, writeShellApplication, writeTextFile}: 
 let 
 f = writeTextFile {
     name = "build-terminal.sh";
@@ -9,7 +9,7 @@ f = writeTextFile {
 in
 writeShellApplication {
   name = "build-flatpak";
-  runtimeInputs = [flatpak-builder flatpak jq docker bash];
+  runtimeInputs = [flatpak-builder flatpak jq];
   text = ''
     # Read data from manifest
     folder=$1
