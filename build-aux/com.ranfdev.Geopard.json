@@ -32,6 +32,7 @@
             "name" : "Geopard",
             "buildsystem" : "meson",
             "config-opts" : [
+                "-Dbuildtype=release"
             ],
             "sources" : [
                 {
