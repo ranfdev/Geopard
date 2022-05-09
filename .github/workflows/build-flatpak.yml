@@ -6,10 +6,7 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2.4.0
-    - uses: cachix/install-nix-action@v15
-      with:
-        extra_nix_config: |
-          access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-    - run: nix run .#build-flatpak build-flatpak build-aux/com.ranfdev.Geopard.Devel.json
+    - uses: actions/checkout@master
+    - run: sudo apt install flatpak-builder flatpak jq
+    - run: bash ./build-aux/build-flatpak.sh build ./build-aux/com.ranfdev.Geopard.json
 
