@@ -1,18 +1,15 @@
+name: "Build flatpak"
 on:
-  push:
-    branches: [master]
   pull_request:
-name: CI
+  push:
 jobs:
-  flatpak-builder:
-    name: "Flatpak Builder"
+  tests:
     runs-on: ubuntu-latest
-    container:
-      image: docker.io/bilelmoussaoui/flatpak-github-actions
-      options: --privileged
     steps:
-    - uses: actions/checkout@v2
-    - uses: bilelmoussaoui/flatpak-github-actions@v2
+    - uses: actions/checkout@v2.4.0
+    - uses: cachix/install-nix-action@v15
       with:
-        bundle: "com.ranfdev.Geopard.Devel.flatpak"
-        manifest-path: "build-aux/com.ranfdev.Geopard.Devel.json"
+        extra_nix_config: |
+          access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+    - run: nix run .#build-flatpak build-flatpak build-aux/com.ranfdev.Geopard.Devel.json
+
