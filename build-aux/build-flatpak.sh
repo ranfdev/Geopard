@@ -32,7 +32,7 @@ mkdir "$folder";
 # Generate dist archive and the release manifest
 flatpak-builder --user "$folder"/build "$manifest" --build-only --stop-at="$name" --keep-build-dirs --force-clean;
 echo "meson dist --include-subprojects --no-tests" | flatpak-builder --user "$folder"/build "$manifest" --build-shell="$name" --keep-build-dirs --state-dir="$folder"/state;
-< "$manifest" jq '(.["modules"] | last | .["sources"] | last) |= {type: "archive", path: "archive.tar.xz"}' > build-flatpak-auto/manifest-archive.json;
+< "$manifest" jq '(.["modules"] | last | .["sources"] | last) |= {type: "archive", path: "archive.tar.xz"}' > "$folder"/manifest-archive.json;
 
 # Build the app from the dist archive, using the corrected manifest
 cd "$folder"/;
