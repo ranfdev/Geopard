@@ -17,6 +17,7 @@ mod gemini;
 mod macros;
 mod tab;
 mod window;
+mod input_page;
 
 use gtk::prelude::*;
 

@@ -1,0 +1,26 @@
+using Gtk 4.0;
+using Adw 1;
+
+template InputPage: Gtk.Box {
+  margin-top: 8;
+  margin-bottom: 8;
+  margin-start: 8;
+  margin-end: 8;
+  orientation: vertical;
+  valign: center;
+  Gtk.Label label {
+    styles ["title-2"]
+    label: "Text";
+    xalign: 0.0;
+    margin-top: 8;
+    margin-bottom: 8;
+    margin-start: 8;
+    margin-end: 8;
+    wrap: true;
+  }
+  Gtk.Entry entry {
+    margin-bottom: 8;
+    margin-start: 8;
+    margin-end: 8;
+  }
+}

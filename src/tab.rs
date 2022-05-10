@@ -40,6 +40,7 @@ pub mod imp {
         pub(crate) history: RefCell<Vec<HistoryItem>>,
         pub(crate) current_hi: RefCell<Option<usize>>,
         pub(crate) scroll_win: gtk::ScrolledWindow,
+        pub(crate) stack: gtk::Stack,
         pub(crate) clamp: adw::Clamp,
         pub(crate) left_click_ctrl: RefCell<Option<gtk::GestureClick>>,
         pub(crate) right_click_ctrl: RefCell<Option<gtk::GestureClick>>,
@@ -157,7 +158,9 @@ impl Tab {
         text_view.add_controller(imp.right_click_ctrl.borrow().as_ref().unwrap());
         text_view.add_controller(imp.motion_ctrl.borrow().as_ref().unwrap());
 
-        imp.scroll_win.set_child(Some(&text_view));
+        imp.stack.add_child(&text_view);
+        imp.scroll_win.set_child(Some(&imp.stack));
+
         imp.draw_ctx.replace(Some(DrawCtx::new(text_view, config)));
 
         this.bind_signals();
@@ -226,6 +229,9 @@ impl Tab {
         Ok(())
     }
     pub fn spawn_open_url(&self, url: Url) {
+        let imp = self.imp();
+
+
         let i = self.add_to_history(HistoryItem {
             url: url.clone(),
             cache: Default::default(),
@@ -258,8 +264,19 @@ impl Tab {
         self.log_history_position();
         i
     }
+    fn clear_stack_widgets(&self) {
+        let imp = self.imp();
+        let pages = imp.stack.pages();
+        let mut iter = pages.iter::<gtk::StackPage>().unwrap();
+        let first_page = iter.next().unwrap().unwrap();
+        imp.stack.set_visible_child(&first_page.child());
+        for page in iter.skip(1) {
+            imp.stack.remove(&page.unwrap().child());
+        };
+    }
     fn spawn_request(&self, fut: impl Future<Output = ()> + 'static) {
         let imp = self.imp();
+        self.clear_stack_widgets();
         imp.req_handle
             .replace(Some(glibctx().spawn_local_with_handle(fut).unwrap()));
     }
@@ -467,7 +484,7 @@ impl Tab {
         let this = self.clone();
         let res = match status {
             Input(_) => {
-                Self::display_input(&mut req.draw_ctx, req.url.clone(), &meta);
+                self.display_input(req.url.clone(), &meta);
                 None
             }
             Success(_) => {
@@ -602,25 +619,22 @@ impl Tab {
         }
     }
 
-    fn display_input(ctx: &mut DrawCtx, url: Url, msg: &str) {
-        let text_buffer = &ctx.text_buffer;
+    fn display_input(&self, url: Url, msg: &str) {
+        let imp = self.imp();
 
-        let mut iter = text_buffer.end_iter();
-        ctx.insert_paragraph(&mut iter, msg);
-        ctx.insert_paragraph(&mut iter, "\n");
-
-        let text_input = gtk::Entry::new();
-        text_input.set_hexpand(true);
-        text_input.set_width_chars(70);
-        text_input.connect_activate(move |text_input| {
-            let query = text_input.text().to_string();
+        let text_input = crate::input_page::InputPage::new();
+        imp.stack.add_child(&text_input);
+        imp.stack.set_visible_child(&text_input);
+        text_input.imp().label.set_label(msg);
+        text_input.imp().entry.connect_activate(move |entry| {
+            let query = entry.text().to_string();
             let mut url = url.clone();
             url.set_query(Some(&query));
-            text_input
+            entry
                 .activate_action("win.open-url", Some(&url.to_string().to_variant()))
                 .unwrap();
         });
-        ctx.insert_widget(&mut iter, &text_input);
+
     }
 
     fn display_url_confirmation(ctx: &mut DrawCtx, url: &Url) {
