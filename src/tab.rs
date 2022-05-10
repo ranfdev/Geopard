@@ -497,7 +497,7 @@ impl Tab {
                     Self::display_text(&mut req.draw_ctx, buffered).await?;
                     None
                 } else {
-                    Self::display_download(&mut req.draw_ctx, req.url.clone(), buffered).await?;
+                    self.display_download(req.url.clone(), buffered).await?;
                     None
                 }
             }
@@ -515,13 +515,7 @@ impl Tab {
         Ok(link_url)
     }
 
-    fn download_path(url: &Url) -> anyhow::Result<std::path::PathBuf> {
-        let file_name = url
-            .path_segments()
-            .context("Can't divide url in segments")?
-            .last()
-            .context("Can't get last url segment")?;
-
+    fn download_path(file_name: &str) -> anyhow::Result<std::path::PathBuf> {
         let mut file_name = std::path::PathBuf::from(file_name);
         loop {
             let mut d_path = common::DOWNLOAD_PATH.join(&file_name);
@@ -544,29 +538,32 @@ impl Tab {
         }
     }
     async fn display_download<T: AsyncRead + Unpin>(
-        ctx: &mut DrawCtx,
+        &self,
         url: Url,
         mut stream: T,
     ) -> anyhow::Result<()> {
-        let d_path = Self::download_path(&url)?;
+        let imp = self.imp();
+
+        let file_name = url
+            .path_segments()
+            .context("Can't divide url in segments")?
+            .last()
+            .context("Can't get last url segment")?;
+        let d_path = Self::download_path(file_name)?;
+
+        let page = crate::download_page::DownloadPage::new();
+        page.imp().label.set_label(file_name);
+        imp.stack.add_child(&page);
+        imp.stack.set_visible_child(&page);
+
+
 
         let mut buffer = Vec::with_capacity(8192);
         buffer.extend_from_slice(&[0; 8192]);
 
         let mut read = 0;
-        let mut text_iter = ctx.text_buffer.end_iter();
-        ctx.insert_paragraph(
-            &mut text_iter,
-            &format!("writing to {:?}\n", d_path.as_os_str()),
-        );
-        ctx.insert_paragraph(
-            &mut text_iter,
-            "to interrupt the download, leave this page\n",
-        );
-
-        let mark = ctx.text_buffer.create_mark(None, &text_iter, true);
-
-        ctx.insert_paragraph(&mut text_iter, "downloaded\t KB\n");
+        let mut last_update_time = glib::real_time();
+        const THROTTLE_TIME: i64 = 300_000; // 0.3s
 
         let mut file = File::create(&d_path).await?;
         loop {
@@ -575,14 +572,13 @@ impl Tab {
                 Ok(n) => {
                     file.write_all(&buffer[..n]).await?;
                     read += n;
-                    debug!("lines {}", ctx.text_buffer.line_count());
-                    let mut progress_info_iter = ctx.text_buffer.iter_at_mark(&mark);
-                    ctx.text_buffer
-                        .delete(&mut progress_info_iter, &mut ctx.text_buffer.end_iter());
-                    ctx.insert_paragraph(
-                        &mut progress_info_iter,
-                        &format!("downloaded\t {}KB\n", read / 1000),
-                    );
+
+                    let t = glib::real_time();
+                    if t - last_update_time > THROTTLE_TIME {
+                        page.imp().progress_bar.pulse();
+                        page.imp().label_downloaded.set_text(&format!("{}KB", read / 1000));
+                        last_update_time = t;
+                    }
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {
                     continue;
@@ -590,15 +586,14 @@ impl Tab {
                 Err(e) => return Err(e.into()),
             }
         }
-        let mut text_iter = ctx.text_buffer.end_iter();
-        ctx.insert_paragraph(&mut text_iter, "download finished!\n");
+        page.imp().label_downloaded.set_text(&format!("{}KB", read / 1000));
+        page.imp().progress_bar.set_fraction(1.0);
+        page.imp().open_btn.set_opacity(1.0);
+
         let downloaded_file_url = format!("file://{}", d_path.as_os_str().to_str().unwrap());
-        let button = gtk::Button::with_label("Open With Default Program");
-        button.add_css_class("suggested-action");
-        button.connect_clicked(move |_| {
+        page.imp().open_btn.connect_clicked(move |_| {
             gtk::show_uri(None::<&gtk::Window>, &downloaded_file_url, 0);
         });
-        ctx.insert_widget(&mut text_iter, &button);
 
         Ok(())
     }

@@ -18,6 +18,7 @@ mod macros;
 mod tab;
 mod window;
 mod input_page;
+mod download_page;
 
 use gtk::prelude::*;
 
