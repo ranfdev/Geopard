@@ -190,6 +190,7 @@ impl DrawCtx {
         let tag = gtk::builders::TextTagBuilder::new()
             .family(&config.family)
             .weight(config.weight)
+            .line_height(1.4)
             .build();
 
         tag.set_foreground_rgba(
@@ -198,7 +199,6 @@ impl DrawCtx {
                 .lookup_color("accent_color")
                 .as_ref(),
         );
-        tag.set_underline(gtk::pango::Underline::Low);
 
         Self::set_linkhandler(&tag, link.clone());
 
