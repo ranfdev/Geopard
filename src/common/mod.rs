@@ -9,16 +9,15 @@ use url::Url;
 
 use crate::gemini;
 
-pub static DOWNLOAD_PATH: Lazy<std::path::PathBuf> =
-    Lazy::new(|| {
-        let mut download_path = glib::user_special_dir(glib::UserDirectory::Downloads)
-            .expect("Can't access download directory");
-        download_path.push("Geopard");
-        if !download_path.exists() {
-            std::fs::create_dir(&download_path).expect("Can't create download folder");
-        }
-        download_path
-    });
+pub static DOWNLOAD_PATH: Lazy<std::path::PathBuf> = Lazy::new(|| {
+    let mut download_path = glib::user_special_dir(glib::UserDirectory::Downloads)
+        .expect("Can't access download directory");
+    download_path.push("Geopard");
+    if !download_path.exists() {
+        std::fs::create_dir(&download_path).expect("Can't create download folder");
+    }
+    download_path
+});
 
 pub static ABOUT_PAGE: &str = std::include_str!("../../README.gemini");
 
@@ -52,16 +51,7 @@ should remove bookmarks.
 ## Custom bookmarks:
 ";
 
-pub const STREAMABLE_EXTS: [&str; 8] = [
-    "mp3",
-    "mp4",
-    "webm",
-    "opus",
-    "wav",
-    "ogg",
-    "mkv",
-    "flac",
-];
+pub const STREAMABLE_EXTS: [&str; 8] = ["mp3", "mp4", "webm", "opus", "wav", "ogg", "mkv", "flac"];
 
 pub fn bookmarks_url() -> Url {
     Url::parse(&format!("file://{}", BOOKMARK_FILE_PATH.to_str().unwrap())).unwrap()

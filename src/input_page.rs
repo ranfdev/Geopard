@@ -1,7 +1,7 @@
+use glib::subclass::prelude::*;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use glib::subclass::prelude::*;
 use gtk::CompositeTemplate;
 use gtk::TemplateChild;
 
@@ -12,10 +12,9 @@ mod imp {
     pub struct InputPage {
         #[template_child]
         pub label: TemplateChild<gtk::Label>,
-         #[template_child]
+        #[template_child]
         pub entry: TemplateChild<gtk::Entry>,
     }
-
 
     #[glib::object_subclass]
     impl ObjectSubclass for InputPage {

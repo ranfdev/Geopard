@@ -10,6 +10,8 @@ use gtk::gio;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
+use gtk::CompositeTemplate;
+use gtk::TemplateChild;
 use log::{debug, error, info};
 use once_cell::sync::Lazy;
 use std::cell::RefCell;
@@ -17,8 +19,6 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
 use url::Url;
-use gtk::CompositeTemplate;
-use gtk::TemplateChild;
 
 use crate::common;
 use crate::common::{glibctx, HistoryItem, LossyTextRead, PageElement, RequestCtx};
@@ -42,7 +42,7 @@ pub mod imp {
         pub(crate) draw_ctx: RefCell<Option<DrawCtx>>,
         pub(crate) history: RefCell<Vec<HistoryItem>>,
         pub(crate) current_hi: RefCell<Option<usize>>,
-         #[template_child]
+        #[template_child]
         pub(crate) scroll_win: TemplateChild<gtk::ScrolledWindow>,
         #[template_child]
         pub(crate) text_view: TemplateChild<gtk::TextView>,
@@ -142,11 +142,15 @@ impl Tab {
     pub fn new(config: crate::config::Config) -> Self {
         let this: Self = glib::Object::new(&[]).unwrap();
         let imp = this.imp();
-        imp.text_view.add_controller(imp.left_click_ctrl.borrow().as_ref().unwrap());
-        imp.text_view.add_controller(imp.right_click_ctrl.borrow().as_ref().unwrap());
-        imp.text_view.add_controller(imp.motion_ctrl.borrow().as_ref().unwrap());
+        imp.text_view
+            .add_controller(imp.left_click_ctrl.borrow().as_ref().unwrap());
+        imp.text_view
+            .add_controller(imp.right_click_ctrl.borrow().as_ref().unwrap());
+        imp.text_view
+            .add_controller(imp.motion_ctrl.borrow().as_ref().unwrap());
 
-        imp.draw_ctx.replace(Some(DrawCtx::new(imp.text_view.clone(), config)));
+        imp.draw_ctx
+            .replace(Some(DrawCtx::new(imp.text_view.clone(), config)));
 
         this.bind_signals();
         this
@@ -212,7 +216,6 @@ impl Tab {
     pub fn spawn_open_url(&self, url: Url) {
         let imp = self.imp();
 
-
         let i = self.add_to_history(HistoryItem {
             url: url.clone(),
             cache: Default::default(),
@@ -253,7 +256,7 @@ impl Tab {
         imp.stack.set_visible_child(&first_page.child());
         for page in iter.skip(1) {
             imp.stack.remove(&page.unwrap().child());
-        };
+        }
     }
     fn spawn_request(&self, fut: impl Future<Output = ()> + 'static) {
         let imp = self.imp();
@@ -543,7 +546,6 @@ impl Tab {
             gtk::show_uri(None::<&gtk::Window>, &downloaded_file_url, 0);
         });
 
-
         let ext = file_name.split(".").last();
         if let Some(true) = ext.map(|ext| crate::common::STREAMABLE_EXTS.contains(&ext)) {
             page.imp().open_btn.set_opacity(1.0);
@@ -567,7 +569,9 @@ impl Tab {
                     let t = glib::real_time();
                     if t - last_update_time > THROTTLE_TIME {
                         page.imp().progress_bar.pulse();
-                        page.imp().label_downloaded.set_text(&format!("{:.2}KB", read as f64 / 1000.0));
+                        page.imp()
+                            .label_downloaded
+                            .set_text(&format!("{:.2}KB", read as f64 / 1000.0));
                         last_update_time = t;
                     }
                 }
@@ -577,7 +581,9 @@ impl Tab {
                 Err(e) => return Err(e.into()),
             }
         }
-        page.imp().label_downloaded.set_text(&format!("{:.2}KB", read as f64 / 1000.0));
+        page.imp()
+            .label_downloaded
+            .set_text(&format!("{:.2}KB", read as f64 / 1000.0));
         page.imp().progress_bar.set_fraction(1.0);
         page.imp().open_btn.set_opacity(1.0);
         page.imp().open_btn.set_label("Open");
@@ -617,7 +623,6 @@ impl Tab {
                 .activate_action("win.open-url", Some(&url.to_string().to_variant()))
                 .unwrap();
         });
-
     }
 
     fn display_url_confirmation(ctx: &mut DrawCtx, url: &Url) {

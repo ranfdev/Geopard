@@ -9,16 +9,16 @@ use gtk::gio;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+mod build_config;
 mod common;
 mod config;
-mod build_config;
+mod download_page;
 mod draw_ctx;
 mod gemini;
+mod input_page;
 mod macros;
 mod tab;
 mod window;
-mod input_page;
-mod download_page;
 
 use gtk::prelude::*;
 

@@ -359,14 +359,13 @@ impl Window {
         });
     }
     fn open_omni(&self, v: &str) {
-        let url = Url::parse(v)
-            .or_else(|_| {
-                if v.contains(".") && v.split(".").all(|s| s.chars().all(char::is_alphanumeric)) {
-                    Url::parse(&format!("gemini://{}", v))
-                } else {
-                    Url::parse(&format!("gemini://geminispace.info/search?{}", v))
-                }
-            });
+        let url = Url::parse(v).or_else(|_| {
+            if v.contains(".") && v.split(".").all(|s| s.chars().all(char::is_alphanumeric)) {
+                Url::parse(&format!("gemini://{}", v))
+            } else {
+                Url::parse(&format!("gemini://geminispace.info/search?{}", v))
+            }
+        });
         match url {
             Ok(url) => self.current_tab().spawn_open_url(url),
             Err(e) => error!("Failed to open from omni bar"),

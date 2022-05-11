@@ -1,7 +1,7 @@
+use glib::subclass::prelude::*;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use glib::subclass::prelude::*;
 use gtk::CompositeTemplate;
 use gtk::TemplateChild;
 
@@ -16,10 +16,9 @@ mod imp {
         pub label_downloaded: TemplateChild<gtk::Label>,
         #[template_child]
         pub progress_bar: TemplateChild<gtk::ProgressBar>,
-         #[template_child]
+        #[template_child]
         pub open_btn: TemplateChild<gtk::Button>,
     }
-
 
     #[glib::object_subclass]
     impl ObjectSubclass for DownloadPage {
