@@ -1,0 +1,25 @@
+using Gtk 4.0;
+using Adw 1;
+
+template Tab: Adw.Bin {
+  Adw.Clamp clamp {
+    halign: center;
+    maximum-size: 768;
+    tightening-threshold: 720;
+    Gtk.Stack stack {
+      Gtk.ScrolledWindow scroll_win {
+        vexpand: true;
+        Gtk.TextView text_view {
+          top-margin: 40;
+          bottom-margin: 80;
+          left-margin: 20;
+          right-margin: 20;
+          indent: 2;
+          editable: false;
+          cursor-visible: false;
+          wrap-mode: word_char;
+        }
+      }
+    }
+  }
+}

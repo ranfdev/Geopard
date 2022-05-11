@@ -6,5 +6,6 @@
     <file compressed="true" preprocess="xml-stripblanks">ui/window.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/input_page.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/download_page.ui</file>
+    <file compressed="true" preprocess="xml-stripblanks">ui/tab.ui</file>
   </gresource>
 </gresources>

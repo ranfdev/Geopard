@@ -17,6 +17,8 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
 use url::Url;
+use gtk::CompositeTemplate;
+use gtk::TemplateChild;
 
 use crate::common;
 use crate::common::{glibctx, HistoryItem, LossyTextRead, PageElement, RequestCtx};
@@ -32,16 +34,22 @@ pub struct HistoryStatus {
 pub mod imp {
 
     pub use super::*;
-    #[derive(Debug, Default, Properties)]
+    #[derive(Debug, Default, Properties, CompositeTemplate)]
+    #[template(resource = "/com/ranfdev/Geopard/ui/tab.ui")]
     #[properties(wrapper_type = super::Tab)]
     pub struct Tab {
         pub(crate) gemini_client: RefCell<gemini::Client>,
         pub(crate) draw_ctx: RefCell<Option<DrawCtx>>,
         pub(crate) history: RefCell<Vec<HistoryItem>>,
         pub(crate) current_hi: RefCell<Option<usize>>,
-        pub(crate) scroll_win: gtk::ScrolledWindow,
-        pub(crate) stack: gtk::Stack,
-        pub(crate) clamp: adw::Clamp,
+         #[template_child]
+        pub(crate) scroll_win: TemplateChild<gtk::ScrolledWindow>,
+        #[template_child]
+        pub(crate) text_view: TemplateChild<gtk::TextView>,
+        #[template_child]
+        pub(crate) stack: TemplateChild<gtk::Stack>,
+        #[template_child]
+        pub(crate) clamp: TemplateChild<adw::Clamp>,
         pub(crate) left_click_ctrl: RefCell<Option<gtk::GestureClick>>,
         pub(crate) right_click_ctrl: RefCell<Option<gtk::GestureClick>>,
         pub(crate) motion_ctrl: RefCell<Option<gtk::EventControllerMotion>>,
@@ -58,27 +66,21 @@ pub mod imp {
 
     #[glib::object_subclass]
     impl ObjectSubclass for Tab {
-        const NAME: &'static str = "GeopardTab";
+        const NAME: &'static str = "Tab";
         type Type = super::Tab;
-        type ParentType = gtk::Widget;
+        type ParentType = adw::Bin;
 
         fn class_init(klass: &mut Self::Class) {
-            // The layout manager determines how child widgets are laid out.
-            klass.set_layout_manager_type::<gtk::BinLayout>();
+            Self::bind_template(klass);
+        }
+        fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
+            obj.init_template();
         }
     }
 
     impl ObjectImpl for Tab {
         fn constructed(&self, obj: &Self::Type) {
             self.parent_constructed(obj);
-
-            self.scroll_win.set_vexpand(true);
-            obj.set_vexpand(true);
-
-            self.clamp.set_parent(obj);
-            self.clamp.set_maximum_size(768);
-            self.clamp.set_tightening_threshold(720);
-            self.clamp.set_child(Some(&self.scroll_win));
 
             self.left_click_ctrl
                 .replace(Some(gtk::GestureClick::builder().button(1).build()));
@@ -88,10 +90,6 @@ pub mod imp {
                 .replace(Some(gtk::EventControllerMotion::new()));
             self.gemini_client
                 .replace(gemini::ClientBuilder::new().redirect(true).build());
-        }
-
-        fn dispose(&self, _obj: &Self::Type) {
-            self.clamp.unparent();
         }
 
         fn signals() -> &'static [glib::subclass::Signal] {
@@ -133,6 +131,7 @@ pub mod imp {
         }
     }
     impl WidgetImpl for Tab {}
+    impl adw::subclass::bin::BinImpl for Tab {}
 }
 glib::wrapper! {
     pub struct Tab(ObjectSubclass<imp::Tab>)
@@ -143,32 +142,14 @@ impl Tab {
     pub fn new(config: crate::config::Config) -> Self {
         let this: Self = glib::Object::new(&[]).unwrap();
         let imp = this.imp();
-        use common::MARGIN;
-        let text_view = gtk::builders::TextViewBuilder::new()
-            .top_margin(MARGIN * 2)
-            .left_margin(MARGIN)
-            .right_margin(MARGIN)
-            .bottom_margin(MARGIN * 4)
-            .indent(2)
-            .editable(false)
-            .cursor_visible(false)
-            .wrap_mode(gtk::WrapMode::WordChar)
-            .build();
-        text_view.add_controller(imp.left_click_ctrl.borrow().as_ref().unwrap());
-        text_view.add_controller(imp.right_click_ctrl.borrow().as_ref().unwrap());
-        text_view.add_controller(imp.motion_ctrl.borrow().as_ref().unwrap());
+        imp.text_view.add_controller(imp.left_click_ctrl.borrow().as_ref().unwrap());
+        imp.text_view.add_controller(imp.right_click_ctrl.borrow().as_ref().unwrap());
+        imp.text_view.add_controller(imp.motion_ctrl.borrow().as_ref().unwrap());
 
-        imp.stack.add_child(&text_view);
-        imp.scroll_win.set_child(Some(&imp.stack));
-
-        imp.draw_ctx.replace(Some(DrawCtx::new(text_view, config)));
+        imp.draw_ctx.replace(Some(DrawCtx::new(imp.text_view.clone(), config)));
 
         this.bind_signals();
         this
-    }
-    pub fn child(&self) -> &gtk::ScrolledWindow {
-        let imp = self.imp();
-        &imp.scroll_win
     }
     fn build_request_ctx(&self, url: Url) -> RequestCtx {
         let imp = self.imp();
