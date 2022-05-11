@@ -404,7 +404,6 @@ impl Tab {
         );
     }
     fn extract_linkhandler(draw_ctx: &DrawCtx, x: f64, y: f64) -> Result<String> {
-        info!("Extracting linkhandler from clicked text");
         let text_view = &draw_ctx.text_view;
         let (x, y) =
             text_view.window_to_buffer_coords(gtk::TextWindowType::Widget, x as i32, y as i32);
