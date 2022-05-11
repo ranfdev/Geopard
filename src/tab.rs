@@ -698,7 +698,16 @@ click on the button below\n",
                         draw_ctx.insert_paragraph(&mut text_iter, "\n");
                     }
                     PageElement::Link(url, label) => {
-                        draw_ctx.insert_link(&mut text_iter, url, label.as_deref());
+                        let link_char = if let Ok(true) = self
+                            .parse_link(&url)
+                            .map(|url| ["gemini", "about"].contains(&url.scheme()))
+                        {
+                            "⇒"
+                        } else {
+                            "⇗"
+                        };
+                        let label = format!("{link_char} {}", label.as_deref().unwrap_or(&url));
+                        draw_ctx.insert_link(&mut text_iter, url.clone(), Some(&label));
                     }
                     PageElement::Preformatted(_) => unreachable!("handled before"),
                 }
