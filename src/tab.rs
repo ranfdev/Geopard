@@ -287,7 +287,7 @@ impl Tab {
                     None
                 }
                 Err(e) => {
-                    Self::display_error(&mut req_ctx.draw_ctx, e);
+                    this.display_error(e);
                     None
                 }
             };
@@ -327,7 +327,7 @@ impl Tab {
                 Ok(_) => {
                     info!("Loaded {} from cache", &url);
                 }
-                Err(e) => Self::display_error(&mut draw_ctx, e),
+                Err(e) => this.display_error(e),
             }
         }
     }
@@ -369,10 +369,17 @@ impl Tab {
         h.map(|x| self.spawn_request(self.open_history(x)))
             .context("retrieving previous item from history")
     }
-    pub fn display_error(ctx: &mut DrawCtx, error: anyhow::Error) {
+    pub fn display_error(&self, error: anyhow::Error) {
+        let imp = self.imp();
         error!("{:?}", error);
-        let error_text = format!("Geopard experienced an error:\n {:?}", error);
-        ctx.insert_paragraph(&mut ctx.text_buffer.end_iter(), &error_text);
+
+        let status_page = adw::StatusPage::new();
+        status_page.set_title("Error");
+        status_page.set_description(Some(&error.to_string()));
+        status_page.set_icon_name(Some("dialog-error-symbolic"));
+
+        imp.stack.add_child(&status_page);
+        imp.stack.set_visible_child(&status_page);
     }
     fn bind_signals(&self) {
         let imp = self.imp();
@@ -438,11 +445,10 @@ impl Tab {
     }
     async fn send_request(&self, req: &mut RequestCtx) -> Result<Option<Vec<u8>>> {
         req.draw_ctx.clear();
-        let this = self.clone();
         match req.url.scheme() {
             "about" => {
                 let reader = futures::io::BufReader::new(common::ABOUT_PAGE.as_bytes());
-                this.display_gemini(reader).await?;
+                self.display_gemini(reader).await?;
                 Ok(None)
             }
             "file" => {
@@ -451,7 +457,7 @@ impl Tab {
             }
             "gemini" => self.open_gemini_url(req).await,
             _ => {
-                Self::display_url_confirmation(&mut req.draw_ctx, &req.url);
+                self.display_url_confirmation(&req.url);
                 Ok(None)
             }
         }
@@ -624,24 +630,26 @@ impl Tab {
         });
     }
 
-    fn display_url_confirmation(ctx: &mut DrawCtx, url: &Url) {
-        let mut text_iter = ctx.text_buffer.end_iter();
-        ctx.insert_paragraph(
-            &mut text_iter,
-            "Geopard doesn't support this url scheme. 
-If you want to open the following link in an external application, \
-click on the button below\n",
-        );
-        ctx.insert_paragraph(&mut text_iter, &format!("Trying to open: {}\n", url));
+    fn display_url_confirmation(&self, url: &Url) {
+        let imp = self.imp();
+        let status_page = adw::StatusPage::new();
+        status_page.set_title("External Link");
+        status_page.set_description(Some(&glib::markup_escape_text(url.as_str())));
+        status_page.set_icon_name(Some("web-browser-symbolic"));
 
-        let button = gtk::Button::with_label("Open Externally");
+        let button = gtk::Button::with_label("Open");
         button.add_css_class("suggested-action");
+        button.add_css_class("pill");
+        button.set_halign(gtk::Align::Center);
         let url = url.clone();
         button.connect_clicked(move |_| {
             gtk::show_uri(None::<&gtk::Window>, url.as_str(), 0);
         });
-        ctx.insert_widget(&mut text_iter, &button);
-        // FIXME: Handle open
+
+        status_page.set_child(Some(&button));
+
+        imp.stack.add_child(&status_page);
+        imp.stack.set_visible_child(&status_page);
     }
     async fn display_gemini<T: AsyncBufRead + Unpin>(
         &self,
