@@ -52,6 +52,17 @@ should remove bookmarks.
 ## Custom bookmarks:
 ";
 
+pub const STREAMABLE_EXTS: [&str; 8] = [
+    "mp3",
+    "mp4",
+    "webm",
+    "opus",
+    "wav",
+    "ogg",
+    "mkv",
+    "flac",
+];
+
 pub fn bookmarks_url() -> Url {
     Url::parse(&format!("file://{}", BOOKMARK_FILE_PATH.to_str().unwrap())).unwrap()
 }

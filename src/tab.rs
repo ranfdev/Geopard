@@ -556,7 +556,17 @@ impl Tab {
         imp.stack.add_child(&page);
         imp.stack.set_visible_child(&page);
 
+        let downloaded_file_url = format!("file://{}", d_path.as_os_str().to_str().unwrap());
+        info!("Downloading to {}", downloaded_file_url);
+        page.imp().open_btn.connect_clicked(move |_| {
+            gtk::show_uri(None::<&gtk::Window>, &downloaded_file_url, 0);
+        });
 
+
+        let ext = file_name.split(".").last();
+        if let Some(true) = ext.map(|ext| crate::common::STREAMABLE_EXTS.contains(&ext)) {
+            page.imp().open_btn.set_opacity(1.0);
+        }
 
         let mut buffer = Vec::with_capacity(8192);
         buffer.extend_from_slice(&[0; 8192]);
@@ -576,7 +586,7 @@ impl Tab {
                     let t = glib::real_time();
                     if t - last_update_time > THROTTLE_TIME {
                         page.imp().progress_bar.pulse();
-                        page.imp().label_downloaded.set_text(&format!("{}KB", read / 1000));
+                        page.imp().label_downloaded.set_text(&format!("{:.2}KB", read as f64 / 1000.0));
                         last_update_time = t;
                     }
                 }
@@ -586,14 +596,11 @@ impl Tab {
                 Err(e) => return Err(e.into()),
             }
         }
-        page.imp().label_downloaded.set_text(&format!("{}KB", read / 1000));
+        page.imp().label_downloaded.set_text(&format!("{:.2}KB", read as f64 / 1000.0));
         page.imp().progress_bar.set_fraction(1.0);
         page.imp().open_btn.set_opacity(1.0);
-
-        let downloaded_file_url = format!("file://{}", d_path.as_os_str().to_str().unwrap());
-        page.imp().open_btn.connect_clicked(move |_| {
-            gtk::show_uri(None::<&gtk::Window>, &downloaded_file_url, 0);
-        });
+        page.imp().open_btn.set_label("Open");
+        page.imp().open_btn.add_css_class("suggested-action");
 
         Ok(())
     }

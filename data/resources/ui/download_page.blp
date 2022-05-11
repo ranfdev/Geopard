@@ -28,6 +28,7 @@ template DownloadPage: Gtk.Box {
         wrap: true;
       }
       Gtk.Label label_downloaded {
+        styles ["numeric"]
         label: "0KB";
         xalign: 0.0;
       }
@@ -39,10 +40,11 @@ template DownloadPage: Gtk.Box {
     }
   }
   Gtk.Button open_btn {
-    styles ["suggested-action", "pill"]
-    label: "Open File";
+    styles ["pill"]
+    label: "Stream (alpha)";
     margin-top: 8;
     margin-bottom: 8;
     opacity: 0;
+    halign: center;
   }
 }
