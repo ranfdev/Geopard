@@ -182,18 +182,17 @@ impl Tab {
         let text_view = &draw_ctx.as_ref().unwrap().text_view;
         let link = Self::extract_linkhandler(draw_ctx.as_ref().unwrap(), x, y)?;
         let link = self.parse_link(&link)?;
+        let link_variant = link.as_str().to_variant();
 
         let menu = gio::Menu::new();
-        menu.insert(
-            0,
-            Some("Open Link In New Tab"),
-            Some(&format!("win.open-in-new-tab(\"{}\")", link.as_str())),
-        );
-        menu.insert(
-            1,
-            Some("Copy Link"),
-            Some(&format!("win.set-clipboard(\"{}\")", link.as_str())),
-        );
+
+        let item = gio::MenuItem::new(Some("Open Link In New Tab"), None);
+        item.set_action_and_target_value(Some("win.open-in-new-tab"), Some(&link_variant));
+
+        menu.insert_item(0, &item);
+        let item = gio::MenuItem::new(Some("Copy Link"), None);
+        item.set_action_and_target_value(Some("win.set-clipboard"), Some(&link_variant));
+        menu.insert_item(1, &item);
         text_view.set_extra_menu(Some(&menu));
         Ok(())
     }
