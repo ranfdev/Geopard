@@ -636,16 +636,26 @@ impl Tab {
         status_page.set_description(Some(&glib::markup_escape_text(url.as_str())));
         status_page.set_icon_name(Some("web-browser-symbolic"));
 
+        let child = gtk::Box::new(gtk::Orientation::Vertical, 8);
+
         let button = gtk::Button::with_label("Open");
         button.add_css_class("suggested-action");
         button.add_css_class("pill");
         button.set_halign(gtk::Align::Center);
-        let url = url.clone();
+        let url_clone = url.clone();
         button.connect_clicked(move |_| {
-            gtk::show_uri(None::<&gtk::Window>, url.as_str(), 0);
+            gtk::show_uri(None::<&gtk::Window>, url_clone.as_str(), 0);
         });
 
-        status_page.set_child(Some(&button));
+        child.append(&button);
+        let button = gtk::Button::with_label("Copy");
+        button.add_css_class("pill");
+        button.set_halign(gtk::Align::Center);
+        button.set_action_name(Some("win.set-clipboard"));
+        button.set_action_target_value(Some(&url.as_str().to_variant()));
+        child.append(&button);
+
+        status_page.set_child(Some(&child));
 
         imp.stack.add_child(&status_page);
         imp.stack.set_visible_child(&status_page);
