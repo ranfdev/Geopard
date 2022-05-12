@@ -43,19 +43,22 @@ nix-build nix/default.nix
 ```
 
 ### General build instructions
-Clone this repo.
-
 Install these development packages:
 - gtk4
 - glib
 - rust (with cargo)
 - openssl
 - pkg-config
+- meson
 
-Then you can compile and run.
+Clone, compile, install.
+
 ```sh
-cargo build
-./target/release/geopard
+git clone https://github.com/ranfdev/Geopard.git
+cd Geopard
+meson --prefix=/usr build
+ninja -C build
+sudo ninja -C build install
 ```
 
 ## Authors
