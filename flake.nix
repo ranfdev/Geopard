@@ -2,8 +2,6 @@
   description = "A gemini browser";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    microvm.url = "github:astro/microvm.nix";
-    microvm.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs = { self, nixpkgs, microvm }:
     with import nixpkgs { system = "x86_64-linux"; };
