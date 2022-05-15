@@ -1,22 +1,60 @@
 {
   "nodes": {
-    "nixpkgs": {
+    "flake-utils": {
       "locked": {
-        "lastModified": 1652101917,
-        "narHash": "sha256-/fvilrPRq/ibBaCj1vGAWJ5LC9Ix/3SXZVk7zv1CsxM=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "d0b33047b6300ca71d9c9142680b3344451bdc07",
+        "lastModified": 1652372896,
+        "narHash": "sha256-lURGussfF3mGrFPQT3zgW7+RC0pBhbHzco0C7I+ilow=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "0d347c56f6f41de822a4f4c7ff5072f3382db121",
         "type": "github"
       },
       "original": {
-        "owner": "NixOS",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "microvm": {
+      "inputs": {
+        "flake-utils": "flake-utils",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1652569034,
+        "narHash": "sha256-xSH6VlkaUI6/VPDjmTFcqawDVwQINPWRAor7JII02/4=",
+        "owner": "astro",
+        "repo": "microvm.nix",
+        "rev": "e36a4757b647d359f081981b667cb76f9ff29f88",
+        "type": "github"
+      },
+      "original": {
+        "owner": "astro",
+        "repo": "microvm.nix",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1652467128,
+        "narHash": "sha256-1wuQ7QgPQ3tugYcoVMJ3pUzl4wVdBzKZr9qtJAgA4VI=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "fb222e008681fce4608e94f2d1dfdf3d03a364c4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "ref": "nixos-unstable",
         "repo": "nixpkgs",
         "type": "github"
       }
     },
     "root": {
       "inputs": {
+        "microvm": "microvm",
         "nixpkgs": "nixpkgs"
       }
     }

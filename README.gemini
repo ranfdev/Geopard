@@ -32,13 +32,12 @@ If you have gnome-builder installed, use it to the open the folder of the source
 code and hit the run button.
 
 ### Build with Nix
-** currently broken **
 If you have the 
 => https://nixos.org/ nix
-package manager, you can simply do:
+package manager and flakes enabled, you can simply do:
 ```sh
 git clone https://github.com/ranfdev/Geopard.git
-nix-build nix/default.nix
+nix build
 ./result/bin/geopard
 ```
 

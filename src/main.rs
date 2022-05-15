@@ -9,6 +9,7 @@ use gtk::gio;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+#[rustfmt::skip]
 mod build_config;
 mod common;
 mod config;
@@ -21,7 +22,6 @@ mod tab;
 mod window;
 
 use gtk::prelude::*;
-
 async fn read_config() -> anyhow::Result<config::Config> {
     toml::from_str(&async_fs::read_to_string(&*SETTINGS_FILE_PATH).await?)
         .context("Reading config file")
