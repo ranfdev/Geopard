@@ -1,42 +1,38 @@
 {
   "nodes": {
-    "flake-utils": {
-      "locked": {
-        "lastModified": 1652372896,
-        "narHash": "sha256-lURGussfF3mGrFPQT3zgW7+RC0pBhbHzco0C7I+ilow=",
-        "owner": "numtide",
-        "repo": "flake-utils",
-        "rev": "0d347c56f6f41de822a4f4c7ff5072f3382db121",
-        "type": "github"
-      },
-      "original": {
-        "owner": "numtide",
-        "repo": "flake-utils",
-        "type": "github"
-      }
-    },
-    "microvm": {
+    "naersk": {
       "inputs": {
-        "flake-utils": "flake-utils",
-        "nixpkgs": [
-          "nixpkgs"
-        ]
+        "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1652569034,
-        "narHash": "sha256-xSH6VlkaUI6/VPDjmTFcqawDVwQINPWRAor7JII02/4=",
-        "owner": "astro",
-        "repo": "microvm.nix",
-        "rev": "e36a4757b647d359f081981b667cb76f9ff29f88",
+        "lastModified": 1651574473,
+        "narHash": "sha256-wQhFORvRjo8LB2hTmETmv6cbyKGDPbfWqvZ/0chnDE4=",
+        "owner": "nix-community",
+        "repo": "naersk",
+        "rev": "f21309b38e1da0d61b881b6b6d41b81c1aed4e1d",
         "type": "github"
       },
       "original": {
-        "owner": "astro",
-        "repo": "microvm.nix",
+        "owner": "nix-community",
+        "repo": "naersk",
         "type": "github"
       }
     },
     "nixpkgs": {
+      "locked": {
+        "lastModified": 1652574577,
+        "narHash": "sha256-MoSWPtue4Wi9+kRDxUbLWEBCL8Bswaa8kVMh2JYpSJg=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "118ec238bfb788a34f1d53c4d95931fadfa70367",
+        "type": "github"
+      },
+      "original": {
+        "id": "nixpkgs",
+        "type": "indirect"
+      }
+    },
+    "nixpkgs_2": {
       "locked": {
         "lastModified": 1652467128,
         "narHash": "sha256-1wuQ7QgPQ3tugYcoVMJ3pUzl4wVdBzKZr9qtJAgA4VI=",
@@ -54,8 +50,8 @@
     },
     "root": {
       "inputs": {
-        "microvm": "microvm",
-        "nixpkgs": "nixpkgs"
+        "naersk": "naersk",
+        "nixpkgs": "nixpkgs_2"
       }
     }
   },

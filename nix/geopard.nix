@@ -19,19 +19,15 @@
 , blueprint-compiler
 , gobject-introspection
 , appstream-glib
+, naersk-lib
+, clippy
 }:
 
-stdenv.mkDerivation rec {
+naersk-lib.buildPackage rec {
   pname = "geopard";
   version = "1.0.1";
 
   src = ../.;
-
-  cargoDeps = rustPlatform.fetchCargoTarball {
-    inherit src;
-    name = "${pname}-${version}";
-    hash = "sha256-gqScVEkf/rw1W7Z4M5k1rr9VwOFuLKIUWxmjqxc1x00=";
-  };
 
   nativeBuildInputs = [
     openssl
@@ -40,9 +36,6 @@ stdenv.mkDerivation rec {
     meson
     ninja
     pkg-config
-    rustPlatform.rust.cargo
-    rustPlatform.cargoSetupHook
-    rustPlatform.rust.rustc
     wrapGAppsHook4
     cmake
     blueprint-compiler
@@ -50,6 +43,7 @@ stdenv.mkDerivation rec {
     appstream-glib
     blueprint-compiler
     rustfmt
+    clippy
   ];
 
   buildInputs = [
@@ -61,7 +55,6 @@ stdenv.mkDerivation rec {
     openssl
   ];
   checkPhase = ''
-    cargo fmt --check
   '';
   doCheck = true;
   meta = with lib; {
