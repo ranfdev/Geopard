@@ -5,12 +5,12 @@ use gtk::glib;
 use gtk::prelude::*;
 
 #[derive(Debug, Clone)]
-pub struct DrawCtx {
+pub struct Gemini {
     pub text_view: gtk::TextView,
     pub text_buffer: gtk::TextBuffer,
     pub config: crate::config::Config,
 }
-impl DrawCtx {
+impl Gemini {
     pub fn new(text_view: gtk::TextView, config: crate::config::Config) -> Self {
         let text_buffer = gtk::TextBuffer::new(None);
         text_view.set_buffer(Some(&text_buffer));
@@ -24,10 +24,10 @@ impl DrawCtx {
         this
     }
 
-    pub fn init_tags(&mut self) -> gtk::TextTagTable {
+    fn init_tags(&mut self) -> gtk::TextTagTable {
         let default_config = &config::DEFAULT_CONFIG;
         let tag_table = self.text_buffer.tag_table();
-        let tag_h1 = DrawCtx::create_tag("h1", {
+        let tag_h1 = Self::create_tag("h1", {
             self.config
                 .fonts
                 .heading
@@ -38,7 +38,7 @@ impl DrawCtx {
         tag_h1.set_scale(2.0);
         tag_h1.set_sentence(true);
 
-        let tag_h2 = DrawCtx::create_tag("h2", {
+        let tag_h2 = Self::create_tag("h2", {
             self.config
                 .fonts
                 .heading
@@ -49,7 +49,7 @@ impl DrawCtx {
         tag_h2.set_scale(1.5);
         tag_h1.set_sentence(true);
 
-        let tag_h3 = DrawCtx::create_tag(
+        let tag_h3 = Self::create_tag(
             "h3",
             self.config
                 .fonts
@@ -61,7 +61,7 @@ impl DrawCtx {
         tag_h2.set_scale(1.4);
         tag_h1.set_sentence(true);
 
-        let tag_p = DrawCtx::create_tag(
+        let tag_p = Self::create_tag(
             "p",
             self.config
                 .fonts
@@ -70,7 +70,7 @@ impl DrawCtx {
                 .or_else(|| default_config.fonts.paragraph.as_ref())
                 .unwrap(),
         );
-        let tag_q = DrawCtx::create_tag(
+        let tag_q = Self::create_tag(
             "q",
             self.config
                 .fonts
@@ -81,7 +81,7 @@ impl DrawCtx {
         );
         tag_q.set_style(gtk::pango::Style::Italic);
 
-        let tag_a = DrawCtx::create_tag(
+        let tag_a = Self::create_tag(
             "a",
             self.config
                 .fonts
@@ -94,7 +94,7 @@ impl DrawCtx {
         tag_a.set_foreground(Some("blue"));
         tag_a.set_underline(gtk::pango::Underline::Low);
 
-        let tag_pre = DrawCtx::create_tag(
+        let tag_pre = Self::create_tag(
             "pre",
             self.config
                 .fonts
@@ -113,7 +113,7 @@ impl DrawCtx {
         tag_table.add(&tag_pre);
         tag_table
     }
-    pub fn create_tag(name: &str, config: &crate::config::Font) -> gtk::TextTag {
+    fn create_tag(name: &str, config: &crate::config::Font) -> gtk::TextTag {
         gtk::builders::TextTagBuilder::new()
             .family(&config.family)
             .weight(config.weight)
@@ -212,11 +212,6 @@ impl DrawCtx {
         self.text_buffer
             .apply_tag(&tag, &self.text_buffer.iter_at_offset(start), text_iter);
     }
-    pub fn insert_widget(&self, text_iter: &mut gtk::TextIter, widget: &impl IsA<gtk::Widget>) {
-        let anchor = self.text_buffer.create_child_anchor(text_iter);
-        self.text_view.add_child_at_anchor(widget, &anchor);
-    }
-
     fn set_linkhandler(tag: &gtk::TextTag, l: String) {
         unsafe {
             tag.set_data("linkhandler", l);

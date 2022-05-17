@@ -19,10 +19,11 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
 use url::Url;
+use gtk::gdk;
 
 use crate::common;
-use crate::common::{glibctx, HistoryItem, LossyTextRead, PageElement, RequestCtx};
-use crate::draw_ctx::DrawCtx;
+use crate::common::{glibctx, HistoryItem, LossyTextRead, PageElement};
+use crate::text_extensions::Gemini as GeminiTextExt;
 use crate::gemini;
 
 #[derive(Clone, Debug, glib::Boxed, Default)]
@@ -39,7 +40,7 @@ pub mod imp {
     #[properties(wrapper_type = super::Tab)]
     pub struct Tab {
         pub(crate) gemini_client: RefCell<gemini::Client>,
-        pub(crate) draw_ctx: RefCell<Option<DrawCtx>>,
+        pub(crate) gemini_text_ext: RefCell<Option<GeminiTextExt>>,
         pub(crate) history: RefCell<Vec<HistoryItem>>,
         pub(crate) current_hi: RefCell<Option<usize>>,
         #[template_child]
@@ -149,38 +150,30 @@ impl Tab {
         imp.text_view
             .add_controller(imp.motion_ctrl.borrow().as_ref().unwrap());
 
-        imp.draw_ctx
-            .replace(Some(DrawCtx::new(imp.text_view.clone(), config)));
+        imp.gemini_text_ext
+            .replace(Some(GeminiTextExt::new(imp.text_view.clone(), config)));
 
         this.bind_signals();
         this
     }
-    fn build_request_ctx(&self, url: Url) -> RequestCtx {
-        let imp = self.imp();
-        RequestCtx {
-            draw_ctx: imp.draw_ctx.borrow().clone().unwrap(),
-            gemini_client: imp.gemini_client.borrow().clone(),
-            url,
-        }
-    }
     pub fn handle_click(&self, x: f64, y: f64) -> Result<()> {
         let imp = self.imp();
-        let draw_ctx = imp.draw_ctx.borrow();
-        let text_view = &draw_ctx.as_ref().unwrap().text_view;
+        let gemini_text_ext = imp.gemini_text_ext.borrow();
+        let text_view = &gemini_text_ext.as_ref().unwrap().text_view;
         let has_selection = text_view.buffer().has_selection();
         if has_selection {
             return Ok(());
         }
-        let link = Self::extract_linkhandler(draw_ctx.as_ref().unwrap(), x, y)?;
+        let link = Self::extract_linkhandler(gemini_text_ext.as_ref().unwrap(), x, y)?;
         let url = self.parse_link(&link)?;
         self.spawn_open_url(url);
         Ok(())
     }
     fn handle_right_click(&self, x: f64, y: f64) -> Result<()> {
         let imp = self.imp();
-        let draw_ctx = imp.draw_ctx.borrow();
-        let text_view = &draw_ctx.as_ref().unwrap().text_view;
-        let link = Self::extract_linkhandler(draw_ctx.as_ref().unwrap(), x, y)?;
+        let gemini_text_ext = imp.gemini_text_ext.borrow();
+        let text_view = &gemini_text_ext.as_ref().unwrap().text_view;
+        let link = Self::extract_linkhandler(gemini_text_ext.as_ref().unwrap(), x, y)?;
         let link = self.parse_link(&link)?;
         let link_variant = link.as_str().to_variant();
 
@@ -198,23 +191,21 @@ impl Tab {
     }
     fn handle_motion(&self, x: f64, y: f64) -> Result<()> {
         let imp = self.imp();
-        let draw_ctx = imp.draw_ctx.borrow();
-        let draw_ctx = draw_ctx.as_ref().unwrap();
-        let link = Self::extract_linkhandler(draw_ctx, x, y);
+        let gemini_text_ext = imp.gemini_text_ext.borrow();
+        let gemini_text_ext = gemini_text_ext.as_ref().unwrap();
+        let link = Self::extract_linkhandler(gemini_text_ext, x, y);
         match link {
             Ok(_) => {
-                draw_ctx.text_view.set_cursor_from_name(Some("pointer"));
+                gemini_text_ext.text_view.set_cursor_from_name(Some("pointer"));
             }
             Err(_) => {
-                draw_ctx.text_view.set_cursor_from_name(Some("text"));
+                gemini_text_ext.text_view.set_cursor_from_name(Some("text"));
             }
         }
 
         Ok(())
     }
     pub fn spawn_open_url(&self, url: Url) {
-        let imp = self.imp();
-
         let i = self.add_to_history(HistoryItem {
             url: url.clone(),
             cache: Default::default(),
@@ -272,17 +263,15 @@ impl Tab {
         *imp.url.borrow_mut() = url.to_string();
         self.notify("url");
 
-        let mut req_ctx = self.build_request_ctx(url.clone());
-
         let this = self.clone();
         let fut = async move {
-            let cache = match this.send_request(&mut req_ctx).await {
+            let cache = match this.send_request(url.clone()).await {
                 Ok(Some(cache)) => {
                     info!("Page loaded, can be cached ({})", url.clone());
                     Some(cache)
                 }
                 Ok(_) => {
-                    info!("Page loaded ({})", url.clone());
+                    info!("Page loaded ({})", &url);
                     None
                 }
                 Err(e) => {
@@ -306,7 +295,7 @@ impl Tab {
     }
     fn open_cached(&self, url: Url, cache: Vec<u8>) -> impl Future<Output = ()> {
         let imp = self.imp();
-        let mut draw_ctx = imp.draw_ctx.borrow().clone().unwrap();
+        let mut gemini_text_ext = imp.gemini_text_ext.borrow().clone().unwrap();
 
         *self.imp().progress.borrow_mut() = 0.0;
         self.notify("progress");
@@ -320,7 +309,7 @@ impl Tab {
         let this = self.clone();
         async move {
             let buf = BufReader::new(&*cache);
-            draw_ctx.clear();
+            gemini_text_ext.clear();
             let res = this.display_gemini(buf).await;
             match res {
                 Ok(_) => {
@@ -409,8 +398,8 @@ impl Tab {
             }),
         );
     }
-    fn extract_linkhandler(draw_ctx: &DrawCtx, x: f64, y: f64) -> Result<String> {
-        let text_view = &draw_ctx.text_view;
+    fn extract_linkhandler(gemini_text_ext: &GeminiTextExt, x: f64, y: f64) -> Result<String> {
+        let text_view = &gemini_text_ext.text_view;
         let (x, y) =
             text_view.window_to_buffer_coords(gtk::TextWindowType::Widget, x as i32, y as i32);
         let iter = text_view
@@ -419,13 +408,12 @@ impl Tab {
 
         iter.tags()
             .iter()
-            .find_map(DrawCtx::linkhandler)
+            .find_map(GeminiTextExt::linkhandler)
             .cloned()
             .ok_or(anyhow::Error::msg("Clicked text doesn't have a link tag"))
     }
-    async fn open_file_url(&self, req: &mut RequestCtx) -> Result<()> {
-        let path = req
-            .url
+    async fn open_file_url(&self, url: Url) -> Result<()> {
+        let path = url
             .to_file_path()
             .map_err(|_| anyhow::Error::msg("Can't convert link to file path"))?;
 
@@ -437,32 +425,33 @@ impl Tab {
                 this.display_gemini(lines).await?;
             }
             _ => {
-                Self::display_text(&mut req.draw_ctx, lines).await?;
+                this.display_text(lines).await?;
             }
         }
         Ok(())
     }
-    async fn send_request(&self, req: &mut RequestCtx) -> Result<Option<Vec<u8>>> {
-        req.draw_ctx.clear();
-        match req.url.scheme() {
+    async fn send_request(&self, url: Url) -> Result<Option<Vec<u8>>> {
+        self.imp().gemini_text_ext.borrow_mut().as_mut().unwrap().clear();
+        match url.scheme() {
             "about" => {
                 let reader = futures::io::BufReader::new(common::ABOUT_PAGE.as_bytes());
                 self.display_gemini(reader).await?;
                 Ok(None)
             }
             "file" => {
-                self.open_file_url(req).await?;
+                self.open_file_url(url).await?;
                 Ok(None)
             }
-            "gemini" => self.open_gemini_url(req).await,
+            "gemini" => self.open_gemini_url(url).await,
             _ => {
-                self.display_url_confirmation(&req.url);
+                self.display_url_confirmation(&url);
                 Ok(None)
             }
         }
     }
-    async fn open_gemini_url(&self, req: &mut RequestCtx) -> anyhow::Result<Option<Vec<u8>>> {
-        let res: gemini::Response = req.gemini_client.fetch(req.url.as_str()).await?;
+    async fn open_gemini_url(&self, url: Url) -> anyhow::Result<Option<Vec<u8>>> {
+        let imp = self.imp();
+        let res: gemini::Response = imp.gemini_client.borrow().fetch(url.as_str()).await?;
 
         use gemini::Status::*;
         let meta = res.meta().to_owned();
@@ -472,7 +461,7 @@ impl Tab {
         let this = self.clone();
         let res = match status {
             Input(_) => {
-                self.display_input(req.url.clone(), &meta);
+                self.display_input(url.clone(), &meta);
                 None
             }
             Success(_) => {
@@ -482,10 +471,10 @@ impl Tab {
                     let res = this.display_gemini(buffered).await?;
                     Some(res)
                 } else if meta.contains("text") {
-                    Self::display_text(&mut req.draw_ctx, buffered).await?;
+                    self.display_text(buffered).await?;
                     None
                 } else {
-                    self.display_download(req.url.clone(), buffered).await?;
+                    self.display_download(url.clone(), buffered).await?;
                     None
                 }
             }
@@ -596,9 +585,11 @@ impl Tab {
         Ok(())
     }
     async fn display_text(
-        draw_ctx: &mut DrawCtx,
+        &self,
         mut stream: impl AsyncBufRead + Unpin,
     ) -> anyhow::Result<()> {
+        let gemini_text_ext = self.imp().gemini_text_ext.borrow();
+        let gemini_text_ext = gemini_text_ext.as_ref().unwrap();
         let mut line = String::with_capacity(1024);
         loop {
             line.clear();
@@ -606,9 +597,9 @@ impl Tab {
             if n == 0 {
                 break Ok(());
             }
-            let text_iter = &mut draw_ctx.text_buffer.end_iter();
-            draw_ctx.insert_paragraph(text_iter, &line);
-            draw_ctx.insert_paragraph(text_iter, "\n");
+            let text_iter = &mut gemini_text_ext.text_buffer.end_iter();
+            gemini_text_ext.insert_paragraph(text_iter, &line);
+            gemini_text_ext.insert_paragraph(text_iter, "\n");
         }
     }
 
@@ -665,10 +656,10 @@ impl Tab {
         mut reader: T,
     ) -> anyhow::Result<Vec<u8>> {
         let imp = self.imp();
-        let mut draw_ctx = imp.draw_ctx.borrow().clone().unwrap();
+        let mut gemini_text_ext = imp.gemini_text_ext.borrow().clone().unwrap();
 
         let mut parser = gemini::Parser::new();
-        let mut text_iter = draw_ctx.text_buffer.end_iter();
+        let mut text_iter = gemini_text_ext.text_buffer.end_iter();
 
         let mut preformatted = String::new();
         let mut data = String::with_capacity(1024);
@@ -691,15 +682,15 @@ impl Tab {
                 // preformatted text is handled different hoping to add scrollbars for it,
                 // in the future, maybe
                 if !preformatted.is_empty() {
-                    draw_ctx.insert_preformatted(&mut text_iter, &preformatted);
+                    gemini_text_ext.insert_preformatted(&mut text_iter, &preformatted);
                     preformatted.clear();
                 }
                 match token {
                     PageElement::Text(line) => {
-                        draw_ctx.insert_paragraph(&mut text_iter, &line);
+                        gemini_text_ext.insert_paragraph(&mut text_iter, &line);
                     }
                     PageElement::Heading(line) => {
-                        draw_ctx.insert_heading(&mut text_iter, &line);
+                        gemini_text_ext.insert_heading(&mut text_iter, &line);
                         if !title_updated {
                             title_updated = true;
                             imp.title
@@ -708,10 +699,10 @@ impl Tab {
                         }
                     }
                     PageElement::Quote(line) => {
-                        draw_ctx.insert_quote(&mut text_iter, &line);
+                        gemini_text_ext.insert_quote(&mut text_iter, &line);
                     }
                     PageElement::Empty => {
-                        draw_ctx.insert_paragraph(&mut text_iter, "\n");
+                        gemini_text_ext.insert_paragraph(&mut text_iter, "\n");
                     }
                     PageElement::Link(url, label) => {
                         let link_char = if let Ok(true) = self
@@ -723,12 +714,20 @@ impl Tab {
                             "⇗"
                         };
                         let label = format!("{link_char} {}", label.as_deref().unwrap_or(&url));
-                        draw_ctx.insert_link(&mut text_iter, url.clone(), Some(&label));
+                        gemini_text_ext.insert_link(&mut text_iter, url.clone(), Some(&label));
                     }
                     PageElement::Preformatted(_) => unreachable!("handled before"),
                 }
             }
         }
         Ok(data.into_bytes())
+    }
+    pub fn set_link_color(&self, rgba: &gdk::RGBA) {
+         self.imp()
+            .gemini_text_ext
+            .borrow()
+            .as_ref()
+            .unwrap()
+            .set_link_color(rgba);
     }
 }

@@ -14,7 +14,7 @@ mod build_config;
 mod common;
 mod config;
 mod download_page;
-mod draw_ctx;
+mod text_extensions;
 mod gemini;
 mod input_page;
 mod macros;

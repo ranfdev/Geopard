@@ -92,13 +92,6 @@ pub struct HistoryItem {
     pub scroll_progress: f64,
 }
 
-// This struct contains all the data needed to fetch and render the data of a page
-pub struct RequestCtx {
-    pub gemini_client: gemini::Client,
-    pub draw_ctx: crate::draw_ctx::DrawCtx,
-    pub url: Url,
-}
-
 #[async_trait(?Send)]
 pub trait LossyTextRead {
     async fn read_line_lossy(&mut self, mut buf: &mut String) -> std::io::Result<usize>;
