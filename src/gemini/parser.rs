@@ -1,8 +1,17 @@
-use crate::common::PageElement;
 use once_cell::sync::Lazy;
 use regex::Regex;
 static R_GEMINI_LINK: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^=>\s*(?P<href>\S*)\s*(?P<label>.*)").unwrap());
+
+#[derive(Debug)]
+pub enum PageElement {
+    Heading(String),
+    Quote(String),
+    Preformatted(String),
+    Text(String),
+    Link(String, Option<String>),
+    Empty,
+}
 
 pub struct Parser {
     inside_pre: bool,

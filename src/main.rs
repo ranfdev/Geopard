@@ -15,7 +15,7 @@ mod common;
 mod config;
 mod download_page;
 mod gemini;
-mod input_page;
+mod lossy_text_read;
 mod macros;
 mod tab;
 mod text_extensions;

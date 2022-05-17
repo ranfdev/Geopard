@@ -22,8 +22,9 @@ use std::rc::Rc;
 use url::Url;
 
 use crate::common;
-use crate::common::{glibctx, HistoryItem, LossyTextRead, PageElement};
+use crate::common::{glibctx, HistoryItem, LossyTextRead};
 use crate::gemini;
+use crate::gemini::PageElement;
 use crate::text_extensions::Gemini as GeminiTextExt;
 
 #[derive(Clone, Debug, glib::Boxed, Default)]
