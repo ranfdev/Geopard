@@ -5,6 +5,7 @@ use futures::io::BufReader;
 use futures::prelude::*;
 use futures::task::LocalSpawnExt;
 use glib::{clone, Properties};
+use gtk::gdk;
 use gtk::gdk::prelude::*;
 use gtk::gio;
 use gtk::glib;
@@ -19,12 +20,11 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
 use url::Url;
-use gtk::gdk;
 
 use crate::common;
 use crate::common::{glibctx, HistoryItem, LossyTextRead, PageElement};
-use crate::text_extensions::Gemini as GeminiTextExt;
 use crate::gemini;
+use crate::text_extensions::Gemini as GeminiTextExt;
 
 #[derive(Clone, Debug, glib::Boxed, Default)]
 #[boxed_type(name = "GeopardHistoryStatus")]
@@ -196,7 +196,9 @@ impl Tab {
         let link = Self::extract_linkhandler(gemini_text_ext, x, y);
         match link {
             Ok(_) => {
-                gemini_text_ext.text_view.set_cursor_from_name(Some("pointer"));
+                gemini_text_ext
+                    .text_view
+                    .set_cursor_from_name(Some("pointer"));
             }
             Err(_) => {
                 gemini_text_ext.text_view.set_cursor_from_name(Some("text"));
@@ -431,7 +433,12 @@ impl Tab {
         Ok(())
     }
     async fn send_request(&self, url: Url) -> Result<Option<Vec<u8>>> {
-        self.imp().gemini_text_ext.borrow_mut().as_mut().unwrap().clear();
+        self.imp()
+            .gemini_text_ext
+            .borrow_mut()
+            .as_mut()
+            .unwrap()
+            .clear();
         match url.scheme() {
             "about" => {
                 let reader = futures::io::BufReader::new(common::ABOUT_PAGE.as_bytes());
@@ -584,10 +591,7 @@ impl Tab {
 
         Ok(())
     }
-    async fn display_text(
-        &self,
-        mut stream: impl AsyncBufRead + Unpin,
-    ) -> anyhow::Result<()> {
+    async fn display_text(&self, mut stream: impl AsyncBufRead + Unpin) -> anyhow::Result<()> {
         let gemini_text_ext = self.imp().gemini_text_ext.borrow();
         let gemini_text_ext = gemini_text_ext.as_ref().unwrap();
         let mut line = String::with_capacity(1024);
@@ -723,7 +727,7 @@ impl Tab {
         Ok(data.into_bytes())
     }
     pub fn set_link_color(&self, rgba: &gdk::RGBA) {
-         self.imp()
+        self.imp()
             .gemini_text_ext
             .borrow()
             .as_ref()

@@ -14,11 +14,11 @@ mod build_config;
 mod common;
 mod config;
 mod download_page;
-mod text_extensions;
 mod gemini;
 mod input_page;
 mod macros;
 mod tab;
+mod text_extensions;
 mod window;
 
 use gtk::prelude::*;

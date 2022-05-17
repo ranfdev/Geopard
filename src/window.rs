@@ -438,7 +438,8 @@ impl Window {
             .borrow()
             .load_from_data(stylesheet.as_bytes());
         // FIXME: Should add a method on `Tab`...
-        self.current_tab().set_link_color(&self.style_context().lookup_color("accent_color").unwrap());
+        self.current_tab()
+            .set_link_color(&self.style_context().lookup_color("accent_color").unwrap());
     }
 
     fn is_small_screen(&self) -> bool {
