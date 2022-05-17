@@ -12,19 +12,19 @@
     <p>Features</p>
     <ul>
       <li>
-        <p>Colors!
-        The browser will have a different color for each domain you visit.</p>
+        Colors!
+        The browser will have a different color for each domain you visit.
       </li>
       <li>
-        <p>Fast (async core + caching).
+        Fast (async core + caching).
         Streams content by default. That means you can open pages even when you have
         connection speeds of Kb/s.
-        It also caches pages in the history, so you can go back in an instant</p>
+        It also caches pages in the history, so you can go back in an instant
       </li>
       <li>
-        <p>Can download binary files.
+        Can download binary files.
         The download will start as soon as you open the corresponding link.
-        You can always cancel it by opening another page.</p>
+        You can always cancel it by opening another page.
       </li>
       <li>Bookmarks</li>
       <li>Search</li>
