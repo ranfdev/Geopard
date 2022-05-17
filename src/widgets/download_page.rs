@@ -1,4 +1,3 @@
-use glib::subclass::prelude::*;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
@@ -49,5 +48,10 @@ glib::wrapper! {
 impl DownloadPage {
     pub fn new() -> Self {
         glib::Object::new(&[]).unwrap()
+    }
+}
+impl Default for DownloadPage {
+    fn default() -> Self {
+        Self::new()
     }
 }

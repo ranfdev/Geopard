@@ -1,4 +1,3 @@
-use glib::subclass::prelude::*;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
@@ -45,5 +44,10 @@ glib::wrapper! {
 impl InputPage {
     pub fn new() -> Self {
         glib::Object::new(&[]).unwrap()
+    }
+}
+impl Default for InputPage {
+    fn default() -> Self {
+        Self::new()
     }
 }

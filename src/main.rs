@@ -13,13 +13,11 @@ use std::rc::Rc;
 mod build_config;
 mod common;
 mod config;
-mod download_page;
 mod gemini;
 mod lossy_text_read;
 mod macros;
-mod tab;
 mod text_extensions;
-mod window;
+mod widgets;
 
 use gtk::prelude::*;
 async fn read_config() -> anyhow::Result<config::Config> {
@@ -85,7 +83,7 @@ fn main() {
     let windows = Rc::new(RefCell::new(vec![]));
 
     application.connect_activate(move |_| {
-        let window = window::Window::new(&app_clone, config.clone());
+        let window = widgets::Window::new(&app_clone, config.clone());
         window.present();
         windows.borrow_mut().push(window);
     });

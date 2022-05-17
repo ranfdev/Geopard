@@ -6,12 +6,10 @@ use glib::{clone, Properties};
 use gtk::gdk;
 use gtk::gio;
 use gtk::glib;
-use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::CompositeTemplate;
 use gtk::TemplateChild;
 use log::{error, info, warn};
-use std::cell::Cell;
 use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
@@ -19,9 +17,8 @@ use url::Url;
 
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
 use crate::config;
-use crate::tab::HistoryStatus;
-use crate::tab::Tab;
-use crate::{self_action, view};
+use crate::self_action;
+use crate::widgets::tab::{HistoryStatus, Tab};
 
 pub mod imp {
     use super::*;
@@ -360,7 +357,7 @@ impl Window {
     }
     fn open_omni(&self, v: &str) {
         let url = Url::parse(v).or_else(|_| {
-            if v.contains(".") && v.split(".").all(|s| s.chars().all(char::is_alphanumeric)) {
+            if v.contains('.') && v.split('.').all(|s| s.chars().all(char::is_alphanumeric)) {
                 Url::parse(&format!("gemini://{}", v))
             } else {
                 Url::parse(&format!("gemini://geminispace.info/search?{}", v))
@@ -368,7 +365,7 @@ impl Window {
         });
         match url {
             Ok(url) => self.current_tab().spawn_open_url(url),
-            Err(e) => error!("Failed to open from omni bar"),
+            Err(e) => error!("Failed to open from omni bar: {}", e),
         }
     }
     fn open_url_str(&self, v: &str) {
@@ -446,8 +443,7 @@ impl Window {
         let imp = self.imp();
         imp.squeezer
             .visible_child()
-            .map(|child| child.downcast().ok())
-            .flatten()
+            .and_then(|child| child.downcast().ok())
             .map(|w: gtk::WindowHandle| w == self.imp().header_small.get())
             .unwrap_or(false)
     }

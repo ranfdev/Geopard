@@ -22,10 +22,19 @@ use std::rc::Rc;
 use url::Url;
 
 use crate::common;
-use crate::common::{glibctx, HistoryItem, LossyTextRead};
+use crate::common::glibctx;
 use crate::gemini;
 use crate::gemini::PageElement;
+use crate::lossy_text_read::*;
 use crate::text_extensions::Gemini as GeminiTextExt;
+use crate::widgets;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct HistoryItem {
+    pub url: url::Url,
+    pub cache: Rc<RefCell<Option<Vec<u8>>>>,
+    pub scroll_progress: f64,
+}
 
 #[derive(Clone, Debug, glib::Boxed, Default)]
 #[boxed_type(name = "GeopardHistoryStatus")]
@@ -413,7 +422,7 @@ impl Tab {
             .iter()
             .find_map(GeminiTextExt::linkhandler)
             .cloned()
-            .ok_or(anyhow::Error::msg("Clicked text doesn't have a link tag"))
+            .ok_or_else(|| anyhow::Error::msg("Clicked text doesn't have a link tag"))
     }
     async fn open_file_url(&self, url: Url) -> Result<()> {
         let path = url
@@ -459,7 +468,7 @@ impl Tab {
     }
     async fn open_gemini_url(&self, url: Url) -> anyhow::Result<Option<Vec<u8>>> {
         let imp = self.imp();
-        let res: gemini::Response = imp.gemini_client.borrow().fetch(url.as_str()).await?;
+        let res: gemini::Response = { imp.gemini_client.borrow().fetch(url.as_str()) }.await?;
 
         use gemini::Status::*;
         let meta = res.meta().to_owned();
@@ -536,7 +545,7 @@ impl Tab {
             .context("Can't get last url segment")?;
         let d_path = Self::download_path(file_name)?;
 
-        let page = crate::download_page::DownloadPage::new();
+        let page = widgets::DownloadPage::new();
         page.imp().label.set_label(file_name);
         imp.stack.add_child(&page);
         imp.stack.set_visible_child(&page);
@@ -547,7 +556,7 @@ impl Tab {
             gtk::show_uri(None::<&gtk::Window>, &downloaded_file_url, 0);
         });
 
-        let ext = file_name.split(".").last();
+        let ext = file_name.split('.').last();
         if let Some(true) = ext.map(|ext| crate::common::STREAMABLE_EXTS.contains(&ext)) {
             page.imp().open_btn.set_opacity(1.0);
         }
@@ -611,7 +620,7 @@ impl Tab {
     fn display_input(&self, url: Url, msg: &str) {
         let imp = self.imp();
 
-        let text_input = crate::input_page::InputPage::new();
+        let text_input = widgets::InputPage::new();
         imp.stack.add_child(&text_input);
         imp.stack.set_visible_child(&text_input);
         text_input.imp().label.set_label(msg);
@@ -699,7 +708,7 @@ impl Tab {
                         if !title_updated {
                             title_updated = true;
                             imp.title
-                                .replace(line.trim_end().trim_start_matches("#").to_string());
+                                .replace(line.trim_end().trim_start_matches('#').to_string());
                             self.notify("title");
                         }
                     }
