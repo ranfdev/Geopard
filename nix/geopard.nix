@@ -23,9 +23,19 @@
 , clippy
 }:
 
-naersk-lib.buildPackage rec {
+stdenv.mkDerivation rec {
   pname = "geopard";
   version = "1.0.1";
+
+  cargoDeps = rustPlatform.importCargoLock {
+    lockFile = ../Cargo.lock;
+    outputHashes = {
+      "cairo-rs-0.16.0" = "sha256-lCEOtFsuGKnYctVL5UzeFytIKIEIQU/DLr3mj+I8OEE=";
+      "gdk4-0.5.0" = "sha256-j8RfllrPwcG/zxSMew/x435wYrR++z4csJ1p3wdNti0=";
+      "gio-0.16.0" = "sha256-NKj1Yll7OIVQ5bi2H8EgRZyREl3mJ5ghgJ6T6xmcqOg=";
+      "libadwaita-0.2.0" = "sha256-yg/Z2cK23R3NgJAziVOxjnPPmtTbBM6SNZhM9UFn+Gw=";
+    };
+  };
 
   src = ../.;
 
@@ -42,11 +52,16 @@ naersk-lib.buildPackage rec {
     desktop-file-utils
     appstream-glib
     blueprint-compiler
+    rustPlatform.rust.cargo
+    rustPlatform.cargoSetupHook
+    rustPlatform.rust.rustc
     rustfmt
     clippy
   ];
 
   buildInputs = [
+    meson
+    ninja
     desktop-file-utils
     gdk-pixbuf
     glib
@@ -54,8 +69,6 @@ naersk-lib.buildPackage rec {
     libadwaita
     openssl
   ];
-  checkPhase = ''
-  '';
   doCheck = true;
   meta = with lib; {
     homepage = "https://github.com/ranfdev/Geopard";
