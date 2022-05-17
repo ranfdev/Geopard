@@ -1,7 +1,4 @@
 use crate::config;
-
-use glib::IsA;
-use gtk::glib;
 use gtk::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -32,7 +29,7 @@ impl Gemini {
                 .fonts
                 .heading
                 .as_ref()
-                .or_else(|| default_config.fonts.heading.as_ref())
+                .or(default_config.fonts.heading.as_ref())
                 .unwrap()
         });
         tag_h1.set_scale(2.0);
@@ -43,7 +40,7 @@ impl Gemini {
                 .fonts
                 .heading
                 .as_ref()
-                .or_else(|| default_config.fonts.heading.as_ref())
+                .or(default_config.fonts.heading.as_ref())
                 .unwrap()
         });
         tag_h2.set_scale(1.5);
@@ -55,7 +52,7 @@ impl Gemini {
                 .fonts
                 .heading
                 .as_ref()
-                .or_else(|| default_config.fonts.heading.as_ref())
+                .or(default_config.fonts.heading.as_ref())
                 .unwrap(),
         );
         tag_h2.set_scale(1.4);
@@ -67,7 +64,7 @@ impl Gemini {
                 .fonts
                 .paragraph
                 .as_ref()
-                .or_else(|| default_config.fonts.paragraph.as_ref())
+                .or(default_config.fonts.paragraph.as_ref())
                 .unwrap(),
         );
         let tag_q = Self::create_tag(
@@ -76,7 +73,7 @@ impl Gemini {
                 .fonts
                 .quote
                 .as_ref()
-                .or_else(|| default_config.fonts.quote.as_ref())
+                .or(default_config.fonts.quote.as_ref())
                 .unwrap(),
         );
         tag_q.set_style(gtk::pango::Style::Italic);
@@ -87,7 +84,7 @@ impl Gemini {
                 .fonts
                 .quote
                 .as_ref()
-                .or_else(|| default_config.fonts.paragraph.as_ref())
+                .or(default_config.fonts.paragraph.as_ref())
                 .unwrap(),
         );
 
@@ -184,7 +181,7 @@ impl Gemini {
             .fonts
             .paragraph
             .as_ref()
-            .or_else(|| default_config.fonts.paragraph.as_ref())
+            .or(default_config.fonts.paragraph.as_ref())
             .unwrap();
 
         let tag = gtk::builders::TextTagBuilder::new()
