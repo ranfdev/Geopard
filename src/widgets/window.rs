@@ -21,6 +21,8 @@ use crate::self_action;
 use crate::widgets::tab::{HistoryStatus, Tab};
 
 const ZOOM_CHANGE_FACTOR: f32 = 1.15;
+const ZOOM_MAX_FACTOR: f32 = 5.0;
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Zoom {
     value: f32,
@@ -58,7 +60,6 @@ pub mod imp {
         pub(crate) action_previous: RefCell<Option<gio::SimpleAction>>,
         pub(crate) action_next: RefCell<Option<gio::SimpleAction>>,
         pub(crate) style_provider: RefCell<gtk::CssProvider>,
-
         #[property(get = Self::zoom, set = Self::set_zoom, type = f32, member = value)]
         pub(crate) zoom: RefCell<Zoom>,
     }
@@ -98,7 +99,7 @@ pub mod imp {
         }
         fn set_zoom(&self, v: f32) {
             let Zoom { value, provider } = &mut *self.zoom.borrow_mut();
-            *value = v;
+            *value = v.clamp(1.0 / ZOOM_MAX_FACTOR, ZOOM_MAX_FACTOR);
             provider.load_from_data(
                 format!(
                     "textview {{
@@ -200,6 +201,7 @@ impl Window {
         self_action!(self, "donate", donate);
         self_action!(self, "zoom-in", zoom_in);
         self_action!(self, "zoom-out", zoom_out);
+        self_action!(self, "reset-zoom", reset_zoom);
 
         let act_open_page = gio::SimpleAction::new("open-omni", Some(glib::VariantTy::STRING));
         act_open_page.connect_activate(
@@ -227,6 +229,7 @@ impl Window {
         );
         self.add_action(&act_set_clipboard);
 
+        // Signals
         self.add_controller(&imp.scroll_ctrl);
         imp.scroll_ctrl
             .set_propagation_phase(gtk::PropagationPhase::Capture);
@@ -515,5 +518,8 @@ impl Window {
     }
     fn zoom_out(&self) {
         self.set_zoom(&(self.zoom() * 1.0 / ZOOM_CHANGE_FACTOR));
+    }
+    fn reset_zoom(&self) {
+        self.set_zoom(&1.0);
     }
 }

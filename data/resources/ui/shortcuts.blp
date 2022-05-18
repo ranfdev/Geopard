@@ -66,6 +66,22 @@ Gtk.ShortcutsWindow help_overlay {
         action-name: "win.show-bookmarks";
       }
     }
+    Gtk.ShortcutsGroup {
+      title: C_("shortcut window", "Zoom");
+
+      Gtk.ShortcutsShortcut {
+        title: C_("shortcut window", "Zoom In");
+        action-name: "win.zoom-in";
+      }
+      Gtk.ShortcutsShortcut {
+        title: C_("shortcut window", "Zoom Out");
+        action-name: "win.zoom-out";
+      }
+      Gtk.ShortcutsShortcut {
+        title: C_("shortcut window", "Reset Zoom");
+        action-name: "win.reset-zoom";
+      }
+    }
   }
 }
 

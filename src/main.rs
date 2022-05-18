@@ -97,6 +97,7 @@ fn main() {
     application.set_accels_for_action("win.focus-url-bar", &["F6"]);
     application.set_accels_for_action("win.zoom-in", &["<Ctrl>plus"]);
     application.set_accels_for_action("win.zoom-out", &["<Ctrl>minus"]);
+    application.set_accels_for_action("win.reset-zoom", &["<Ctrl>0"]);
     // Sadly Tab doesn't work as an accelerator in gtk...
     application.set_accels_for_action("win.focus-next-tab", &["<Ctrl>Tab"]);
     application.set_accels_for_action("win.focus-previous-tab", &["<Ctrl><Shift>Tab"]);
