@@ -20,6 +20,8 @@ use crate::config;
 use crate::self_action;
 use crate::widgets::tab::{HistoryStatus, Tab};
 
+const ZOOM_CHANGE_FACTOR: f32 = 1.15;
+
 pub mod imp {
     use super::*;
     #[derive(Debug, Default, Properties, CompositeTemplate)]
@@ -51,6 +53,7 @@ pub mod imp {
         pub(crate) action_previous: RefCell<Option<gio::SimpleAction>>,
         pub(crate) action_next: RefCell<Option<gio::SimpleAction>>,
         pub(crate) style_provider: RefCell<gtk::CssProvider>,
+        pub(crate) zoom: RefCell<(f32, gtk::CssProvider)>,
     }
 
     impl Window {
@@ -141,6 +144,14 @@ impl Window {
             &*imp.style_provider.borrow(),
             gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
+
+        imp.zoom.borrow_mut().0 = 1.0;
+        gtk::StyleContext::add_provider_for_display(
+            &gdk::Display::default().unwrap(),
+            &imp.zoom.borrow().1,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+
         this.squeezer_changed();
         this.setup_actions_signals();
         this.open_in_new_tab(bookmarks_url().as_str());
@@ -164,6 +175,8 @@ impl Window {
         self_action!(self, "focus-tab-previous", focus_tab_previous);
         self_action!(self, "focus-tab-next", focus_tab_next);
         self_action!(self, "donate", donate);
+        self_action!(self, "zoom-in", zoom_in);
+        self_action!(self, "zoom-out", zoom_out);
 
         let act_open_page = gio::SimpleAction::new("open-omni", Some(glib::VariantTy::STRING));
         act_open_page.connect_activate(
@@ -472,5 +485,32 @@ impl Window {
     fn focus_tab_previous(&self) {
         let imp = self.imp();
         imp.tab_view.select_previous_page();
+    }
+    fn zoom_in(&self) {
+        let imp = self.imp();
+        let (factor, css) = &mut *imp.zoom.borrow_mut();
+        *factor *= ZOOM_CHANGE_FACTOR;
+        css.load_from_data(
+            format!(
+                "textview {{
+            font-size: {factor}rem;
+        }}"
+            )
+            .as_bytes(),
+        );
+    }
+    fn zoom_out(&self) {
+        let imp = self.imp();
+        let (factor, css) = &mut *imp.zoom.borrow_mut();
+        *factor /= ZOOM_CHANGE_FACTOR;
+        css.load_from_data(
+            format!(
+                "textview {{
+            font-size: {}rem;
+        }}",
+                factor
+            )
+            .as_bytes(),
+        );
     }
 }
