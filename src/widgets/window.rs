@@ -21,6 +21,11 @@ use crate::self_action;
 use crate::widgets::tab::{HistoryStatus, Tab};
 
 const ZOOM_CHANGE_FACTOR: f32 = 1.15;
+#[derive(Debug, Clone, Default)]
+pub(crate) struct Zoom {
+    value: f32,
+    provider: gtk::CssProvider,
+}
 
 pub mod imp {
     use super::*;
@@ -53,7 +58,9 @@ pub mod imp {
         pub(crate) action_previous: RefCell<Option<gio::SimpleAction>>,
         pub(crate) action_next: RefCell<Option<gio::SimpleAction>>,
         pub(crate) style_provider: RefCell<gtk::CssProvider>,
-        pub(crate) zoom: RefCell<(f32, gtk::CssProvider)>,
+
+        #[property(get = Self::zoom, set = Self::set_zoom, type = f32, member = value)]
+        pub(crate) zoom: RefCell<Zoom>,
     }
 
     impl Window {
@@ -85,6 +92,22 @@ pub mod imp {
             );
             animation.play();
             self.progress_animation.replace(Some(animation));
+        }
+        fn zoom(&self) -> f32 {
+            self.zoom.borrow().value
+        }
+        fn set_zoom(&self, v: f32) {
+            let Zoom { value, provider } = &mut *self.zoom.borrow_mut();
+            *value = v;
+            provider.load_from_data(
+                format!(
+                    "textview {{
+                        font-size: {}rem;
+                    }}",
+                    value
+                )
+                .as_bytes(),
+            );
         }
     }
 
@@ -145,10 +168,10 @@ impl Window {
             gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
 
-        imp.zoom.borrow_mut().0 = 1.0;
+        imp.zoom.borrow_mut().value = 1.0;
         gtk::StyleContext::add_provider_for_display(
             &gdk::Display::default().unwrap(),
-            &imp.zoom.borrow().1,
+            &imp.zoom.borrow().provider,
             gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
 
@@ -486,31 +509,11 @@ impl Window {
         let imp = self.imp();
         imp.tab_view.select_previous_page();
     }
+
     fn zoom_in(&self) {
-        let imp = self.imp();
-        let (factor, css) = &mut *imp.zoom.borrow_mut();
-        *factor *= ZOOM_CHANGE_FACTOR;
-        css.load_from_data(
-            format!(
-                "textview {{
-            font-size: {factor}rem;
-        }}"
-            )
-            .as_bytes(),
-        );
+        self.set_zoom(&(self.zoom() * ZOOM_CHANGE_FACTOR));
     }
     fn zoom_out(&self) {
-        let imp = self.imp();
-        let (factor, css) = &mut *imp.zoom.borrow_mut();
-        *factor /= ZOOM_CHANGE_FACTOR;
-        css.load_from_data(
-            format!(
-                "textview {{
-            font-size: {}rem;
-        }}",
-                factor
-            )
-            .as_bytes(),
-        );
+        self.set_zoom(&(self.zoom() * 1.0 / ZOOM_CHANGE_FACTOR));
     }
 }
