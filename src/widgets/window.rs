@@ -49,6 +49,8 @@ pub mod imp {
         pub(crate) progress_bar: TemplateChild<gtk::ProgressBar>,
         #[template_child]
         pub(crate) tab_view: TemplateChild<adw::TabView>,
+        #[template_child]
+        pub(crate) primary_menu_btn: TemplateChild<gtk::MenuButton>,
         pub(crate) config: RefCell<config::Config>,
         pub(crate) progress_animation: RefCell<Option<adw::SpringAnimation>>,
         pub(crate) binded_tab_properties: RefCell<Vec<glib::Binding>>,
@@ -60,7 +62,7 @@ pub mod imp {
         pub(crate) action_previous: RefCell<Option<gio::SimpleAction>>,
         pub(crate) action_next: RefCell<Option<gio::SimpleAction>>,
         pub(crate) style_provider: RefCell<gtk::CssProvider>,
-        #[property(get = Self::zoom, set = Self::set_zoom, type = f32, member = value)]
+        #[property(get, set = Self::set_zoom, type = f32, member = value)]
         pub(crate) zoom: RefCell<Zoom>,
     }
 
@@ -93,9 +95,6 @@ pub mod imp {
             );
             animation.play();
             self.progress_animation.replace(Some(animation));
-        }
-        fn zoom(&self) -> f32 {
-            self.zoom.borrow().value
         }
         fn set_zoom(&self, v: f32) {
             let Zoom { value, provider } = &mut *self.zoom.borrow_mut();
@@ -176,6 +175,44 @@ impl Window {
             gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
 
+        let popover: gtk::PopoverMenu = imp.primary_menu_btn.popover().unwrap().downcast().unwrap();
+        let zoom_box = gtk::Box::builder()
+            .spacing(12)
+            .margin_start(18)
+            .margin_end(18)
+            .build();
+
+        zoom_box.append(
+            &gtk::Button::builder()
+                .icon_name("zoom-out-symbolic")
+                .action_name("win.zoom-out")
+                .css_classes(vec!["flat".into(), "circular".into()])
+                .build(),
+        );
+
+        let value_btn = gtk::Button::with_label("100%");
+        value_btn.set_hexpand(true);
+        this.bind_property("zoom", &value_btn, "label")
+            .transform_to(|_, v| {
+                let zoom: f32 = v.get().unwrap();
+                Some(format!("{:3}%", (zoom * 100.0) as usize).to_value())
+            })
+            .build();
+        value_btn.set_action_name(Some("win.reset-zoom"));
+        value_btn.add_css_class("flat");
+        value_btn.add_css_class("body");
+        value_btn.add_css_class("numeric");
+
+        zoom_box.append(&value_btn);
+        zoom_box.append(
+            &gtk::Button::builder()
+                .icon_name("zoom-in-symbolic")
+                .css_classes(vec!["flat".into(), "circular".into()])
+                .action_name("win.zoom-in")
+                .build(),
+        );
+        popover.add_child(&zoom_box, "zoom");
+
         this.squeezer_changed();
         this.setup_actions_signals();
         this.open_in_new_tab(bookmarks_url().as_str());
@@ -236,9 +273,19 @@ impl Window {
         imp.scroll_ctrl
             .set_flags(gtk::EventControllerScrollFlags::VERTICAL);
         imp.scroll_ctrl.connect_scroll(
-            clone!(@weak self as this => @default-panic, move |_, _, y| {
-                this.imp().bottom_bar_revealer.set_reveal_child(y < 0.0 && this.is_small_screen());
+            clone!(@weak self as this => @default-panic, move |ctrl, _, y| {
+                let up = y < 0.0;
+                if let Some(true) = ctrl.current_event().map(|e| e.modifier_state()).map(|m| m == gdk::ModifierType::CONTROL_MASK) {
+                    if up {
+                      this.zoom_in();
+                    } else {
+                      this.zoom_out();
+                    }
+                    gtk::Inhibit(true)
+                } else {
+                    this.imp().bottom_bar_revealer.set_reveal_child(up && this.is_small_screen());
                     gtk::Inhibit(false)
+                }
             }),
         );
         self.connect_local(

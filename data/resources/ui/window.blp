@@ -36,7 +36,7 @@ template GeopardWindow: Adw.ApplicationWindow {
           }
         }
         [end]
-        Gtk.MenuButton {
+        Gtk.MenuButton primary_menu_btn {
           icon-name: "open-menu";
           menu-model: primary_menu;
         }
@@ -126,6 +126,11 @@ menu primary_menu {
     item {
       label: "Add Bookmark";
       action: "win.bookmark-current";
+    }
+  }
+  section {
+    item {
+      custom: "zoom";
     }
   }
   section {
