@@ -164,6 +164,23 @@ impl Window {
         let imp = this.imp();
         imp.config.replace(config);
 
+        this.squeezer_changed();
+        this.setup_settings();
+        this.setup_zoom_popover_item();
+        this.setup_css_providers();
+        this.setup_actions();
+        this.setup_signals();
+        this.open_in_new_tab(bookmarks_url().as_str());
+        this
+    }
+    fn setup_settings(&self) {
+        let imp = self.imp();
+        let settings = gio::Settings::new(APP_ID);
+        settings.bind("zoom", self, "zoom").build();
+        imp.settings.replace(Some(settings));
+    }
+    fn setup_css_providers(&self) {
+        let imp = self.imp();
         gtk::StyleContext::add_provider_for_display(
             &gdk::Display::default().unwrap(),
             &*imp.style_provider.borrow(),
@@ -176,55 +193,8 @@ impl Window {
             &imp.zoom.borrow().provider,
             gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
-
-        let popover: gtk::PopoverMenu = imp.primary_menu_btn.popover().unwrap().downcast().unwrap();
-        let zoom_box = gtk::Box::builder()
-            .spacing(12)
-            .margin_start(18)
-            .margin_end(18)
-            .build();
-
-        zoom_box.append(
-            &gtk::Button::builder()
-                .icon_name("zoom-out-symbolic")
-                .action_name("win.zoom-out")
-                .css_classes(vec!["flat".into(), "circular".into()])
-                .build(),
-        );
-
-        let value_btn = gtk::Button::with_label("100%");
-        value_btn.set_hexpand(true);
-        this.bind_property("zoom", &value_btn, "label")
-            .transform_to(|_, v| {
-                let zoom: f64 = v.get().unwrap();
-                Some(format!("{:3}%", (zoom * 100.0) as usize).to_value())
-            })
-            .build();
-        value_btn.set_action_name(Some("win.reset-zoom"));
-        value_btn.add_css_class("flat");
-        value_btn.add_css_class("body");
-        value_btn.add_css_class("numeric");
-
-        zoom_box.append(&value_btn);
-        zoom_box.append(
-            &gtk::Button::builder()
-                .icon_name("zoom-in-symbolic")
-                .css_classes(vec!["flat".into(), "circular".into()])
-                .action_name("win.zoom-in")
-                .build(),
-        );
-        popover.add_child(&zoom_box, "zoom");
-
-        let settings = gio::Settings::new(APP_ID);
-        settings.bind("zoom", &this, "zoom").build();
-        imp.settings.replace(Some(settings));
-
-        this.squeezer_changed();
-        this.setup_actions_signals();
-        this.open_in_new_tab(bookmarks_url().as_str());
-        this
     }
-    fn setup_actions_signals(&self) {
+    fn setup_actions(&self) {
         let imp = self.imp();
 
         let action_previous = self_action!(self, "previous", previous);
@@ -271,8 +241,10 @@ impl Window {
             clone!(@weak self as this => move |_,v| this.set_clipboard(v.unwrap().get::<String>().unwrap().as_str())),
         );
         self.add_action(&act_set_clipboard);
+    }
+    fn setup_signals(&self) {
+        let imp = self.imp();
 
-        // Signals
         self.add_controller(&imp.scroll_ctrl);
         imp.scroll_ctrl
             .set_propagation_phase(gtk::PropagationPhase::Capture);
@@ -328,6 +300,47 @@ impl Window {
                 this.set_special_color_from_hash();
             }),
         );
+    }
+    fn setup_zoom_popover_item(&self) {
+        let imp = self.imp();
+
+        let popover: gtk::PopoverMenu = imp.primary_menu_btn.popover().unwrap().downcast().unwrap();
+        let zoom_box = gtk::Box::builder()
+            .spacing(12)
+            .margin_start(18)
+            .margin_end(18)
+            .build();
+
+        zoom_box.append(
+            &gtk::Button::builder()
+                .icon_name("zoom-out-symbolic")
+                .action_name("win.zoom-out")
+                .css_classes(vec!["flat".into(), "circular".into()])
+                .build(),
+        );
+
+        let value_btn = gtk::Button::with_label("100%");
+        value_btn.set_hexpand(true);
+        self.bind_property("zoom", &value_btn, "label")
+            .transform_to(|_, v| {
+                let zoom: f64 = v.get().unwrap();
+                Some(format!("{:3}%", (zoom * 100.0) as usize).to_value())
+            })
+            .build();
+        value_btn.set_action_name(Some("win.reset-zoom"));
+        value_btn.add_css_class("flat");
+        value_btn.add_css_class("body");
+        value_btn.add_css_class("numeric");
+
+        zoom_box.append(&value_btn);
+        zoom_box.append(
+            &gtk::Button::builder()
+                .icon_name("zoom-in-symbolic")
+                .css_classes(vec!["flat".into(), "circular".into()])
+                .action_name("win.zoom-in")
+                .build(),
+        );
+        popover.add_child(&zoom_box, "zoom");
     }
     fn add_tab(&self) -> adw::TabPage {
         let imp = self.imp();
