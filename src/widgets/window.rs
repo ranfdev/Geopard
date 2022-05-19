@@ -165,11 +165,12 @@ impl Window {
         let this: Self = glib::Object::new(&[("application", app)]).unwrap();
         let imp = this.imp();
         imp.config.replace(config);
+        imp.zoom.borrow_mut().value = 1.0;
 
+        this.setup_css_providers();
         this.squeezer_changed();
         this.setup_settings();
         this.setup_zoom_popover_item();
-        this.setup_css_providers();
         this.setup_actions();
         this.setup_signals();
         this.open_in_new_tab(bookmarks_url().as_str());
@@ -189,7 +190,6 @@ impl Window {
             gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
 
-        imp.zoom.borrow_mut().value = 1.0;
         gtk::StyleContext::add_provider_for_display(
             &gdk::Display::default().unwrap(),
             &imp.zoom.borrow().provider,
@@ -324,6 +324,7 @@ impl Window {
         let value_btn = gtk::Button::with_label("100%");
         value_btn.set_hexpand(true);
         self.bind_property("zoom", &value_btn, "label")
+            .flags(glib::BindingFlags::SYNC_CREATE)
             .transform_to(|_, v| {
                 let zoom: f64 = v.get().unwrap();
                 Some(format!("{:3}%", (zoom * 100.0) as usize).to_value())
