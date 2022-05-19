@@ -15,8 +15,6 @@ pub static DOWNLOAD_PATH: Lazy<std::path::PathBuf> = Lazy::new(|| {
 
 pub static ABOUT_PAGE: &str = std::include_str!("../../README.gemini");
 
-pub const MARGIN: i32 = 20;
-
 pub static DATA_DIR_PATH: Lazy<std::path::PathBuf> =
     Lazy::new(|| glib::user_data_dir().join("geopard"));
 

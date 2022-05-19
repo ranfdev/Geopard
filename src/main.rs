@@ -13,7 +13,6 @@ use std::rc::Rc;
 mod build_config;
 mod common;
 mod config;
-mod gemini;
 mod lossy_text_read;
 mod macros;
 mod text_extensions;

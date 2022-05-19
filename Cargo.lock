@@ -484,6 +484,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "gemini"
+version = "0.1.0"
+dependencies = [
+ "async-native-tls",
+ "async-net",
+ "futures",
+ "log",
+ "once_cell",
+ "regex",
+ "thiserror",
+ "url",
+]
+
+[[package]]
 name = "geopard"
 version = "1.0.1"
 dependencies = [
@@ -494,11 +508,11 @@ dependencies = [
  "async-trait",
  "env_logger",
  "futures",
+ "gemini",
  "gtk4",
  "libadwaita",
  "log",
  "once_cell",
- "regex",
  "serde",
  "thiserror",
  "toml",

@@ -23,11 +23,10 @@ use url::Url;
 
 use crate::common;
 use crate::common::glibctx;
-use crate::gemini;
-use crate::gemini::PageElement;
 use crate::lossy_text_read::*;
 use crate::text_extensions::Gemini as GeminiTextExt;
 use crate::widgets;
+use gemini::PageElement;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct HistoryItem {
@@ -451,6 +450,12 @@ impl Tab {
             .clear();
         match url.scheme() {
             "about" => {
+                let mut about = common::ABOUT_PAGE.to_owned();
+                about.push_str(&format!(
+                    "App ID: {}\n Version: {}",
+                    crate::config::APP_ID,
+                    crate::config::VERSION
+                ));
                 let reader = futures::io::BufReader::new(common::ABOUT_PAGE.as_bytes());
                 self.display_gemini(reader).await?;
                 Ok(None)

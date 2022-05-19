@@ -13,6 +13,7 @@ pub enum PageElement {
     Empty,
 }
 
+#[derive(Debug, Clone, Default)]
 pub struct Parser {
     inside_pre: bool,
 }

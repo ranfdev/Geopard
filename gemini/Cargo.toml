@@ -1,0 +1,16 @@
+[package]
+name = "gemini"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+
+[dependencies]
+once_cell = "1.4.0"
+regex = "1.3.9"
+async-net = "1.4.7"
+futures = "0.3.5"
+log = "0.4.0"
+url = "2.1.1"
+thiserror = "1.0.20"
+async-native-tls = "0.3.3"
