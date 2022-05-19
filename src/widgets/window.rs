@@ -51,6 +51,8 @@ pub mod imp {
         #[template_child]
         pub(crate) tab_view: TemplateChild<adw::TabView>,
         #[template_child]
+        pub(crate) tab_bar: TemplateChild<adw::TabBar>,
+        #[template_child]
         pub(crate) primary_menu_btn: TemplateChild<gtk::MenuButton>,
         pub(crate) config: RefCell<config::Config>,
         pub(crate) progress_animation: RefCell<Option<adw::SpringAnimation>>,
@@ -554,8 +556,13 @@ impl Window {
     }
     fn squeezer_changed(&self) {
         let imp = self.imp();
-        imp.bottom_bar_revealer
-            .set_reveal_child(self.is_small_screen());
+        let is_small = self.is_small_screen();
+        imp.bottom_bar_revealer.set_reveal_child(is_small);
+        if is_small {
+            imp.tab_bar.add_css_class("inline");
+        } else {
+            imp.tab_bar.remove_css_class("inline");
+        }
     }
     fn present_shortcuts(&self) {
         gtk::Builder::from_resource("/com/ranfdev/Geopard/ui/shortcuts.ui");
