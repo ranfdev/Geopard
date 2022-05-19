@@ -55,8 +55,6 @@ stdenv.mkDerivation rec {
     rustPlatform.rust.cargo
     rustPlatform.cargoSetupHook
     rustPlatform.rust.rustc
-    rustfmt
-    clippy
   ];
 
   buildInputs = [
@@ -69,7 +67,6 @@ stdenv.mkDerivation rec {
     libadwaita
     openssl
   ];
-  doCheck = true;
   meta = with lib; {
     homepage = "https://github.com/ranfdev/Geopard";
     description = "Colorful, adaptive gemini browser";
