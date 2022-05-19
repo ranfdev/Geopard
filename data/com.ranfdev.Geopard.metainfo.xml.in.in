@@ -50,6 +50,16 @@
   <content_rating type="oars-1.0" />
 
   <releases>
+    <release version="1.1.0" date="2022-05-19">
+      <description>
+        <ul>
+          <li>Improved design, with completely new pages for downloads, input requests, external links, errors</li>
+          <li>Added more spacing between links to make them easier to click on small screens</li>
+          <li>Added zoom functionality, via shortcuts or directly from the popover menu</li>
+          <li>Streaming button (alpha) for some audio/video file types</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.1" date="2022-05-07">
       <description>
         Changes:
