@@ -1,6 +1,7 @@
 use adw::prelude::*;
 use adw::subclass::application_window::AdwApplicationWindowImpl;
 use anyhow::Context;
+use config::APP_ID;
 use futures::prelude::*;
 use glib::{clone, Properties};
 use gtk::gdk;
@@ -20,12 +21,12 @@ use crate::config;
 use crate::self_action;
 use crate::widgets::tab::{HistoryStatus, Tab};
 
-const ZOOM_CHANGE_FACTOR: f32 = 1.15;
-const ZOOM_MAX_FACTOR: f32 = 5.0;
+const ZOOM_CHANGE_FACTOR: f64 = 1.15;
+const ZOOM_MAX_FACTOR: f64 = 5.0;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Zoom {
-    value: f32,
+    value: f64,
     provider: gtk::CssProvider,
 }
 
@@ -62,8 +63,9 @@ pub mod imp {
         pub(crate) action_previous: RefCell<Option<gio::SimpleAction>>,
         pub(crate) action_next: RefCell<Option<gio::SimpleAction>>,
         pub(crate) style_provider: RefCell<gtk::CssProvider>,
-        #[property(get, set = Self::set_zoom, type = f32, member = value)]
+        #[property(get, set = Self::set_zoom, type = f64, member = value)]
         pub(crate) zoom: RefCell<Zoom>,
+        pub(crate) settings: RefCell<Option<gio::Settings>>, // TODO: May use ConstructCell
     }
 
     impl Window {
@@ -96,7 +98,7 @@ pub mod imp {
             animation.play();
             self.progress_animation.replace(Some(animation));
         }
-        fn set_zoom(&self, v: f32) {
+        fn set_zoom(&self, v: f64) {
             let Zoom { value, provider } = &mut *self.zoom.borrow_mut();
             *value = v.clamp(1.0 / ZOOM_MAX_FACTOR, ZOOM_MAX_FACTOR);
             provider.load_from_data(
@@ -194,7 +196,7 @@ impl Window {
         value_btn.set_hexpand(true);
         this.bind_property("zoom", &value_btn, "label")
             .transform_to(|_, v| {
-                let zoom: f32 = v.get().unwrap();
+                let zoom: f64 = v.get().unwrap();
                 Some(format!("{:3}%", (zoom * 100.0) as usize).to_value())
             })
             .build();
@@ -212,6 +214,10 @@ impl Window {
                 .build(),
         );
         popover.add_child(&zoom_box, "zoom");
+
+        let settings = gio::Settings::new(APP_ID);
+        settings.bind("zoom", &this, "zoom").build();
+        imp.settings.replace(Some(settings));
 
         this.squeezer_changed();
         this.setup_actions_signals();

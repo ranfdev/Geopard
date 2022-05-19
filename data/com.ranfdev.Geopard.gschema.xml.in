@@ -13,5 +13,9 @@
       <default>false</default>
       <summary>Window maximized state</summary>
     </key>
+    <key name="zoom" type="d">
+      <default>1.0</default>
+      <summary>Zoom</summary>
+    </key>
   </schema>
 </schemalist>
