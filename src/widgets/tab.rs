@@ -452,11 +452,11 @@ impl Tab {
             "about" => {
                 let mut about = common::ABOUT_PAGE.to_owned();
                 about.push_str(&format!(
-                    "App ID: {}\n Version: {}",
+                    "\n\n## Metadata\n\nApp ID: {}\nVersion: {}",
                     crate::config::APP_ID,
                     crate::config::VERSION
                 ));
-                let reader = futures::io::BufReader::new(common::ABOUT_PAGE.as_bytes());
+                let reader = futures::io::BufReader::new(about.as_bytes());
                 self.display_gemini(reader).await?;
                 Ok(None)
             }
