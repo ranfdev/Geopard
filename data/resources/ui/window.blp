@@ -80,37 +80,54 @@ template GeopardWindow: Adw.ApplicationWindow {
         text: bind GeopardWindow.progress;
       }
       [overlay]
-      Gtk.Revealer bottom_bar_revealer {
-        transition-type: slide_up;
+      Gtk.Box {
+        orientation: vertical;
         valign: end;
-        [child]
-        Adw.HeaderBar bottom_bar {
-          show-end-title-buttons: false;
-          show-start-title-buttons: false;
-          [start]
-          Gtk.Button {
-            icon-name: "go-previous-symbolic";
-            action-name: "win.previous";
+        Gtk.Box url_status_box {
+          styles ["background"]
+          Gtk.Label url_status {
+            xalign: 0.0;
+            halign: start;
+            wrap: true;
+            wrap-mode: word_char;
+            margin-top: 6;
+            margin-bottom: 6;
+            margin-start: 6;
+            margin-end: 6;
           }
-          [start]
-          Gtk.Button {
-            icon-name: "go-next-symbolic";
-            action-name: "win.next";
-          }
-          [title]
-          Gtk.Button {
-            icon-name: "system-search-symbolic";
-            action-name: "win.focus-url-bar";
-          }
-          [end]
-          Gtk.MenuButton {
-            icon-name: "open-menu";
-            menu-model: primary_menu;
-          }
-          [end]
-          Gtk.Button {
-            icon-name: "tab-new-symbolic";
-            action-name: "win.new-tab";
+        }
+        Gtk.Revealer bottom_bar_revealer {
+          transition-type: slide_up;
+          valign: end;
+          [child]
+          Adw.HeaderBar bottom_bar {
+            show-end-title-buttons: false;
+            show-start-title-buttons: false;
+            [start]
+            Gtk.Button {
+              icon-name: "go-previous-symbolic";
+              action-name: "win.previous";
+            }
+            [start]
+            Gtk.Button {
+              icon-name: "go-next-symbolic";
+              action-name: "win.next";
+            }
+            [title]
+            Gtk.Button {
+              icon-name: "system-search-symbolic";
+              action-name: "win.focus-url-bar";
+            }
+            [end]
+            Gtk.MenuButton {
+              icon-name: "open-menu";
+              menu-model: primary_menu;
+            }
+            [end]
+            Gtk.Button {
+              icon-name: "tab-new-symbolic";
+              action-name: "win.new-tab";
+            }
           }
         }
       }

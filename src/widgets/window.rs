@@ -43,6 +43,10 @@ pub mod imp {
         #[template_child]
         pub(crate) bottom_bar_revealer: TemplateChild<gtk::Revealer>,
         #[template_child]
+        pub(crate) url_status: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub(crate) url_status_box: TemplateChild<gtk::Box>,
+        #[template_child]
         pub(crate) header_small: TemplateChild<gtk::WindowHandle>,
         #[template_child]
         pub(crate) squeezer: TemplateChild<adw::Squeezer>,
@@ -302,6 +306,13 @@ impl Window {
                 this.set_special_color_from_hash();
             }),
         );
+
+        let ctrl = gtk::EventControllerMotion::new();
+        imp.url_status_box.add_controller(&ctrl);
+        let url_status_box_clone = imp.url_status_box.clone();
+        ctrl.connect_motion(move |_, _, _| {
+            url_status_box_clone.set_visible(false);
+        });
     }
     fn setup_zoom_popover_item(&self) {
         let imp = self.imp();
@@ -390,6 +401,14 @@ impl Window {
                     Some(res.to_value())
                 })
                 .build(),
+                tab.bind_property("hover-url", &*imp.url_status, "label")
+                    .build(),
+                tab.bind_property("hover-url", &*imp.url_status_box, "visible")
+                    .transform_to(|_, v| {
+                        let v: &str = v.get().unwrap();
+                        Some((!v.is_empty()).to_value())
+                    })
+                    .build(),
             ]);
         };
     }

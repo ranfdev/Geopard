@@ -72,6 +72,8 @@ pub mod imp {
         pub(crate) title: RefCell<String>,
         #[property(get)]
         pub(crate) url: RefCell<String>,
+        #[property(get)]
+        pub(crate) hover_url: RefCell<String>,
     }
 
     #[glib::object_subclass]
@@ -203,15 +205,23 @@ impl Tab {
         let gemini_text_ext = imp.gemini_text_ext.borrow();
         let gemini_text_ext = gemini_text_ext.as_ref().unwrap();
         let link = Self::extract_linkhandler(gemini_text_ext, x, y);
-        match link {
-            Ok(_) => {
-                gemini_text_ext
-                    .text_view
-                    .set_cursor_from_name(Some("pointer"));
+
+        let link_ref = link.as_ref().map(|x| x.as_ref()).unwrap_or("");
+
+        // May need optimization. Comparing two strings for each motion event is expensive
+        if *imp.hover_url.borrow() != link_ref {
+            match link_ref {
+                "" => {
+                    gemini_text_ext.text_view.set_cursor_from_name(Some("text"));
+                }
+                _ => {
+                    gemini_text_ext
+                        .text_view
+                        .set_cursor_from_name(Some("pointer"));
+                }
             }
-            Err(_) => {
-                gemini_text_ext.text_view.set_cursor_from_name(Some("text"));
-            }
+            imp.hover_url.replace(link.unwrap_or_default());
+            self.notify("hover-url");
         }
 
         Ok(())
