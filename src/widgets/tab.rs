@@ -15,7 +15,7 @@ use gtk::CompositeTemplate;
 use gtk::TemplateChild;
 use log::{debug, error, info};
 use once_cell::sync::Lazy;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::pin::Pin;
@@ -42,6 +42,7 @@ pub struct HistoryStatus {
     pub(crate) current: usize,
     pub(crate) available: usize,
 }
+
 pub mod imp {
 
     pub use super::*;
@@ -223,6 +224,8 @@ impl Tab {
         Ok(())
     }
     fn handle_motion(&self, x: f64, y: f64) -> Result<()> {
+        // May need some debounce?
+
         let imp = self.imp();
         let gemini_text_ext = imp.gemini_text_ext.borrow();
         let gemini_text_ext = gemini_text_ext.as_ref().unwrap();
@@ -230,23 +233,23 @@ impl Tab {
         let entry = Self::extract_linkhandler(&*links, gemini_text_ext, x, y);
 
         let link_ref = entry.as_ref().map(|x| x.1).unwrap_or("");
-
-        // May need optimization. Comparing two strings for each motion event is expensive
-        if *imp.hover_url.borrow() != link_ref {
-            match link_ref {
-                "" => {
-                    gemini_text_ext.text_view.set_cursor_from_name(Some("text"));
-                }
-                _ => {
-                    gemini_text_ext
-                        .text_view
-                        .set_cursor_from_name(Some("pointer"));
-                }
-            }
-            imp.hover_url.replace(link_ref.to_owned());
-            self.notify("hover-url");
+        if link_ref == &*imp.hover_url.borrow() {
+            return Ok(());
         }
 
+        match link_ref {
+            "" => {
+                gemini_text_ext.text_view.set_cursor_from_name(Some("text"));
+            }
+            _ => {
+                gemini_text_ext
+                    .text_view
+                    .set_cursor_from_name(Some("pointer"));
+            }
+        };
+
+        imp.hover_url.replace(link_ref.to_owned());
+        self.notify("hover-url");
         Ok(())
     }
     pub fn spawn_open_url(&self, url: Url) {
