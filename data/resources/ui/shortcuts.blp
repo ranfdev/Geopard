@@ -30,6 +30,11 @@ Gtk.ShortcutsWindow help_overlay {
       }
 
       Gtk.ShortcutsShortcut {
+        title: C_("shortcut window", "Go to Nth Tab");
+        accelerator: "<Alt>1...9";
+      }
+
+      Gtk.ShortcutsShortcut {
         title: C_("shortcut window", "View Source");
         action-name: "win.view-source";
       }
@@ -38,12 +43,12 @@ Gtk.ShortcutsWindow help_overlay {
       title: C_("shortcut window", "Navigation");
 
       Gtk.ShortcutsShortcut {
-        title: C_("shortcut window", "Previous Tab");
+        title: C_("shortcut window", "Previous Page");
         action-name: "win.previous";
       }
 
       Gtk.ShortcutsShortcut {
-        title: C_("shortcut window", "Next Tab");
+        title: C_("shortcut window", "Next Page");
         action-name: "win.next";
       }
 

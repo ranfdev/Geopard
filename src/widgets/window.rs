@@ -215,8 +215,8 @@ impl Window {
         self_action!(self, "focus-url-bar", focus_url_bar);
         self_action!(self, "shortcuts", present_shortcuts);
         self_action!(self, "about", present_about);
-        self_action!(self, "focus-tab-previous", focus_tab_previous);
-        self_action!(self, "focus-tab-next", focus_tab_next);
+        self_action!(self, "focus-previous-tab", focus_previous_tab);
+        self_action!(self, "focus-next-tab", focus_next_tab);
         self_action!(self, "donate", donate);
         self_action!(self, "zoom-in", zoom_in);
         self_action!(self, "zoom-out", zoom_out);
@@ -313,6 +313,24 @@ impl Window {
         ctrl.connect_motion(move |_, _, _| {
             url_status_box_clone.set_visible(false);
         });
+
+        let ctrl = gtk::EventControllerKey::new();
+        ctrl.set_propagation_limit(gtk::PropagationLimit::None);
+        ctrl.set_propagation_phase(gtk::PropagationPhase::Capture);
+        self.add_controller(&ctrl);
+        ctrl.connect_key_pressed(
+            clone!(@weak self as this => @default-panic, move |_, key, _, modif| {
+              let action = match (modif.contains(gdk::ModifierType::CONTROL_MASK), key) {
+                (true, gdk::Key::ISO_Left_Tab) => Some("win.focus-previous-tab"),
+                (true, gdk::Key::Tab) => Some("win.focus-next-tab"),
+                _ => None,
+              };
+              action
+                  .map(|a| WidgetExt::activate_action(&this, a, None))
+                  .map(|_| gtk::Inhibit(true))
+                  .unwrap_or(gtk::Inhibit(false))
+            }),
+        );
     }
     fn setup_zoom_popover_item(&self) {
         let imp = self.imp();
@@ -597,11 +615,11 @@ impl Window {
             0,
         );
     }
-    fn focus_tab_next(&self) {
+    fn focus_next_tab(&self) {
         let imp = self.imp();
         imp.tab_view.select_next_page();
     }
-    fn focus_tab_previous(&self) {
+    fn focus_previous_tab(&self) {
         let imp = self.imp();
         imp.tab_view.select_previous_page();
     }

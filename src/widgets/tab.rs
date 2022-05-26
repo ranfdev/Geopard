@@ -167,7 +167,7 @@ impl Tab {
         this.bind_signals();
         this
     }
-    pub fn handle_click(&self, x: f64, y: f64) -> Result<()> {
+    pub fn handle_click(&self, ctrl: &gtk::GestureClick, x: f64, y: f64) -> Result<()> {
         let imp = self.imp();
         let gemini_text_ext = imp.gemini_text_ext.borrow();
         let text_view = &gemini_text_ext.as_ref().unwrap().text_view;
@@ -177,7 +177,18 @@ impl Tab {
         }
         let link = Self::extract_linkhandler(gemini_text_ext.as_ref().unwrap(), x, y)?;
         let url = self.parse_link(&link)?;
-        self.spawn_open_url(url);
+        if ctrl
+            .current_event()
+            .unwrap()
+            .modifier_state()
+            .contains(gdk::ModifierType::CONTROL_MASK)
+        {
+            self.activate_action("win.open-in-new-tab", Some(&url.as_str().to_variant()))
+                .unwrap()
+        } else {
+            self.spawn_open_url(url);
+        }
+
         Ok(())
     }
     fn handle_right_click(&self, x: f64, y: f64) -> Result<()> {
@@ -395,8 +406,8 @@ impl Tab {
         let this = self.clone();
         let left_click_ctrl = imp.left_click_ctrl.borrow();
         let left_click_ctrl = left_click_ctrl.as_ref().unwrap();
-        left_click_ctrl.connect_released(move |_ctrl, _n_press, x, y| {
-            if let Err(e) = this.handle_click(x, y) {
+        left_click_ctrl.connect_released(move |ctrl, _n_press, x, y| {
+            if let Err(e) = this.handle_click(ctrl, x, y) {
                 info!("{}", e);
             };
         });
