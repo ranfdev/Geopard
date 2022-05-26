@@ -16,6 +16,7 @@ use gtk::TemplateChild;
 use log::{debug, error, info};
 use once_cell::sync::Lazy;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -64,6 +65,7 @@ pub mod imp {
         pub(crate) right_click_ctrl: RefCell<Option<gtk::GestureClick>>,
         pub(crate) motion_ctrl: RefCell<Option<gtk::EventControllerMotion>>,
         pub(crate) req_handle: RefCell<Option<RemoteHandle<()>>>,
+        pub(crate) links: RefCell<HashMap<gtk::TextTag, String>>,
         #[property(get = Self::history_status, builder(HistoryStatus::static_type()))]
         pub(crate) history_status: PhantomData<HistoryStatus>,
         #[property(get, set)]
@@ -175,8 +177,12 @@ impl Tab {
         if has_selection {
             return Ok(());
         }
-        let link = Self::extract_linkhandler(gemini_text_ext.as_ref().unwrap(), x, y)?;
-        let url = self.parse_link(&link)?;
+        let url = {
+            let links = imp.links.borrow();
+            let (_, link) =
+                Self::extract_linkhandler(&*links, gemini_text_ext.as_ref().unwrap(), x, y)?;
+            self.parse_link(&link)?
+        };
         if ctrl
             .current_event()
             .unwrap()
@@ -195,8 +201,13 @@ impl Tab {
         let imp = self.imp();
         let gemini_text_ext = imp.gemini_text_ext.borrow();
         let text_view = &gemini_text_ext.as_ref().unwrap().text_view;
-        let link = Self::extract_linkhandler(gemini_text_ext.as_ref().unwrap(), x, y)?;
-        let link = self.parse_link(&link)?;
+
+        let link = {
+            let links = imp.links.borrow();
+            let (_, link) =
+                Self::extract_linkhandler(&*links, gemini_text_ext.as_ref().unwrap(), x, y)?;
+            self.parse_link(&link)?
+        };
         let link_variant = link.as_str().to_variant();
 
         let menu = gio::Menu::new();
@@ -215,9 +226,10 @@ impl Tab {
         let imp = self.imp();
         let gemini_text_ext = imp.gemini_text_ext.borrow();
         let gemini_text_ext = gemini_text_ext.as_ref().unwrap();
-        let link = Self::extract_linkhandler(gemini_text_ext, x, y);
+        let links = imp.links.borrow();
+        let entry = Self::extract_linkhandler(&*links, gemini_text_ext, x, y);
 
-        let link_ref = link.as_ref().map(|x| x.as_ref()).unwrap_or("");
+        let link_ref = entry.as_ref().map(|x| x.1).unwrap_or("");
 
         // May need optimization. Comparing two strings for each motion event is expensive
         if *imp.hover_url.borrow() != link_ref {
@@ -231,7 +243,7 @@ impl Tab {
                         .set_cursor_from_name(Some("pointer"));
                 }
             }
-            imp.hover_url.replace(link.unwrap_or_default());
+            imp.hover_url.replace(link_ref.to_owned());
             self.notify("hover-url");
         }
 
@@ -283,6 +295,7 @@ impl Tab {
     fn spawn_request(&self, fut: impl Future<Output = ()> + 'static) {
         let imp = self.imp();
         self.clear_stack_widgets();
+        imp.links.borrow_mut().clear();
         imp.req_handle
             .replace(Some(glibctx().spawn_local_with_handle(fut).unwrap()));
     }
@@ -430,7 +443,12 @@ impl Tab {
             }),
         );
     }
-    fn extract_linkhandler(gemini_text_ext: &GeminiTextExt, x: f64, y: f64) -> Result<String> {
+    fn extract_linkhandler<'a>(
+        m: &'a HashMap<gtk::TextTag, String>,
+        gemini_text_ext: &GeminiTextExt,
+        x: f64,
+        y: f64,
+    ) -> Result<(&'a gtk::TextTag, &'a str)> {
         let text_view = &gemini_text_ext.text_view;
         let (x, y) =
             text_view.window_to_buffer_coords(gtk::TextWindowType::Widget, x as i32, y as i32);
@@ -440,8 +458,8 @@ impl Tab {
 
         iter.tags()
             .iter()
-            .find_map(GeminiTextExt::linkhandler)
-            .cloned()
+            .find_map(|x| x.name().is_none().then(|| m.get_key_value(x)).flatten())
+            .map(|(k, v)| (k, v.as_str()))
             .ok_or_else(|| anyhow::Error::msg("Clicked text doesn't have a link tag"))
     }
     async fn open_file_url(&self, url: Url) -> Result<()> {
@@ -755,7 +773,8 @@ impl Tab {
                             "⇗"
                         };
                         let label = format!("{link_char} {}", label.as_deref().unwrap_or(&url));
-                        gemini_text_ext.insert_link(&mut text_iter, url.clone(), Some(&label));
+                        let tag = gemini_text_ext.insert_link(&mut text_iter, &url, Some(&label));
+                        imp.links.borrow_mut().insert(tag, url.clone());
                     }
                     PageElement::Preformatted(_) => unreachable!("handled before"),
                 }

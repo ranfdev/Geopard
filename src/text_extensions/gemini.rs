@@ -87,9 +87,8 @@ impl Gemini {
                 .or(default_config.fonts.paragraph.as_ref())
                 .unwrap(),
         );
-
+        tag_a.set_line_height(1.4);
         tag_a.set_foreground(Some("blue"));
-        tag_a.set_underline(gtk::pango::Underline::Low);
 
         let tag_pre = Self::create_tag(
             "pre",
@@ -170,55 +169,23 @@ impl Gemini {
     pub fn insert_link(
         &mut self,
         text_iter: &mut gtk::TextIter,
-        link: String,
+        link: &str,
         label: Option<&str>,
-    ) {
+    ) -> gtk::TextTag {
         let start = text_iter.offset();
-        let default_config = &config::DEFAULT_CONFIG;
 
-        let config = self
-            .config
-            .fonts
-            .paragraph
-            .as_ref()
-            .or(default_config.fonts.paragraph.as_ref())
-            .unwrap();
+        let tag = gtk::TextTag::new(None);
+        self.text_buffer.tag_table().add(&tag);
 
-        let tag = gtk::builders::TextTagBuilder::new()
-            .family(&config.family)
-            .weight(config.weight)
-            .line_height(1.4)
-            .build();
-
-        tag.set_foreground_rgba(
-            self.text_view
-                .style_context()
-                .lookup_color("accent_color")
-                .as_ref(),
-        );
-
-        Self::set_linkhandler(&tag, link.clone());
-
-        let label = label.unwrap_or(&link);
+        let label = label.unwrap_or(link);
         self.insert_paragraph(text_iter, label);
         self.insert_paragraph(text_iter, "\n");
 
-        let tag_table = self.text_buffer.tag_table();
-        tag_table.add(&tag);
-
         self.text_buffer
             .apply_tag(&tag, &self.text_buffer.iter_at_offset(start), text_iter);
-    }
-    fn set_linkhandler(tag: &gtk::TextTag, l: String) {
-        unsafe {
-            tag.set_data("linkhandler", l);
-        }
-    }
-    pub fn linkhandler(tag: &gtk::TextTag) -> Option<&String> {
-        unsafe {
-            let handler: Option<std::ptr::NonNull<String>> = tag.data("linkhandler");
-            handler.map(|n| n.as_ref())
-        }
+        self.text_buffer
+            .apply_tag_by_name("a", &self.text_buffer.iter_at_offset(start), text_iter);
+        tag
     }
     pub fn clear(&mut self) {
         let b = &self.text_buffer;
