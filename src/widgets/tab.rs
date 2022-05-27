@@ -53,7 +53,7 @@ pub mod imp {
         pub(crate) gemini_client: RefCell<gemini::Client>,
         pub(crate) gemini_text_ext: RefCell<Option<GeminiTextExt>>,
         pub(crate) history: RefCell<Vec<HistoryItem>>,
-        pub(crate) current_hi: RefCell<Option<usize>>,
+        pub(crate) current_hi: Cell<Option<usize>>,
         #[template_child]
         pub(crate) scroll_win: TemplateChild<gtk::ScrolledWindow>,
         #[template_child]
@@ -70,7 +70,7 @@ pub mod imp {
         #[property(get = Self::history_status, builder(HistoryStatus::static_type()))]
         pub(crate) history_status: PhantomData<HistoryStatus>,
         #[property(get, set)]
-        pub(crate) progress: RefCell<f64>,
+        pub(crate) progress: Cell<f64>,
         #[property(get)]
         pub(crate) title: RefCell<String>,
         #[property(get)]
@@ -140,7 +140,7 @@ pub mod imp {
     impl Tab {
         fn history_status(&self) -> HistoryStatus {
             HistoryStatus {
-                current: self.current_hi.borrow().unwrap_or(0),
+                current: self.current_hi.get().unwrap_or(0),
                 available: self.history.borrow().len(),
             }
         }
@@ -182,7 +182,7 @@ impl Tab {
             let links = imp.links.borrow();
             let (_, link) =
                 Self::extract_linkhandler(&*links, gemini_text_ext.as_ref().unwrap(), x, y)?;
-            self.parse_link(&link)?
+            self.parse_link(link)?
         };
         if ctrl
             .current_event()
@@ -207,7 +207,7 @@ impl Tab {
             let links = imp.links.borrow();
             let (_, link) =
                 Self::extract_linkhandler(&*links, gemini_text_ext.as_ref().unwrap(), x, y)?;
-            self.parse_link(&link)?
+            self.parse_link(link)?
         };
         let link_variant = link.as_str().to_variant();
 
@@ -233,7 +233,7 @@ impl Tab {
         let entry = Self::extract_linkhandler(&*links, gemini_text_ext, x, y);
 
         let link_ref = entry.as_ref().map(|x| x.1).unwrap_or("");
-        if link_ref == &*imp.hover_url.borrow() {
+        if link_ref == *imp.hover_url.borrow() {
             return Ok(());
         }
 
@@ -270,7 +270,7 @@ impl Tab {
         let imp = self.imp();
         let i = {
             let mut history = imp.history.borrow_mut();
-            let i = *imp.current_hi.borrow();
+            let i = imp.current_hi.get();
             if let Some(i) = i {
                 let scroll_progress = imp.scroll_win.vadjustment().value();
                 history[i].scroll_progress = scroll_progress;
@@ -345,7 +345,7 @@ impl Tab {
         let imp = self.imp();
         let mut gemini_text_ext = imp.gemini_text_ext.borrow().clone().unwrap();
 
-        *self.imp().progress.borrow_mut() = 0.0;
+        self.imp().progress.set(0.0);
         self.notify("progress");
 
         *self.imp().title.borrow_mut() = url.to_string();
@@ -368,14 +368,14 @@ impl Tab {
         }
     }
     fn log_history_position(&self) {
-        let i = self.imp().current_hi.borrow();
+        let i = self.imp().current_hi.get();
         info!("history position: {i:?}");
     }
     pub fn previous(&self) -> Result<()> {
         let imp = self.imp();
         let i = {
             imp.current_hi
-                .borrow()
+                .get()
                 .map(|i| i.checked_sub(1))
                 .flatten()
                 .context("going back in history")?
@@ -392,7 +392,7 @@ impl Tab {
         let imp = self.imp();
         let i = {
             imp.current_hi
-                .borrow()
+                .get()
                 .map(|i| i + 1)
                 .filter(|i| *i < imp.history.borrow().len())
                 .context("going forward in history")?
