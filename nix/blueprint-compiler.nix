@@ -6,16 +6,17 @@
 , meson
 , ninja
 }:
+
 stdenv.mkDerivation rec {
   pname = "blueprint-compiler";
-  version = "0.pre+date=2022-05-17";
+  version = "unstable-2022-05-17";
 
   src = fetchFromGitLab {
     domain = "gitlab.gnome.org";
     owner = "jwestman";
     repo = pname;
-    rev = "06278a64248cec92bb95a958eadfba453943c061";
-    sha256 = "sha256-ukvqWvYl4NohKEm6W50eRZ9fmKD4vhH0yzgrCf5HVts=";
+    rev = "cebd9ecadc53790cd547392899589dd5de0ac552";
+    sha256 = "sha256-mNR0ooJSRBIXy2E4avXYEdO1aSST+j41TsVg8+kitwo=";
   };
 
   # Requires pythonfuzz, which I've found difficult to package
