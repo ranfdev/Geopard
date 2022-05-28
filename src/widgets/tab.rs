@@ -402,7 +402,7 @@ impl Tab {
 
         let h = { imp.history.borrow_mut().get(i).cloned() };
         h.map(|x| self.spawn_request(self.open_history(x)))
-            .context("retrieving previous item from history")
+            .context("retrieving next item from history")
     }
     pub fn display_error(&self, error: anyhow::Error) {
         let imp = self.imp();
