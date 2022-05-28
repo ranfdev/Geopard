@@ -376,8 +376,7 @@ impl Tab {
         let i = {
             imp.current_hi
                 .get()
-                .map(|i| i.checked_sub(1))
-                .flatten()
+                .and_then(|i| i.checked_sub(1))
                 .context("going back in history")?
         };
         imp.current_hi.replace(Some(i));
