@@ -27,9 +27,11 @@ stdenv.mkDerivation rec {
     ninja
     python3.pkgs.wrapPython
   ];
+  buildInputs = [
+    python3
+  ];
   propagatedBuildInputs = [
     gobject-introspection
-    python3
   ];
 
   postFixup = ''
