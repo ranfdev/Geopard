@@ -249,7 +249,7 @@ impl Tab {
         };
 
         imp.hover_url.replace(link_ref.to_owned());
-        self.notify("hover-url");
+        self.emit_hover_url();
         Ok(())
     }
     pub fn spawn_open_url(&self, url: Url) {
@@ -281,7 +281,7 @@ impl Tab {
             imp.current_hi.replace(Some(i));
             i
         };
-        self.notify("history-status");
+        self.emit_history_status();
         self.log_history_position();
         i
     }
@@ -307,9 +307,9 @@ impl Tab {
 
         self.set_progress(&0.0);
         *imp.title.borrow_mut() = url.to_string();
-        self.notify("title");
+        self.emit_title();
         *imp.url.borrow_mut() = url.to_string();
-        self.notify("url");
+        self.emit_url();
 
         let this = self.clone();
         let fut = async move {
@@ -346,13 +346,13 @@ impl Tab {
         let mut gemini_text_ext = imp.gemini_text_ext.borrow().clone().unwrap();
 
         self.imp().progress.set(0.0);
-        self.notify("progress");
+        self.emit_progress();
 
         *self.imp().title.borrow_mut() = url.to_string();
-        self.notify("title");
+        self.emit_title();
 
         *self.imp().url.borrow_mut() = url.to_string();
-        self.notify("url");
+        self.emit_url();
 
         let this = self.clone();
         async move {
@@ -381,7 +381,7 @@ impl Tab {
         };
         imp.current_hi.replace(Some(i));
         self.log_history_position();
-        self.notify("history-status");
+        self.emit_history_status();
 
         let h = { imp.history.borrow_mut().get(i).cloned() };
         h.map(|x| self.spawn_request(self.open_history(x)))
@@ -398,7 +398,7 @@ impl Tab {
         };
         imp.current_hi.replace(Some(i));
         self.log_history_position();
-        self.notify("history-status");
+        self.emit_history_status();
 
         let h = { imp.history.borrow_mut().get(i).cloned() };
         h.map(|x| self.spawn_request(self.open_history(x)))
@@ -756,7 +756,7 @@ impl Tab {
                             title_updated = true;
                             imp.title
                                 .replace(line.trim_end().trim_start_matches('#').to_string());
-                            self.notify("title");
+                            self.emit_title();
                         }
                     }
                     PageElement::Quote(line) => {
