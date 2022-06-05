@@ -32,7 +32,6 @@ template GeopardWindow: Adw.ApplicationWindow {
           width-request: 360;
           Gtk.SearchEntry url_bar {
             hexpand: true;
-            text: bind GeopardWindow.url;
           }
         }
         [end]
@@ -56,7 +55,6 @@ template GeopardWindow: Adw.ApplicationWindow {
           [title]
           Gtk.SearchEntry small_url_bar {
             hexpand: true;
-            text: bind GeopardWindow.url;
           }
           Gtk.WindowControls we {
             side: end;
