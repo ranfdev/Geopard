@@ -87,8 +87,14 @@ fn main() {
         windows.borrow_mut().push(window);
     });
 
-    application.set_accels_for_action("win.previous", &["<Alt>Left"]);
-    application.set_accels_for_action("win.next", &["<Alt>Right"]);
+    application.set_accels_for_action(
+        "win.previous",
+        &["<Alt>Left", "<Alt>KP_Left", "Pointer_DfltBtnPrev"],
+    );
+    application.set_accels_for_action(
+        "win.next",
+        &["<Alt>Right", "<Alt>KP_Right", "Pointer_DfltBtnNext"],
+    );
     application.set_accels_for_action("win.show-bookmarks", &["<Ctrl>b"]);
     application.set_accels_for_action("win.bookmark-current", &["<Ctrl>d"]);
     application.set_accels_for_action("win.new-tab", &["<Ctrl>t"]);
