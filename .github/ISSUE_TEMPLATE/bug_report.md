@@ -23,14 +23,9 @@ A clear and concise description of what you expected to happen.
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
+**Software info (please complete the following information):**
+ - OS: [e.g. Ubuntu]
  - Geopard's Version [e.g. 1.0.0] (you can retrieve the current version with `flatpak info com.ranfdev.Geopard `)
-
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - - Geopard's Version [e.g. 1.0.0] (you can retrieve the current version with `flatpak info com.ranfdev.Geopard `)
 
 **Additional context**
 Add any other context about the problem here.
