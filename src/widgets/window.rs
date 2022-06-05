@@ -66,6 +66,7 @@ pub mod imp {
         #[property(get = Self::progress_animated, set = Self::set_progress_animated)]
         pub(crate) progress: PhantomData<f64>,
         pub(crate) scroll_ctrl: gtk::EventControllerScroll,
+        pub(crate) mouse_prev_next_ctrl: gtk::GestureClick,
         pub(crate) action_previous: RefCell<Option<gio::SimpleAction>>,
         pub(crate) action_next: RefCell<Option<gio::SimpleAction>>,
         pub(crate) style_provider: RefCell<gtk::CssProvider>,
@@ -252,6 +253,7 @@ impl Window {
         let imp = self.imp();
 
         self.add_controller(&imp.scroll_ctrl);
+        self.add_controller(&imp.mouse_prev_next_ctrl);
         imp.scroll_ctrl
             .set_propagation_phase(gtk::PropagationPhase::Capture);
         imp.scroll_ctrl
@@ -272,6 +274,21 @@ impl Window {
                 }
             }),
         );
+        imp.mouse_prev_next_ctrl.set_button(0);
+        imp.mouse_prev_next_ctrl.connect_pressed(
+            clone!(@weak self as this => @default-panic, move |ctrl, _, _, _| {
+                match ctrl.current_button() {
+                    8 => {
+                        this.previous();
+                    },
+                    9 => {
+                        this.next();
+                    },
+                    _ => {},
+                }
+            }),
+        );
+
         self.connect_local(
             "notify::url",
             false,
