@@ -209,8 +209,8 @@ impl Window {
         imp.action_previous.borrow_mut().replace(action_previous);
         imp.action_next.borrow_mut().replace(action_next);
 
-        self_action!(self, "new-tab", add_tab_focused);
-        self_action!(self, "show-bookmarks", add_tab_focused);
+        self_action!(self, "new-tab", new_tab);
+        self_action!(self, "show-bookmarks", show_bookmarks);
         self_action!(self, "bookmark-current", bookmark_current);
         self_action!(self, "close-tab", close_tab);
         self_action!(self, "focus-url-bar", focus_url_bar);
@@ -294,6 +294,10 @@ impl Window {
             false,
             clone!(@weak self as this => @default-panic, move |_| {
                 this.set_special_color_from_hash();
+                let bar = this.active_url_bar();
+                if bar.focus_child().is_none() {
+                    bar.set_text(&this.url());
+                }
                 None
             }),
         );
@@ -401,6 +405,12 @@ impl Window {
     fn page_switched(&self, tab_view: &adw::TabView) {
         let imp = self.imp();
         let mut btp = imp.binded_tab_properties.borrow_mut();
+
+        // Unset the focus from the url_bar
+        if let Some(r) = tab_view.root() {
+            r.set_focus(None::<&gtk::Widget>)
+        }
+
         if let Some(page) = tab_view.selected_page() {
             let tab = self.inner_tab(&page);
 
@@ -447,11 +457,15 @@ impl Window {
             ]);
         };
     }
-    fn add_tab_focused(&self) {
+    fn new_tab(&self) {
+        self.show_bookmarks();
+        self.active_url_bar().grab_focus();
+    }
+    fn show_bookmarks(&self) {
         let imp = self.imp();
         let p = self.add_tab();
-        self.inner_tab(&p).spawn_open_url(bookmarks_url());
         imp.tab_view.set_selected_page(&p);
+        self.inner_tab(&p).spawn_open_url(bookmarks_url());
     }
     fn close_tab(&self) {
         let imp = self.imp();
@@ -461,13 +475,16 @@ impl Window {
             std::process::exit(0); // TODO: maybe there's a better way for gtk apps...
         }
     }
-    fn focus_url_bar(&self) {
+    fn active_url_bar(&self) -> &gtk::SearchEntry {
         let imp = self.imp();
         if self.is_small_screen() {
-            imp.small_url_bar.grab_focus();
+            &*imp.small_url_bar
         } else {
-            imp.url_bar.grab_focus();
+            &*imp.url_bar
         }
+    }
+    fn focus_url_bar(&self) {
+        self.active_url_bar().grab_focus();
     }
 
     async fn append_bookmark(url: &str) -> anyhow::Result<()> {
