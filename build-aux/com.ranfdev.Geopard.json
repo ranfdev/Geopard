@@ -7,16 +7,13 @@
         "org.freedesktop.Sdk.Extension.rust-stable"
     ],
     "command" : "geopard",
-    "tags" : [
-        "devel"
-    ],
     "finish-args" : [
         "--share=ipc",
         "--socket=fallback-x11",
         "--socket=wayland",
         "--device=dri",
         "--share=network",
-        "--filesystem=xdg-download/Geopard"
+        "--filesystem=xdg-download"
     ],
     "build-options" : {
         "append-path" : "/usr/lib/sdk/rust-stable/bin",

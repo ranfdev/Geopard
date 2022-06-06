@@ -17,7 +17,7 @@
         "--socket=wayland",
         "--device=dri",
         "--share=network",
-        "--filesystem=xdg-download/Geopard"
+        "--filesystem=xdg-download"
     ],
     "build-options" : {
         "append-path": "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm13/bin",
