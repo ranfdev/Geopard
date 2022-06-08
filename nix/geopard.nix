@@ -19,7 +19,6 @@
 , blueprint-compiler
 , gobject-introspection
 , appstream-glib
-, naersk-lib
 , clippy
 }:
 

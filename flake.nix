@@ -2,20 +2,15 @@
   description = "A gemini browser";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    naersk.url = "github:nix-community/naersk";
     flake-utils.url = "github:numtide/flake-utils";
   };
-  outputs = { self, nixpkgs, naersk, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachSystem
       (with flake-utils.lib.system; [ x86_64-linux aarch64-linux ])
       (system:
         let pkgs = nixpkgs.legacyPackages.${system}; in
         rec {
-          packages.blueprint-compiler = pkgs.callPackage ./nix/blueprint-compiler.nix { };
-          packages.geopard = pkgs.callPackage ./nix/geopard.nix {
-            naersk-lib = naersk.lib.${system};
-            blueprint-compiler = packages.blueprint-compiler;
-          };
+          packages.geopard = pkgs.callPackage ./nix/geopard.nix { };
           checks.default = pkgs.stdenv.mkDerivation {
             name = "geopard-checks";
             src = ./.;
