@@ -4,6 +4,8 @@ set -e
 # Read data from manifest
 folder=$1
 manifest=$2;
+
+
 name=$(< "$manifest" jq -r '.["modules"] | last | .["name"]');
 appid=$(< "$manifest" jq -r '.["app-id"]');
 runtime=$(< "$manifest" jq -r '"runtime/" + .["runtime"] + "/x86_64/" + .["runtime-version"]');
@@ -32,7 +34,7 @@ mkdir "$folder";
 # Generate dist archive and the release manifest
 flatpak-builder --user "$folder"/build "$manifest" --build-only --stop-at="$name" --keep-build-dirs --force-clean;
 echo "meson dist --include-subprojects --no-tests" | flatpak-builder --user "$folder"/build "$manifest" --build-shell="$name" --keep-build-dirs --state-dir="$folder"/state;
-< "$manifest" jq '(.["modules"] | last | .["sources"] | last) |= {type: "archive", path: "archive.tar.xz"}' > "$folder"/manifest-archive.json;
+< "$manifest" jq '(.["modules"] | last | .["sources"] | last) |= {type: "archive", path: "generated-archive.tar.xz"}' > "$folder"/manifest-archive.json;
 
 # Build the app from the dist archive, using the corrected manifest
 cd "$folder"/;
