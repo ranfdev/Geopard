@@ -50,9 +50,16 @@
   <content_rating type="oars-1.0" />
 
   <releases>
+    <release version="1.2.0" date="2022-06-09">
+      <description>
+        <p>Added more shortcuts</p>
+        <p>There's now a status bar showing the URL of hovered links</p>
+        <p>Various code refactorings</p>
+      </description>
+    </release>
     <release version="1.1.1" date="2022-06-06">
       <description>
-        Relax download folder permissions to fix downloads not starting
+        <p>Relax download folder permissions to fix downloads not starting</p>
       </description>
     </release>
     <release version="1.1.0" date="2022-05-19">
@@ -67,10 +74,12 @@
     </release>
     <release version="1.0.1" date="2022-05-07">
       <description>
-        Changes:
-        - Fix downloads by granting access to download folder
-        - Improve download progress handling
-        - Show close button on small window sizes
+        <p>Changes</p>
+        <ul>
+          <li>Fix downloads by granting access to download folder</li>
+          <li>Improve download progress handling</li>
+          <li>Show close button on small window sizes</li>
+        </ul>
       </description>
     </release>
     <release version="1.0.0-alpha" date="2021-04-01">
@@ -81,11 +90,12 @@
     </release>
     <release version="1.0.0" date="2022-04-29">
       <description>
-        First release on flathub! You get all the most important features:
-         - colors
-         - caching
-         - search
-         :D
+        <p>First release on flathub! You get all the most important features</p>
+        <ul>
+          <li>colors</li>
+          <li>caching</li>
+          <li>search</li>
+        </ul>
       </description>
     </release>
   </releases>
@@ -102,6 +112,10 @@
   <requires>
     <display_length compare="ge">360</display_length>
   </requires>
+  <custom>
+    <value key="Purism::form_factor">workstation</value>
+    <value key="Purism::form_factor">mobile</value>
+  </custom>
 
 
   <developer_name>Lorenzo Miglietta</developer_name>

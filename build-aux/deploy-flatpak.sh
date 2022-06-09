@@ -19,4 +19,3 @@ git clone "$git_out" git_repo;
 cd $_;
 cp ../"$manifest" ./;
 git commit -a -m "Update";
-git push

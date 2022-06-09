@@ -24,14 +24,14 @@
 
 stdenv.mkDerivation rec {
   pname = "geopard";
-  version = "1.1.1";
+  version = "1.2.0";
 
   cargoDeps = rustPlatform.importCargoLock {
     lockFile = ../Cargo.lock;
     outputHashes = {
-      "cairo-rs-0.16.0" = "sha256-lEgfnteBl9aaI8RXRJmgWMIhNUTAuWjODgHA6J32rJs=";
+      "cairo-rs-0.16.0" = "sha256-Y0qRUliZRuEYvLje2ld75BDgSM7lHOnWITyuI/RoxwI=";
       "gdk4-0.5.0" = "sha256-cRZS8csxpPZm6yxyb6MYiGO7rdw207E4w4uiuJqJoaU=";
-      "gio-0.16.0" = "sha256-OajUoavBxnKoN5wHRYWBpNXTGAQyxME95FT6bAhy15c=";
+      "gio-0.16.0" = "sha256-wENBSDGVUQIa6CK4d5oZ9ih0h1SY1CKWBKVtVcxsXP0=";
       "libadwaita-0.2.0" = "sha256-+ATfy8QIgpoifSCrcqdoub1ust3pEdU3skjOPfIaDQc=";
     };
   };
