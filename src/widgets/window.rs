@@ -72,7 +72,7 @@ pub mod imp {
         pub(crate) style_provider: RefCell<gtk::CssProvider>,
         #[property(get, set = Self::set_zoom, type = f64, member = value)]
         pub(crate) zoom: RefCell<Zoom>,
-        pub(crate) settings: RefCell<Option<gio::Settings>>, // TODO: May use ConstructCell
+        pub(crate) settings: glib::ConstructRefCell<gio::Settings>,
     }
 
     impl Window {

@@ -67,7 +67,7 @@ pub mod imp {
         pub(crate) motion_ctrl: RefCell<Option<gtk::EventControllerMotion>>,
         pub(crate) req_handle: RefCell<Option<RemoteHandle<()>>>,
         pub(crate) links: RefCell<HashMap<gtk::TextTag, String>>,
-        #[property(get = Self::history_status, builder(HistoryStatus::static_type()))]
+        #[property(get = Self::history_status)]
         pub(crate) history_status: PhantomData<HistoryStatus>,
         #[property(get, set)]
         pub(crate) progress: Cell<f64>,
