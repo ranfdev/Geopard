@@ -95,6 +95,7 @@ fn main() {
         "win.next",
         &["<Alt>Right", "<Alt>KP_Right", "Pointer_DfltBtnNext"],
     );
+    application.set_accels_for_action("win.reload", &["<Ctrl>r", "F5"]);
     application.set_accels_for_action("win.show-bookmarks", &["<Ctrl>b"]);
     application.set_accels_for_action("win.bookmark-current", &["<Ctrl>d"]);
     application.set_accels_for_action("win.new-tab", &["<Ctrl>t"]);

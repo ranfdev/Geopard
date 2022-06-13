@@ -404,6 +404,15 @@ impl Tab {
         h.map(|x| self.spawn_request(self.open_history(x)))
             .context("retrieving next item from history")
     }
+    pub fn reload(&self) {
+        let imp = self.imp();
+        let i = imp.current_hi.get().unwrap();
+
+        imp.history.borrow_mut().get(i).map(|h| {
+            h.cache.replace(None);
+            self.spawn_request(self.open_history(h.clone()));
+        });
+    }
     pub fn display_error(&self, error: anyhow::Error) {
         let imp = self.imp();
         error!("{:?}", error);

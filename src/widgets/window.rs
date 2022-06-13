@@ -209,6 +209,7 @@ impl Window {
         imp.action_previous.borrow_mut().replace(action_previous);
         imp.action_next.borrow_mut().replace(action_next);
 
+        self_action!(self, "reload", reload);
         self_action!(self, "new-tab", new_tab);
         self_action!(self, "show-bookmarks", show_bookmarks);
         self_action!(self, "bookmark-current", bookmark_current);
@@ -523,6 +524,9 @@ impl Window {
             Err(e) => warn!("{}", e),
             Ok(_) => info!("went forward"),
         }
+    }
+    fn reload(&self) {
+        self.current_tab().reload();
     }
     fn bookmark_current(&self) {
         let imp = self.imp();

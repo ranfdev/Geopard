@@ -22,6 +22,11 @@ template GeopardWindow: Adw.ApplicationWindow {
         }
         [start]
         Gtk.Button {
+          icon-name: "view-refresh-symbolic";
+          action-name: "win.reload";
+        }
+        [start]
+        Gtk.Button {
           icon-name: "tab-new-symbolic";
           action-name: "win.new-tab";
         }
@@ -108,6 +113,11 @@ template GeopardWindow: Adw.ApplicationWindow {
             Gtk.Button {
               icon-name: "go-next-symbolic";
               action-name: "win.next";
+            }
+            [start]
+            Gtk.Button {
+              icon-name: "view-refresh-symbolic";
+              action-name: "win.reload";
             }
             [title]
             Gtk.Button {
