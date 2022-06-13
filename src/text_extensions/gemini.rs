@@ -187,6 +187,10 @@ impl Gemini {
             .apply_tag_by_name("a", &self.text_buffer.iter_at_offset(start), text_iter);
         tag
     }
+    pub fn insert_list_item(&mut self, text_iter: &mut gtk::TextIter, text: &str) {
+        self.insert_paragraph(text_iter, " •  ");
+        self.insert_paragraph(text_iter, text);
+    }
     pub fn clear(&mut self) {
         let b = &self.text_buffer;
         b.delete(&mut b.start_iter(), &mut b.end_iter());
