@@ -17,6 +17,7 @@ use log::{debug, error, info};
 use once_cell::sync::Lazy;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
+use std::fmt::Write;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -408,10 +409,10 @@ impl Tab {
         let imp = self.imp();
         let i = imp.current_hi.get().unwrap();
 
-        imp.history.borrow_mut().get(i).map(|h| {
+        if let Some(h) = imp.history.borrow_mut().get(i) {
             h.cache.replace(None);
             self.spawn_request(self.open_history(h.clone()));
-        });
+        }
     }
     pub fn display_error(&self, error: anyhow::Error) {
         let imp = self.imp();
@@ -501,11 +502,13 @@ impl Tab {
         match url.scheme() {
             "about" => {
                 let mut about = common::ABOUT_PAGE.to_owned();
-                about.push_str(&format!(
+                write!(
+                    &mut about,
                     "\n\n## Metadata\n\nApp ID: {}\nVersion: {}",
                     crate::config::APP_ID,
                     crate::config::VERSION
-                ));
+                )
+                .unwrap();
                 let reader = futures::io::BufReader::new(about.as_bytes());
                 self.display_gemini(reader).await?;
                 Ok(None)

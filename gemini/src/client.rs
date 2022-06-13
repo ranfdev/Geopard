@@ -40,7 +40,7 @@ pub enum Error {
     SchemeNotSupported,
 }
 
-#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialOrd, PartialEq, Eq)]
 pub enum Status {
     Input(u8),
     Success(u8),
@@ -88,7 +88,7 @@ impl Response {
         }
     }
 }
-#[derive(Default, PartialEq, Debug, Copy, Clone)]
+#[derive(Default, PartialEq, Eq, Debug, Copy, Clone)]
 pub struct ClientOptions {
     redirect: bool,
 }
