@@ -791,6 +791,9 @@ impl Tab {
                         imp.links.borrow_mut().insert(tag, url.clone());
                     }
                     PageElement::Preformatted(_) => unreachable!("handled before"),
+                    PageElement::ListItem(text) => {
+                        gemini_text_ext.insert_list_item(&mut text_iter, &text)
+                    }
                 }
             }
         }
