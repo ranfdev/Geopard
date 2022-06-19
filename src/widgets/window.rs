@@ -294,7 +294,7 @@ impl Window {
             "notify::url",
             false,
             clone!(@weak self as this => @default-panic, move |_| {
-                this.set_special_color_from_hash();
+                this.update_domain_color();
                 let bar = this.active_url_bar();
                 if bar.focus_child().is_none() {
                     bar.set_text(&this.url());
@@ -325,7 +325,7 @@ impl Window {
 
         adw::StyleManager::default().connect_dark_notify(
             clone!(@weak self as this => @default-panic, move |_| {
-                this.set_special_color_from_hash();
+                this.update_domain_color()
             }),
         );
 
@@ -572,7 +572,7 @@ impl Window {
     fn inner_tab(&self, tab: &adw::TabPage) -> Tab {
         tab.child().downcast().unwrap()
     }
-    fn set_special_color_from_hash(&self) {
+    fn try_update_domain_color(&self) -> anyhow::Result<()> {
         let imp = self.imp();
         let url = imp.url.borrow();
         let url = if let Ok(domain) = Url::parse(&url) {
@@ -617,9 +617,18 @@ impl Window {
         imp.style_provider
             .borrow()
             .load_from_data(stylesheet.as_bytes());
-        // FIXME: Should add a method on `Tab`...
-        self.current_tab()
-            .set_link_color(&self.style_context().lookup_color("accent_color").unwrap());
+
+        let accent_color = &self
+            .style_context()
+            .lookup_color("accent_color")
+            .context("looking up accent_color")?;
+        self.current_tab().set_link_color(accent_color);
+        Ok(())
+    }
+    fn update_domain_color(&self) {
+        if let Err(e) = self.try_update_domain_color() {
+            warn!("Error setting custom domain color: {}", e);
+        }
     }
 
     fn is_small_screen(&self) -> bool {
