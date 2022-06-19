@@ -574,19 +574,15 @@ impl Window {
     }
     fn try_update_domain_color(&self) -> anyhow::Result<()> {
         let imp = self.imp();
-        let url = imp.url.borrow();
-        let url = if let Ok(domain) = Url::parse(&url) {
-            if let Some(domain) = domain.domain() {
-                domain.to_string()
-            } else {
-                url.to_string()
-            }
-        } else {
-            url.to_string()
+        let color_source = {
+            let url = imp.url.borrow();
+            let parsed_url = Url::parse(&url);
+            let domain = parsed_url.as_ref().map(|u| u.domain()).ok().flatten();
+            domain.unwrap_or(&url).to_string()
         };
         let hash = {
             let mut s = std::collections::hash_map::DefaultHasher::new();
-            url.hash(&mut s);
+            color_source.hash(&mut s);
             s.finish()
         };
         let hue = hash % 360;
