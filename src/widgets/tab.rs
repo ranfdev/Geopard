@@ -28,7 +28,7 @@ use crate::common::glibctx;
 use crate::lossy_text_read::*;
 use crate::text_extensions::Gemini as GeminiTextExt;
 use crate::widgets;
-use gemini::PageElement;
+use gemini::Event;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct HistoryItem {
@@ -669,9 +669,10 @@ impl Tab {
             if n == 0 {
                 break Ok(());
             }
-            let text_iter = &mut gemini_text_ext.text_buffer.end_iter();
-            gemini_text_ext.insert_paragraph(text_iter, &line);
-            gemini_text_ext.insert_paragraph(text_iter, "\n");
+            let mut text_iter = &mut gemini_text_ext.text_buffer.end_iter();
+            let buffer = gemini_text_ext.text_view.buffer();
+            buffer.insert_with_tags_by_name(&mut text_iter, &line, &["p"]);
+            buffer.insert(&mut text_iter, "\n");
         }
     }
 
@@ -729,70 +730,143 @@ impl Tab {
         mut reader: T,
     ) -> anyhow::Result<Vec<u8>> {
         let imp = self.imp();
-        let mut gemini_text_ext = imp.gemini_text_ext.borrow().clone().unwrap();
+        let gemini_text_ext = imp.gemini_text_ext.borrow().clone().unwrap();
+        let text_view = &gemini_text_ext.text_view;
 
         let mut parser = gemini::Parser::new();
-        let mut text_iter = gemini_text_ext.text_buffer.end_iter();
-
-        let mut preformatted = String::new();
         let mut data = String::with_capacity(1024);
         let mut total = 0;
         let mut n;
 
         let mut title_updated = false;
+        let mut tag_stack = vec![];
 
         loop {
             n = reader.read_line_lossy(&mut data).await?;
             if n == 0 {
                 break;
             }
-            let line = &data[total..];
-            let token = parser.parse_line(line);
-            total += n;
-            if let PageElement::Preformatted(line) = token {
-                preformatted.push_str(&line);
-            } else {
-                // preformatted text is handled different hoping to add scrollbars for it,
-                // in the future, maybe
-                if !preformatted.is_empty() {
-                    gemini_text_ext.insert_preformatted(&mut text_iter, &preformatted);
-                    preformatted.clear();
-                }
-                match token {
-                    PageElement::Text(line) => {
-                        gemini_text_ext.insert_paragraph(&mut text_iter, &line);
-                    }
-                    PageElement::Heading(line) => {
-                        gemini_text_ext.insert_heading(&mut text_iter, &line);
-                        if !title_updated {
-                            title_updated = true;
-                            imp.title
-                                .replace(line.trim_end().trim_start_matches('#').to_string());
-                            self.emit_title();
+            {
+                let line = &data[total..];
+                let mut tokens = vec![];
+                parser.parse_line(line, &mut tokens);
+                total += n;
+
+                let mut tokens = tokens.into_iter();
+                while let Some(ev) = tokens.next() {
+                    let parent_tag = tag_stack.last();
+                    match ev {
+                        Event::Start(t) => {
+                            let buffer = text_view.buffer();
+                            match &t {
+                                gemini::Tag::Item => {
+                                    buffer.insert(&mut buffer.end_iter(), " •  ");
+                                }
+                                gemini::Tag::Link(url, label) => {
+                                    let link_char = if let Ok(true) = self
+                                        .parse_link(&url)
+                                        .map(|url| ["gemini", "about"].contains(&url.scheme()))
+                                    {
+                                        "⇒"
+                                    } else {
+                                        "⇗"
+                                    };
+                                    let label =
+                                        format!("{link_char} {}", label.as_deref().unwrap_or(&url));
+                                    let tag = {
+                                        let mut text_iter = buffer.end_iter();
+                                        let start = text_iter.offset();
+
+                                        let tag = gtk::TextTag::new(None);
+                                        buffer.tag_table().add(&tag);
+
+                                        buffer.insert_with_tags_by_name(
+                                            &mut text_iter,
+                                            &label,
+                                            &["p", "a"],
+                                        );
+                                        buffer.apply_tag(
+                                            &tag,
+                                            &buffer.iter_at_offset(start),
+                                            &text_iter,
+                                        );
+
+                                        tag
+                                    };
+                                    imp.links.borrow_mut().insert(tag, url.clone());
+                                }
+                                gemini::Tag::Heading(1) => self.imp().title.borrow_mut().clear(),
+                                _ => {}
+                            }
+                            tag_stack.push(t);
                         }
-                    }
-                    PageElement::Quote(line) => {
-                        gemini_text_ext.insert_quote(&mut text_iter, &line);
-                    }
-                    PageElement::Empty => {
-                        gemini_text_ext.insert_paragraph(&mut text_iter, "\n");
-                    }
-                    PageElement::Link(url, label) => {
-                        let link_char = if let Ok(true) = self
-                            .parse_link(&url)
-                            .map(|url| ["gemini", "about"].contains(&url.scheme()))
-                        {
-                            "⇒"
-                        } else {
-                            "⇗"
-                        };
-                        let label = format!("{link_char} {}", label.as_deref().unwrap_or(&url));
-                        let tag = gemini_text_ext.insert_link(&mut text_iter, &url, Some(&label));
-                        imp.links.borrow_mut().insert(tag, url.clone());
-                    }
-                    PageElement::Preformatted(_) => unreachable!("handled before"),
-                    PageElement::ListItem(text) => {
-                        gemini_text_ext.insert_list_item(&mut text_iter, &text)
+                        Event::End => {
+                            let buffer = text_view.buffer();
+                            let parent_tag = parent_tag.context("Missing parent tag")?;
+                            match parent_tag {
+                                gemini::Tag::Paragraph
+                                | gemini::Tag::Link(_, _)
+                                | gemini::Tag::CodeBlock
+                                | gemini::Tag::Heading(_)
+                                | gemini::Tag::Item => {
+                                    buffer.insert(&mut buffer.end_iter(), "\n");
+                                    if !title_updated
+                                        && matches!(parent_tag, gemini::Tag::Heading(1))
+                                    {
+                                        self.notify("title");
+                                        title_updated = true;
+                                    }
+                                }
+                                _ => {}
+                            }
+                            tag_stack.pop();
+                        }
+                        Event::Text(text) => {
+                            let buffer = text_view.buffer();
+                            match parent_tag.context("Missing parent tag")? {
+                                gemini::Tag::CodeBlock => {
+                                    buffer.insert_with_tags_by_name(
+                                        &mut buffer.end_iter(),
+                                        text,
+                                        &["pre"],
+                                    );
+                                }
+                                gemini::Tag::BlockQuote => {
+                                    buffer.insert_with_tags_by_name(
+                                        &mut buffer.end_iter(),
+                                        text,
+                                        &["q"],
+                                    );
+                                }
+                                gemini::Tag::Heading(lvl) if (0..6).contains(lvl) => {
+                                    let tag = format!("h{lvl}");
+                                    buffer.insert_with_tags_by_name(
+                                        &mut buffer.end_iter(),
+                                        text,
+                                        &[&tag],
+                                    );
+                                    if !title_updated && lvl == &1 {
+                                        self.imp().title.borrow_mut().push_str(text);
+                                    }
+                                }
+                                gemini::Tag::Item => {
+                                    buffer.insert_with_tags_by_name(
+                                        &mut buffer.end_iter(),
+                                        text,
+                                        &["p"],
+                                    );
+                                }
+                                _ => buffer.insert_with_tags_by_name(
+                                    &mut buffer.end_iter(),
+                                    text,
+                                    &["p"],
+                                ),
+                            }
+                        }
+                        Event::BlankLine => {
+                            let buffer = text_view.buffer();
+                            buffer.insert(&mut buffer.end_iter(), "\n");
+                        }
                     }
                 }
             }
