@@ -15,7 +15,6 @@ mod common;
 mod config;
 mod lossy_text_read;
 mod macros;
-mod text_extensions;
 mod widgets;
 
 use gtk::prelude::*;

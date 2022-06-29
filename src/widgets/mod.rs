@@ -1,5 +1,6 @@
 mod download_page;
 mod input_page;
+mod page;
 #[allow(clippy::await_holding_refcell_ref)]
 mod tab;
 mod window;

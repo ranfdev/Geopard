@@ -23,10 +23,10 @@ use std::pin::Pin;
 use std::rc::Rc;
 use url::Url;
 
+use super::page::{self, PageEvent};
 use crate::common;
 use crate::common::glibctx;
 use crate::lossy_text_read::*;
-use crate::text_extensions::Gemini as GeminiTextExt;
 use crate::widgets;
 use gemini::Event;
 
@@ -52,20 +52,16 @@ pub mod imp {
     #[properties(wrapper_type = super::Tab)]
     pub struct Tab {
         pub(crate) gemini_client: RefCell<gemini::Client>,
-        pub(crate) gemini_text_ext: RefCell<Option<GeminiTextExt>>,
+        pub(crate) config: RefCell<crate::config::Config>,
+        pub(crate) surface: RefCell<Option<page::Surface>>,
         pub(crate) history: RefCell<Vec<HistoryItem>>,
         pub(crate) current_hi: Cell<Option<usize>>,
         #[template_child]
         pub(crate) scroll_win: TemplateChild<gtk::ScrolledWindow>,
         #[template_child]
-        pub(crate) text_view: TemplateChild<gtk::TextView>,
-        #[template_child]
         pub(crate) stack: TemplateChild<gtk::Stack>,
         #[template_child]
         pub(crate) clamp: TemplateChild<adw::Clamp>,
-        pub(crate) left_click_ctrl: RefCell<Option<gtk::GestureClick>>,
-        pub(crate) right_click_ctrl: RefCell<Option<gtk::GestureClick>>,
-        pub(crate) motion_ctrl: RefCell<Option<gtk::EventControllerMotion>>,
         pub(crate) req_handle: RefCell<Option<RemoteHandle<()>>>,
         pub(crate) links: RefCell<HashMap<gtk::TextTag, String>>,
         #[property(get = Self::history_status)]
@@ -78,6 +74,7 @@ pub mod imp {
         pub(crate) url: RefCell<String>,
         #[property(get)]
         pub(crate) hover_url: RefCell<String>,
+        pub(crate) current_page: RefCell<Option<page::Page>>,
     }
 
     #[glib::object_subclass]
@@ -98,12 +95,6 @@ pub mod imp {
         fn constructed(&self, obj: &Self::Type) {
             self.parent_constructed(obj);
 
-            self.left_click_ctrl
-                .replace(Some(gtk::GestureClick::builder().button(1).build()));
-            self.right_click_ctrl
-                .replace(Some(gtk::GestureClick::builder().button(3).build()));
-            self.motion_ctrl
-                .replace(Some(gtk::EventControllerMotion::new()));
             self.gemini_client
                 .replace(gemini::ClientBuilder::new().redirect(true).build());
         }
@@ -158,101 +149,12 @@ impl Tab {
     pub fn new(config: crate::config::Config) -> Self {
         let this: Self = glib::Object::new(&[]).unwrap();
         let imp = this.imp();
-        imp.text_view
-            .add_controller(imp.left_click_ctrl.borrow().as_ref().unwrap());
-        imp.text_view
-            .add_controller(imp.right_click_ctrl.borrow().as_ref().unwrap());
-        imp.text_view
-            .add_controller(imp.motion_ctrl.borrow().as_ref().unwrap());
 
-        imp.gemini_text_ext
-            .replace(Some(GeminiTextExt::new(imp.text_view.clone(), config)));
+        imp.config.replace(config);
 
-        this.bind_signals();
         this
     }
-    pub fn handle_click(&self, ctrl: &gtk::GestureClick, x: f64, y: f64) -> Result<()> {
-        let imp = self.imp();
-        let gemini_text_ext = imp.gemini_text_ext.borrow();
-        let text_view = &gemini_text_ext.as_ref().unwrap().text_view;
-        let has_selection = text_view.buffer().has_selection();
-        if has_selection {
-            return Ok(());
-        }
-        let url = {
-            let links = imp.links.borrow();
-            let (_, link) =
-                Self::extract_linkhandler(&*links, gemini_text_ext.as_ref().unwrap(), x, y)?;
-            self.parse_link(link)?
-        };
-        if ctrl
-            .current_event()
-            .unwrap()
-            .modifier_state()
-            .contains(gdk::ModifierType::CONTROL_MASK)
-        {
-            self.activate_action("win.open-in-new-tab", Some(&url.as_str().to_variant()))
-                .unwrap()
-        } else {
-            self.spawn_open_url(url);
-        }
 
-        Ok(())
-    }
-    fn handle_right_click(&self, x: f64, y: f64) -> Result<()> {
-        let imp = self.imp();
-        let gemini_text_ext = imp.gemini_text_ext.borrow();
-        let text_view = &gemini_text_ext.as_ref().unwrap().text_view;
-
-        let link = {
-            let links = imp.links.borrow();
-            let (_, link) =
-                Self::extract_linkhandler(&*links, gemini_text_ext.as_ref().unwrap(), x, y)?;
-            self.parse_link(link)?
-        };
-        let link_variant = link.as_str().to_variant();
-
-        let menu = gio::Menu::new();
-
-        let item = gio::MenuItem::new(Some("Open Link In New Tab"), None);
-        item.set_action_and_target_value(Some("win.open-in-new-tab"), Some(&link_variant));
-
-        menu.insert_item(0, &item);
-        let item = gio::MenuItem::new(Some("Copy Link"), None);
-        item.set_action_and_target_value(Some("win.set-clipboard"), Some(&link_variant));
-        menu.insert_item(1, &item);
-        text_view.set_extra_menu(Some(&menu));
-        Ok(())
-    }
-    fn handle_motion(&self, x: f64, y: f64) -> Result<()> {
-        // May need some debounce?
-
-        let imp = self.imp();
-        let gemini_text_ext = imp.gemini_text_ext.borrow();
-        let gemini_text_ext = gemini_text_ext.as_ref().unwrap();
-        let links = imp.links.borrow();
-        let entry = Self::extract_linkhandler(&*links, gemini_text_ext, x, y);
-
-        let link_ref = entry.as_ref().map(|x| x.1).unwrap_or("");
-        if link_ref == *imp.hover_url.borrow() {
-            return Ok(());
-        }
-
-        match link_ref {
-            "" => {
-                gemini_text_ext.text_view.set_cursor_from_name(Some("text"));
-            }
-            _ => {
-                gemini_text_ext
-                    .text_view
-                    .set_cursor_from_name(Some("pointer"));
-            }
-        };
-
-        imp.hover_url.replace(link_ref.to_owned());
-        self.emit_hover_url();
-        Ok(())
-    }
     pub fn spawn_open_url(&self, url: Url) {
         let i = self.add_to_history(HistoryItem {
             url: url.clone(),
@@ -324,7 +226,9 @@ impl Tab {
                     None
                 }
                 Err(e) => {
-                    this.display_error(e);
+                    // TODO: display in GUI
+                    log::error!("{}", e);
+                    // this.display_error(e);
                     None
                 }
             };
@@ -344,7 +248,6 @@ impl Tab {
     }
     fn open_cached(&self, url: Url, cache: Vec<u8>) -> impl Future<Output = ()> {
         let imp = self.imp();
-        let mut gemini_text_ext = imp.gemini_text_ext.borrow().clone().unwrap();
 
         self.imp().progress.set(0.0);
         self.emit_progress();
@@ -358,13 +261,12 @@ impl Tab {
         let this = self.clone();
         async move {
             let buf = BufReader::new(&*cache);
-            gemini_text_ext.clear();
             let res = this.display_gemini(buf).await;
             match res {
                 Ok(_) => {
                     info!("Loaded {} from cache", &url);
                 }
-                Err(e) => this.display_error(e),
+                Err(e) => {} // TODO: this.display_error(e),
             }
         }
     }
@@ -414,66 +316,7 @@ impl Tab {
             self.spawn_request(self.open_history(h.clone()));
         }
     }
-    pub fn display_error(&self, error: anyhow::Error) {
-        let imp = self.imp();
-        error!("{:?}", error);
 
-        let status_page = adw::StatusPage::new();
-        status_page.set_title("Error");
-        status_page.set_description(Some(&error.to_string()));
-        status_page.set_icon_name(Some("dialog-error-symbolic"));
-
-        imp.stack.add_child(&status_page);
-        imp.stack.set_visible_child(&status_page);
-    }
-    fn bind_signals(&self) {
-        let imp = self.imp();
-        let this = self.clone();
-        let left_click_ctrl = imp.left_click_ctrl.borrow();
-        let left_click_ctrl = left_click_ctrl.as_ref().unwrap();
-        left_click_ctrl.connect_released(move |ctrl, _n_press, x, y| {
-            if let Err(e) = this.handle_click(ctrl, x, y) {
-                info!("{}", e);
-            };
-        });
-
-        imp.right_click_ctrl
-            .borrow()
-            .as_ref()
-            .unwrap()
-            .connect_pressed(
-                clone!(@weak self as this => @default-panic, move |_ctrl, _n_press, x, y| {
-                    if let Err(e) = this.handle_right_click(x, y) {
-                        info!("{}", e);
-                    };
-                }),
-            );
-
-        imp.motion_ctrl.borrow().as_ref().unwrap().connect_motion(
-            clone!(@weak self as this => @default-panic,move |_ctrl, x, y|  {
-                let _ = this.handle_motion(x, y);
-            }),
-        );
-    }
-    fn extract_linkhandler<'a>(
-        m: &'a HashMap<gtk::TextTag, String>,
-        gemini_text_ext: &GeminiTextExt,
-        x: f64,
-        y: f64,
-    ) -> Result<(&'a gtk::TextTag, &'a str)> {
-        let text_view = &gemini_text_ext.text_view;
-        let (x, y) =
-            text_view.window_to_buffer_coords(gtk::TextWindowType::Widget, x as i32, y as i32);
-        let iter = text_view
-            .iter_at_location(x as i32, y as i32)
-            .context("Can't get text iter where clicked")?;
-
-        iter.tags()
-            .iter()
-            .find_map(|x| x.name().is_none().then(|| m.get_key_value(x)).flatten())
-            .map(|(k, v)| (k, v.as_str()))
-            .ok_or_else(|| anyhow::Error::msg("Clicked text doesn't have a link tag"))
-    }
     async fn open_file_url(&self, url: Url) -> Result<()> {
         let path = url
             .to_file_path()
@@ -493,12 +336,6 @@ impl Tab {
         Ok(())
     }
     async fn send_request(&self, url: Url) -> Result<Option<Vec<u8>>> {
-        self.imp()
-            .gemini_text_ext
-            .borrow_mut()
-            .as_mut()
-            .unwrap()
-            .clear();
         match url.scheme() {
             "about" => {
                 let mut about = common::ABOUT_PAGE.to_owned();
@@ -660,20 +497,33 @@ impl Tab {
         Ok(())
     }
     async fn display_text(&self, mut stream: impl AsyncBufRead + Unpin) -> anyhow::Result<()> {
-        let gemini_text_ext = self.imp().gemini_text_ext.borrow();
-        let gemini_text_ext = gemini_text_ext.as_ref().unwrap();
+        let page = {
+            self.bind_new_page();
+            self.imp().current_page.borrow()
+        };
+        let mut pe = Vec::new();
+        let page = page.as_ref().unwrap();
+        page.render(
+            [gemini::Event::Start(gemini::Tag::CodeBlock)].into_iter(),
+            &mut pe,
+        )
+        .unwrap();
         let mut line = String::with_capacity(1024);
+
         loop {
-            line.clear();
             let n = stream.read_line_lossy(&mut line).await?;
             if n == 0 {
-                break Ok(());
+                break;
             }
-            let mut text_iter = &mut gemini_text_ext.text_buffer.end_iter();
-            let buffer = gemini_text_ext.text_view.buffer();
-            buffer.insert_with_tags_by_name(&mut text_iter, &line, &["p"]);
-            buffer.insert(&mut text_iter, "\n");
+
+            if let Err(err) = page.render([gemini::Event::Text(&line)].into_iter(), &mut pe) {
+                anyhow::bail!("Error while parsing the page: {}", err);
+            }
+            line.clear();
         }
+        page.render([gemini::Event::End].into_iter(), &mut pe)
+            .unwrap();
+        Ok(())
     }
 
     fn display_input(&self, url: Url, msg: &str) {
@@ -725,21 +575,52 @@ impl Tab {
         imp.stack.add_child(&status_page);
         imp.stack.set_visible_child(&status_page);
     }
+    fn bind_new_page(&self) {
+        let imp = self.imp();
+
+        let surface = page::Surface::new(imp.config.borrow().clone());
+        imp.scroll_win.set_child(Some(surface.root()));
+
+        imp.surface.replace(Some(surface));
+
+        let p = page::Page::new(
+            self.url(),
+            self.imp().surface.borrow().as_ref().unwrap().clone(),
+        );
+        p.connect_local(
+            "open",
+            false,
+            clone!(@weak self as this => @default-panic, move |s| {
+                let s: String = s[1].get().unwrap();
+                let url = Url::parse(&s);
+                if let Ok(url) = url {
+                    this.spawn_open_url(url);
+                } else {
+                    log::error!("Invalid url {:?}", url);
+                }
+                None
+            }),
+        );
+        self.imp().current_page.replace(Some(p));
+    }
     async fn display_gemini<T: AsyncBufRead + Unpin>(
         &self,
         mut reader: T,
     ) -> anyhow::Result<Vec<u8>> {
         let imp = self.imp();
-        let gemini_text_ext = imp.gemini_text_ext.borrow().clone().unwrap();
-        let text_view = &gemini_text_ext.text_view;
 
         let mut parser = gemini::Parser::new();
         let mut data = String::with_capacity(1024);
         let mut total = 0;
         let mut n;
 
-        let mut title_updated = false;
-        let mut tag_stack = vec![];
+        let mut page = {
+            self.bind_new_page();
+            self.imp().current_page.borrow_mut()
+        };
+        let page = page.as_mut().unwrap();
+
+        let mut page_events = vec![];
 
         loop {
             n = reader.read_line_lossy(&mut data).await?;
@@ -752,120 +633,19 @@ impl Tab {
                 parser.parse_line(line, &mut tokens);
                 total += n;
 
-                let mut tokens = tokens.into_iter();
-                while let Some(ev) = tokens.next() {
-                    let parent_tag = tag_stack.last();
+                if let Err(err) = page.render(tokens.drain(0..), &mut page_events) {
+                    log::error!("Error while parsing the page: {}", err);
+                    break;
+                }
+
+                for ev in page_events.drain(0..) {
                     match ev {
-                        Event::Start(t) => {
-                            let buffer = text_view.buffer();
-                            match &t {
-                                gemini::Tag::Item => {
-                                    buffer.insert(&mut buffer.end_iter(), " •  ");
-                                }
-                                gemini::Tag::Link(url, label) => {
-                                    let link_char = if let Ok(true) = self
-                                        .parse_link(&url)
-                                        .map(|url| ["gemini", "about"].contains(&url.scheme()))
-                                    {
-                                        "⇒"
-                                    } else {
-                                        "⇗"
-                                    };
-                                    let label =
-                                        format!("{link_char} {}", label.as_deref().unwrap_or(&url));
-                                    let tag = {
-                                        let mut text_iter = buffer.end_iter();
-                                        let start = text_iter.offset();
-
-                                        let tag = gtk::TextTag::new(None);
-                                        buffer.tag_table().add(&tag);
-
-                                        buffer.insert_with_tags_by_name(
-                                            &mut text_iter,
-                                            &label,
-                                            &["p", "a"],
-                                        );
-                                        buffer.apply_tag(
-                                            &tag,
-                                            &buffer.iter_at_offset(start),
-                                            &text_iter,
-                                        );
-
-                                        tag
-                                    };
-                                    imp.links.borrow_mut().insert(tag, url.clone());
-                                }
-                                gemini::Tag::Heading(1) => self.imp().title.borrow_mut().clear(),
-                                _ => {}
-                            }
-                            tag_stack.push(t);
+                        PageEvent::Link(tag, url) => {
+                            imp.links.borrow_mut().insert(tag, url);
                         }
-                        Event::End => {
-                            let buffer = text_view.buffer();
-                            let parent_tag = parent_tag.context("Missing parent tag")?;
-                            match parent_tag {
-                                gemini::Tag::Paragraph
-                                | gemini::Tag::Link(_, _)
-                                | gemini::Tag::CodeBlock
-                                | gemini::Tag::Heading(_)
-                                | gemini::Tag::Item => {
-                                    buffer.insert(&mut buffer.end_iter(), "\n");
-                                    if !title_updated
-                                        && matches!(parent_tag, gemini::Tag::Heading(1))
-                                    {
-                                        self.notify("title");
-                                        title_updated = true;
-                                    }
-                                }
-                                _ => {}
-                            }
-                            tag_stack.pop();
-                        }
-                        Event::Text(text) => {
-                            let buffer = text_view.buffer();
-                            match parent_tag.context("Missing parent tag")? {
-                                gemini::Tag::CodeBlock => {
-                                    buffer.insert_with_tags_by_name(
-                                        &mut buffer.end_iter(),
-                                        text,
-                                        &["pre"],
-                                    );
-                                }
-                                gemini::Tag::BlockQuote => {
-                                    buffer.insert_with_tags_by_name(
-                                        &mut buffer.end_iter(),
-                                        text,
-                                        &["q"],
-                                    );
-                                }
-                                gemini::Tag::Heading(lvl) if (0..6).contains(lvl) => {
-                                    let tag = format!("h{lvl}");
-                                    buffer.insert_with_tags_by_name(
-                                        &mut buffer.end_iter(),
-                                        text,
-                                        &[&tag],
-                                    );
-                                    if !title_updated && lvl == &1 {
-                                        self.imp().title.borrow_mut().push_str(text);
-                                    }
-                                }
-                                gemini::Tag::Item => {
-                                    buffer.insert_with_tags_by_name(
-                                        &mut buffer.end_iter(),
-                                        text,
-                                        &["p"],
-                                    );
-                                }
-                                _ => buffer.insert_with_tags_by_name(
-                                    &mut buffer.end_iter(),
-                                    text,
-                                    &["p"],
-                                ),
-                            }
-                        }
-                        Event::BlankLine => {
-                            let buffer = text_view.buffer();
-                            buffer.insert(&mut buffer.end_iter(), "\n");
+                        PageEvent::Title(title) => {
+                            imp.title.replace(title);
+                            self.notify("title");
                         }
                     }
                 }
@@ -874,11 +654,13 @@ impl Tab {
         Ok(data.into_bytes())
     }
     pub fn set_link_color(&self, rgba: &gdk::RGBA) {
+        // TODO: Add this back
+        /*
         self.imp()
             .gemini_text_ext
             .borrow()
             .as_ref()
             .unwrap()
-            .set_link_color(rgba);
+            .set_link_color(rgba);*/
     }
 }
