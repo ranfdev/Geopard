@@ -26,6 +26,8 @@ use crate::common::glibctx;
 use crate::lossy_text_read::*;
 use hypertext::HypertextEvent;
 
+const BYTES_BEFORE_YIELD: usize = 1024 * 10;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct HistoryItem {
     pub url: url::Url,
@@ -502,15 +504,24 @@ impl Tab {
         )
         .unwrap();
         let mut line = String::with_capacity(1024);
+        let mut total = 0;
+        let mut last_yield_at_bytes = 0;
 
         loop {
             let n = stream.read_line_lossy(&mut line).await?;
             if n == 0 {
                 break;
             }
+            total += n;
 
             if let Err(err) = page.render([gemini::Event::Text(&line)].into_iter(), &mut pe) {
                 anyhow::bail!("Error while parsing the page: {}", err);
+            }
+
+            // Yield control to main thread after every 10KB, to not block the UI
+            if total - last_yield_at_bytes >= BYTES_BEFORE_YIELD {
+                glib::timeout_future(std::time::Duration::from_millis(1)).await;
+                last_yield_at_bytes = total;
             }
             line.clear();
         }
@@ -601,6 +612,7 @@ impl Tab {
         let mut data = String::with_capacity(1024);
         let mut total = 0;
         let mut n;
+        let mut last_yield_at_bytes = 0;
 
         let page = self.new_hypertext_page();
         let mut page_events = vec![];
@@ -630,7 +642,14 @@ impl Tab {
                     }
                 }
             }
+
+            // Yield control to main thread after every 10KB, to not block the UI
+            if total - last_yield_at_bytes >= BYTES_BEFORE_YIELD {
+                glib::timeout_future(std::time::Duration::from_millis(1)).await;
+                last_yield_at_bytes = total;
+            }
         }
+
         Ok(data.into_bytes())
     }
     pub fn display_error(&self, error: anyhow::Error) {
