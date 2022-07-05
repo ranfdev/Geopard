@@ -614,11 +614,6 @@ impl Window {
             .borrow()
             .load_from_data(stylesheet.as_bytes());
 
-        let accent_color = &self
-            .style_context()
-            .lookup_color("accent_color")
-            .context("looking up accent_color")?;
-        self.current_tab().set_link_color(accent_color);
         Ok(())
     }
     fn update_domain_color(&self) {

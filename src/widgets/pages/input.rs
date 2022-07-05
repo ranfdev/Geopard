@@ -7,23 +7,19 @@ use gtk::TemplateChild;
 mod imp {
     pub use super::*;
     #[derive(CompositeTemplate, Default)]
-    #[template(resource = "/com/ranfdev/Geopard/ui/download_page.ui")]
-    pub struct DownloadPage {
+    #[template(resource = "/com/ranfdev/Geopard/ui/input_page.ui")]
+    pub struct Input {
         #[template_child]
         pub label: TemplateChild<gtk::Label>,
         #[template_child]
-        pub label_downloaded: TemplateChild<gtk::Label>,
-        #[template_child]
-        pub progress_bar: TemplateChild<gtk::ProgressBar>,
-        #[template_child]
-        pub open_btn: TemplateChild<gtk::Button>,
+        pub entry: TemplateChild<gtk::Entry>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for DownloadPage {
+    impl ObjectSubclass for Input {
         // `NAME` needs to match `class` attribute of template
-        const NAME: &'static str = "DownloadPage";
-        type Type = super::DownloadPage;
+        const NAME: &'static str = "Input";
+        type Type = super::Input;
         type ParentType = gtk::Box;
 
         fn class_init(klass: &mut Self::Class) {
@@ -35,22 +31,22 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for DownloadPage {}
-    impl WidgetImpl for DownloadPage {}
-    impl BoxImpl for DownloadPage {}
+    impl ObjectImpl for Input {}
+    impl WidgetImpl for Input {}
+    impl BoxImpl for Input {}
 }
 
 glib::wrapper! {
-    pub struct DownloadPage(ObjectSubclass<imp::DownloadPage>)
+    pub struct Input(ObjectSubclass<imp::Input>)
     @extends gtk::Box, gtk::Widget;
 }
 
-impl DownloadPage {
+impl Input {
     pub fn new() -> Self {
         glib::Object::new(&[]).unwrap()
     }
 }
-impl Default for DownloadPage {
+impl Default for Input {
     fn default() -> Self {
         Self::new()
     }
