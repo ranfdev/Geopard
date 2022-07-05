@@ -6,7 +6,6 @@ use glib::subclass::{Signal, SignalType};
 use glib::Properties;
 use gtk::glib;
 use gtk::prelude::*;
-use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gdk, gio};
 use once_cell::sync::Lazy;
@@ -112,7 +111,8 @@ impl Surface {
                 .unwrap(),
         );
         tag_a.set_line_height(1.4);
-        tag_a.set_foreground(Some("blue"));
+        let accent_color = &self.text_view.style_context().lookup_color("accent_color");
+        tag_a.set_foreground_rgba(accent_color.as_ref());
 
         let tag_pre = Self::create_tag(
             "pre",
@@ -140,23 +140,15 @@ impl Surface {
             .name(name)
             .build()
     }
-    pub fn set_link_color(&self, color: &gtk::gdk::RGBA) {
-        self.text_view
-            .buffer()
-            .tag_table()
-            .lookup("a")
-            .unwrap()
-            .set_foreground_rgba(Some(color));
-    }
+
     pub fn clear(&mut self) {
         let b = &self.text_view.buffer();
         b.delete(&mut b.start_iter(), &mut b.end_iter());
     }
 }
 
-pub enum PageEvent {
+pub enum HypertextEvent {
     Title(String),
-    Link(gtk::TextTag, String),
 }
 
 pub enum Title {
@@ -168,8 +160,8 @@ pub mod imp {
     use super::*;
 
     #[derive(Default, Properties)]
-    #[properties(wrapper_type = super::Page)]
-    pub struct Page {
+    #[properties(wrapper_type = super::Hypertext)]
+    pub struct Hypertext {
         pub(super) tag_stack: RefCell<Vec<gemini::Tag>>,
         pub(super) links: RefCell<HashMap<gtk::TextTag, String>>,
         pub(super) surface: RefCell<Option<Surface>>,
@@ -181,12 +173,12 @@ pub mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for Page {
-        const NAME: &'static str = "GeopardPage";
-        type Type = super::Page;
+    impl ObjectSubclass for Hypertext {
+        const NAME: &'static str = "GeopardHypertext";
+        type Type = super::Hypertext;
     }
 
-    impl ObjectImpl for Page {
+    impl ObjectImpl for Hypertext {
         fn signals() -> &'static [glib::subclass::Signal] {
             static SIGNALS: Lazy<Vec<glib::subclass::Signal>> = Lazy::new(|| {
                 vec![
@@ -214,7 +206,7 @@ pub mod imp {
         }
     }
 
-    impl Page {
+    impl Hypertext {
         pub fn title(&self) -> String {
             match &*self.title.borrow() {
                 None => String::new(),
@@ -225,14 +217,14 @@ pub mod imp {
     }
 }
 glib::wrapper! {
-    pub struct Page(ObjectSubclass<imp::Page>);
+    pub struct Hypertext(ObjectSubclass<imp::Hypertext>);
 }
-impl Default for Page {
+impl Default for Hypertext {
     fn default() -> Self {
         glib::Object::new(&[]).unwrap()
     }
 }
-impl Page {
+impl Hypertext {
     pub fn new(url: String, surface: Surface) -> Self {
         let text_view = surface.text_view.clone();
 
@@ -249,7 +241,7 @@ impl Page {
         text_view.add_controller(&motion_ctrl);
 
         left_click_ctrl.connect_released(
-            clone!(@weak this => @default-panic, move |ctrl, _n_press, x, y| {
+            clone!(@strong this => @default-panic, move |ctrl, _n_press, x, y| {
                 if let Err(e) = this.handle_click(ctrl, x, y) {
                     log::info!("{}", e);
                 };
@@ -257,14 +249,14 @@ impl Page {
         );
 
         right_click_ctrl.connect_pressed(
-            clone!(@weak this => @default-panic, move |_ctrl, _n_press, x, y| {
+            clone!(@strong this => @default-panic, move |_ctrl, _n_press, x, y| {
                 if let Err(e) = this.handle_right_click(x, y) {
                     log::info!("{}", e);
                 };
             }),
         );
 
-        motion_ctrl.connect_motion(clone!(@weak this => @default-panic,move |_ctrl, x, y|  {
+        motion_ctrl.connect_motion(clone!(@strong this => @default-panic,move |_ctrl, x, y|  {
             let _ = this.handle_motion(x, y);
         }));
 
@@ -273,9 +265,9 @@ impl Page {
     pub fn render<'e>(
         &self,
         tokens: impl Iterator<Item = gemini::Event<'e>>,
-        page_events: &'e mut Vec<PageEvent>,
+        out_events: &'e mut Vec<HypertextEvent>,
     ) -> anyhow::Result<()> {
-        page_events.clear();
+        out_events.clear();
         let mut tag_stack = self.imp().tag_stack.borrow_mut();
         for ev in tokens {
             let parent_tag = tag_stack.last();
@@ -323,7 +315,6 @@ impl Page {
                                 .links
                                 .borrow_mut()
                                 .insert(tag.clone(), url.clone());
-                            page_events.push(PageEvent::Link(tag, url.clone()));
                         }
                         gemini::Tag::Heading(1) => {
                             let mut title = self.imp().title.borrow_mut();
@@ -358,7 +349,7 @@ impl Page {
                             buffer.insert(&mut buffer.end_iter(), "\n");
                             if matches!(parent_tag, gemini::Tag::Heading(1)) {
                                 if let Some(Title::Incomplete(title)) = self.imp().title.take() {
-                                    page_events.push(PageEvent::Title(title.clone()));
+                                    out_events.push(HypertextEvent::Title(title.clone()));
                                     self.imp().title.replace(Some(Title::Complete(title)));
                                 }
                             }
@@ -415,35 +406,10 @@ impl Page {
         }
         Ok(())
     }
-    pub fn display_error(&self, error: anyhow::Error) {
-        log::error!("{:?}", error);
-
-        let status_page = adw::StatusPage::new();
-        status_page.set_title("Error");
-        status_page.set_description(Some(&error.to_string()));
-        status_page.set_icon_name(Some("dialog-error-symbolic"));
-
-        // TODO:
-        /* self.stack.add_child(&status_page);
-        self.stack.set_visible_child(&status_page); */
-    }
     fn parse_link(&self, link: &str) -> Result<Url, url::ParseError> {
         let current_url = Url::parse(self.imp().url.borrow().as_str())?;
         let link_url = Url::options().base_url(Some(&current_url)).parse(link)?;
         Ok(link_url)
-    }
-    pub fn set_link_color(&self, color: &gtk::gdk::RGBA) {
-        self.imp()
-            .surface
-            .borrow()
-            .as_ref()
-            .unwrap()
-            .text_view
-            .buffer()
-            .tag_table()
-            .lookup("a")
-            .unwrap()
-            .set_foreground_rgba(Some(color));
     }
     fn extract_linkhandler<'a>(
         m: &'a HashMap<gtk::TextTag, String>,

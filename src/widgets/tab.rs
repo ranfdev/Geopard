@@ -5,30 +5,26 @@ use futures::io::BufReader;
 use futures::prelude::*;
 use futures::task::LocalSpawnExt;
 use glib::{clone, Properties};
-use gtk::gdk;
 use gtk::gdk::prelude::*;
-use gtk::gio;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::CompositeTemplate;
 use gtk::TemplateChild;
-use log::{debug, error, info};
+use log::{debug, info};
 use once_cell::sync::Lazy;
 use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
 use std::fmt::Write;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
 use url::Url;
 
-use super::page::{self, PageEvent};
+use super::pages::{self, hypertext};
 use crate::common;
 use crate::common::glibctx;
 use crate::lossy_text_read::*;
-use crate::widgets;
-use gemini::Event;
+use hypertext::HypertextEvent;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct HistoryItem {
@@ -53,7 +49,6 @@ pub mod imp {
     pub struct Tab {
         pub(crate) gemini_client: RefCell<gemini::Client>,
         pub(crate) config: RefCell<crate::config::Config>,
-        pub(crate) surface: RefCell<Option<page::Surface>>,
         pub(crate) history: RefCell<Vec<HistoryItem>>,
         pub(crate) current_hi: Cell<Option<usize>>,
         #[template_child]
@@ -63,7 +58,6 @@ pub mod imp {
         #[template_child]
         pub(crate) clamp: TemplateChild<adw::Clamp>,
         pub(crate) req_handle: RefCell<Option<RemoteHandle<()>>>,
-        pub(crate) links: RefCell<HashMap<gtk::TextTag, String>>,
         #[property(get = Self::history_status)]
         pub(crate) history_status: PhantomData<HistoryStatus>,
         #[property(get, set)]
@@ -74,7 +68,6 @@ pub mod imp {
         pub(crate) url: RefCell<String>,
         #[property(get)]
         pub(crate) hover_url: RefCell<String>,
-        pub(crate) current_page: RefCell<Option<page::Page>>,
     }
 
     #[glib::object_subclass]
@@ -156,6 +149,18 @@ impl Tab {
     }
 
     pub fn spawn_open_url(&self, url: Url) {
+        let imp = self.imp();
+
+        // If there's an in flight request, the related history item (the last one)
+        // must be removed
+        if let Some(in_flight_req) = imp.req_handle.borrow_mut().take() {
+            if let None = in_flight_req.now_or_never() {
+                imp.history.borrow_mut().pop();
+                let i = imp.current_hi.get().unwrap();
+                imp.current_hi.replace(Some(i - 1));
+            }
+        }
+
         let i = self.add_to_history(HistoryItem {
             url: url.clone(),
             cache: Default::default(),
@@ -201,7 +206,6 @@ impl Tab {
     fn spawn_request(&self, fut: impl Future<Output = ()> + 'static) {
         let imp = self.imp();
         self.clear_stack_widgets();
-        imp.links.borrow_mut().clear();
         imp.req_handle
             .replace(Some(glibctx().spawn_local_with_handle(fut).unwrap()));
     }
@@ -226,9 +230,7 @@ impl Tab {
                     None
                 }
                 Err(e) => {
-                    // TODO: display in GUI
-                    log::error!("{}", e);
-                    // this.display_error(e);
+                    this.display_error(e);
                     None
                 }
             };
@@ -249,13 +251,13 @@ impl Tab {
     fn open_cached(&self, url: Url, cache: Vec<u8>) -> impl Future<Output = ()> {
         let imp = self.imp();
 
-        self.imp().progress.set(0.0);
+        imp.progress.set(0.0);
         self.emit_progress();
 
-        *self.imp().title.borrow_mut() = url.to_string();
+        *imp.title.borrow_mut() = url.to_string();
         self.emit_title();
 
-        *self.imp().url.borrow_mut() = url.to_string();
+        *imp.url.borrow_mut() = url.to_string();
         self.emit_url();
 
         let this = self.clone();
@@ -266,7 +268,7 @@ impl Tab {
                 Ok(_) => {
                     info!("Loaded {} from cache", &url);
                 }
-                Err(e) => {} // TODO: this.display_error(e),
+                Err(e) => this.display_error(e),
             }
         }
     }
@@ -397,12 +399,6 @@ impl Tab {
         };
         Ok(res)
     }
-    fn parse_link(&self, link: &str) -> Result<Url, url::ParseError> {
-        let imp = self.imp();
-        let current_url = Url::parse(&imp.url.borrow())?;
-        let link_url = Url::options().base_url(Some(&current_url)).parse(link)?;
-        Ok(link_url)
-    }
 
     fn download_path(file_name: &str) -> anyhow::Result<std::path::PathBuf> {
         let mut file_name = std::path::PathBuf::from(file_name);
@@ -440,7 +436,7 @@ impl Tab {
             .context("Can't get last url segment")?;
         let d_path = Self::download_path(file_name)?;
 
-        let page = widgets::DownloadPage::new();
+        let page = pages::Download::new();
         page.imp().label.set_label(file_name);
         imp.stack.add_child(&page);
         imp.stack.set_visible_child(&page);
@@ -497,12 +493,9 @@ impl Tab {
         Ok(())
     }
     async fn display_text(&self, mut stream: impl AsyncBufRead + Unpin) -> anyhow::Result<()> {
-        let page = {
-            self.bind_new_page();
-            self.imp().current_page.borrow()
-        };
+        let page = self.new_hypertext_page();
         let mut pe = Vec::new();
-        let page = page.as_ref().unwrap();
+
         page.render(
             [gemini::Event::Start(gemini::Tag::CodeBlock)].into_iter(),
             &mut pe,
@@ -529,7 +522,7 @@ impl Tab {
     fn display_input(&self, url: Url, msg: &str) {
         let imp = self.imp();
 
-        let text_input = widgets::InputPage::new();
+        let text_input = pages::Input::new();
         imp.stack.add_child(&text_input);
         imp.stack.set_visible_child(&text_input);
         text_input.imp().label.set_label(msg);
@@ -575,15 +568,13 @@ impl Tab {
         imp.stack.add_child(&status_page);
         imp.stack.set_visible_child(&status_page);
     }
-    fn bind_new_page(&self) {
+    fn new_hypertext_page(&self) -> pages::Hypertext {
         let imp = self.imp();
 
-        let surface = page::Surface::new(imp.config.borrow().clone());
+        let surface = pages::hypertext::Surface::new(imp.config.borrow().clone());
         imp.scroll_win.set_child(Some(surface.root()));
 
-        imp.surface.replace(Some(surface));
-
-        let p = page::Page::new(
+        let p = pages::Hypertext::new(
             self.url(),
             self.imp().surface.borrow().as_ref().unwrap().clone(),
         );
@@ -601,7 +592,7 @@ impl Tab {
                 None
             }),
         );
-        self.imp().current_page.replace(Some(p));
+        p
     }
     async fn display_gemini<T: AsyncBufRead + Unpin>(
         &self,
@@ -614,12 +605,7 @@ impl Tab {
         let mut total = 0;
         let mut n;
 
-        let mut page = {
-            self.bind_new_page();
-            self.imp().current_page.borrow_mut()
-        };
-        let page = page.as_mut().unwrap();
-
+        let page = self.new_hypertext_page();
         let mut page_events = vec![];
 
         loop {
@@ -640,10 +626,7 @@ impl Tab {
 
                 for ev in page_events.drain(0..) {
                     match ev {
-                        PageEvent::Link(tag, url) => {
-                            imp.links.borrow_mut().insert(tag, url);
-                        }
-                        PageEvent::Title(title) => {
+                        HypertextEvent::Title(title) => {
                             imp.title.replace(title);
                             self.notify("title");
                         }
@@ -653,14 +636,17 @@ impl Tab {
         }
         Ok(data.into_bytes())
     }
-    pub fn set_link_color(&self, rgba: &gdk::RGBA) {
-        // TODO: Add this back
-        /*
-        self.imp()
-            .gemini_text_ext
-            .borrow()
-            .as_ref()
-            .unwrap()
-            .set_link_color(rgba);*/
+    pub fn display_error(&self, error: anyhow::Error) {
+        let imp = self.imp();
+
+        log::error!("{:?}", error);
+
+        let p = adw::StatusPage::new();
+        p.set_title("Error");
+        p.set_description(Some(&error.to_string()));
+        p.set_icon_name(Some("dialog-error-symbolic"));
+
+        imp.stack.add_child(&p);
+        imp.stack.set_visible_child(&p);
     }
 }
