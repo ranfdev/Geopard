@@ -179,6 +179,21 @@ pub mod imp {
     }
 
     impl ObjectImpl for Hypertext {
+        fn properties() -> &'static [glib::ParamSpec] {
+            Self::derived_properties()
+        }
+        fn set_property(
+            &self,
+            obj: &Self::Type,
+            id: usize,
+            value: &glib::Value,
+            pspec: &glib::ParamSpec,
+        ) {
+            Self::derived_set_property(self, obj, id, value, pspec).unwrap()
+        }
+        fn property(&self, obj: &Self::Type, id: usize, pspec: &glib::ParamSpec) -> glib::Value {
+            Self::derived_property(self, obj, id, pspec).unwrap()
+        }
         fn signals() -> &'static [glib::subclass::Signal] {
             static SIGNALS: Lazy<Vec<glib::subclass::Signal>> = Lazy::new(|| {
                 vec![
