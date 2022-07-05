@@ -574,10 +574,7 @@ impl Tab {
         let surface = pages::hypertext::Surface::new(imp.config.borrow().clone());
         imp.scroll_win.set_child(Some(surface.root()));
 
-        let p = pages::Hypertext::new(
-            self.url(),
-            self.imp().surface.borrow().as_ref().unwrap().clone(),
-        );
+        let p = pages::Hypertext::new(self.url(), surface);
         p.connect_local(
             "open",
             false,
