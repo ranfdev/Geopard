@@ -154,7 +154,7 @@ impl Tab {
         // If there's an in flight request, the related history item (the last one)
         // must be removed
         if let Some(in_flight_req) = imp.req_handle.borrow_mut().take() {
-            if let None = in_flight_req.now_or_never() {
+            if in_flight_req.now_or_never().is_none() {
                 imp.history.borrow_mut().pop();
                 let i = imp.current_hi.get().unwrap();
                 imp.current_hi.replace(Some(i - 1));

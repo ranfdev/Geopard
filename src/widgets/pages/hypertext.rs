@@ -287,14 +287,14 @@ impl Hypertext {
                         }
                         gemini::Tag::Link(url, label) => {
                             let link_char = if let Ok(true) = self
-                                .parse_link(&url)
+                                .parse_link(url)
                                 .map(|url| ["gemini", "about"].contains(&url.scheme()))
                             {
                                 "⇒"
                             } else {
                                 "⇗"
                             };
-                            let label = format!("{link_char} {}", label.as_deref().unwrap_or(&url));
+                            let label = format!("{link_char} {}", label.as_deref().unwrap_or(url));
                             let tag = {
                                 let mut text_iter = buffer.end_iter();
                                 let start = text_iter.offset();
@@ -318,11 +318,8 @@ impl Hypertext {
                         }
                         gemini::Tag::Heading(1) => {
                             let mut title = self.imp().title.borrow_mut();
-                            match &*title {
-                                None => {
-                                    *title = Some(Title::Incomplete(String::new()));
-                                }
-                                _ => {}
+                            if title.is_none() {
+                                *title = Some(Title::Incomplete(String::new()));
                             }
                         }
 
