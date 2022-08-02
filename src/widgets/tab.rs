@@ -68,7 +68,7 @@ pub mod imp {
         pub(crate) title: RefCell<String>,
         #[property(get)]
         pub(crate) url: RefCell<String>,
-        #[property(get)]
+        #[property(get, set)]
         pub(crate) hover_url: RefCell<String>,
     }
 
@@ -586,6 +586,8 @@ impl Tab {
         imp.scroll_win.set_child(Some(surface.root()));
 
         let p = pages::Hypertext::new(self.url(), surface);
+        p.bind_property("hover_url", self, "hover_url").build();
+
         p.connect_local(
             "open",
             false,
