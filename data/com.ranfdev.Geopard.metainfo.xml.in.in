@@ -50,7 +50,7 @@
   <content_rating type="oars-1.0" />
 
   <releases>
-    <release version="1.3.0" date="2022-09-30">
+    <release version="1.3.0" date="2022-08-30">
       <description>
         <p>Added ability to reload the current page</p>
         <p>Nicer list items formatting</p>
