@@ -50,6 +50,16 @@
   <content_rating type="oars-1.0" />
 
   <releases>
+    <release version="1.3.0" date="2022-09-30">
+      <description>
+        <p>Added ability to reload the current page</p>
+        <p>Nicer list items formatting</p>
+        <p>Fixed annoying bug where selecting the text would sometimes transform a paragraph into a title, temporarily</p>
+        <p>Fixed crash when the app theme is overridden</p>
+        <p>Fixed unresponsiveness when a big page is loading</p>
+        <p>Complete rewrite of the gemini parser to make it more robust and improve handling of edge cases</p>
+      </description>
+    </release>
     <release version="1.2.0" date="2022-06-09">
       <description>
         <p>Added more shortcuts</p>
