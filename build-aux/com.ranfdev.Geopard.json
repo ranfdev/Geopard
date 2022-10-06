@@ -1,7 +1,7 @@
 {
     "app-id" : "com.ranfdev.Geopard",
     "runtime" : "org.gnome.Platform",
-    "runtime-version" : "42",
+    "runtime-version" : "43",
     "sdk" : "org.gnome.Sdk",
     "sdk-extensions" : [
         "org.freedesktop.Sdk.Extension.rust-stable"
@@ -21,7 +21,7 @@
             "--share=network"
         ],
         "env" : {
-          "RUST_LOG": "info"
+            "RUST_LOG" : "info"
         }
     },
     "modules" : [
@@ -29,13 +29,13 @@
             "name" : "Geopard",
             "buildsystem" : "meson",
             "config-opts" : [
-                "-Dbuildtype=release"
+                "-Dbuildtype=development"
             ],
             "sources" : [
                 {
                     "type" : "git",
                     "url" : "../",
-                    "branch": "master"
+                    "branch" : "master"
                 }
             ]
         }

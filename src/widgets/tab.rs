@@ -58,7 +58,7 @@ pub mod imp {
         #[template_child]
         pub(crate) stack: TemplateChild<gtk::Stack>,
         #[template_child]
-        pub(crate) clamp: TemplateChild<adw::Clamp>,
+        pub(crate) clamp: TemplateChild<adw::ClampScrollable>,
         pub(crate) req_handle: RefCell<Option<RemoteHandle<()>>>,
         #[property(get = Self::history_status)]
         pub(crate) history_status: PhantomData<HistoryStatus>,
@@ -583,7 +583,7 @@ impl Tab {
         let imp = self.imp();
 
         let surface = pages::hypertext::Surface::new(imp.config.borrow().clone());
-        imp.scroll_win.set_child(Some(surface.root()));
+        imp.clamp.set_child(Some(surface.root()));
 
         let p = pages::Hypertext::new(self.url(), surface);
         p.bind_property("hover_url", self, "hover_url").build();

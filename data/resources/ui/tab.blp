@@ -2,13 +2,14 @@ using Gtk 4.0;
 using Adw 1;
 
 template Tab: Adw.Bin {
-  Adw.Clamp clamp {
-    halign: center;
-    maximum-size: 768;
-    tightening-threshold: 720;
-    Gtk.Stack stack {
-      Gtk.ScrolledWindow scroll_win {
-        vexpand: true;
+  Gtk.Stack stack {
+    Gtk.ScrolledWindow scroll_win {
+      vexpand: true;
+      Adw.ClampScrollable clamp {
+        halign: center;
+        maximum-size: 768;
+        tightening-threshold: 720;
+
       }
     }
   }
