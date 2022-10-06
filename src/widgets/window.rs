@@ -1,3 +1,4 @@
+use adw::builders::AboutWindowBuilder;
 use adw::prelude::*;
 use adw::subclass::application_window::AdwApplicationWindowImpl;
 use anyhow::Context;
@@ -16,6 +17,7 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use url::Url;
 
+use crate::build_config;
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
 use crate::config;
 use crate::self_action;
@@ -178,7 +180,6 @@ impl Window {
         this.setup_zoom_popover_item();
         this.setup_actions();
         this.setup_signals();
-        this.open_in_new_tab(bookmarks_url().as_str());
         this
     }
     fn setup_settings(&self) {
@@ -644,7 +645,18 @@ impl Window {
         gtk::Builder::from_resource("/com/ranfdev/Geopard/ui/shortcuts.ui");
     }
     fn present_about(&self) {
-        self.open_url_str("about://help");
+        let about = AboutWindowBuilder::new()
+            .application_icon(build_config::APP_ID)
+            .application_name("Geopard")
+            .developer_name("ranfdev")
+            .license_type(gtk::License::Gpl30)
+            .version(build_config::VERSION)
+            .issue_url("https://github.com/ranfdev/Geopard/issues")
+            .website("https://github.com/ranfdev/Geopard")
+            .transient_for(self)
+            .build();
+        about.add_link("Donate 💝", "https://github.com/sponsors/ranfdev");
+        about.present();
     }
     fn donate(&self) {
         gtk::show_uri(

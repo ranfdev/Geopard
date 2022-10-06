@@ -17,6 +17,8 @@ mod lossy_text_read;
 mod macros;
 mod widgets;
 
+use common::bookmarks_url;
+
 use gtk::prelude::*;
 async fn read_config() -> anyhow::Result<config::Config> {
     toml::from_str(&async_fs::read_to_string(&*SETTINGS_FILE_PATH).await?)
@@ -67,6 +69,7 @@ fn main() {
 
     let application = adw::Application::builder()
         .application_id(config::APP_ID)
+        .flags(gio::ApplicationFlags::HANDLES_OPEN)
         .resource_base_path("/com/ranfdev/Geopard/")
         .build();
 
@@ -77,13 +80,23 @@ fn main() {
         read_config().await.unwrap()
     });
 
-    let app_clone = application.clone();
     let windows = Rc::new(RefCell::new(vec![]));
 
-    application.connect_activate(move |_| {
-        let window = widgets::Window::new(&app_clone, config.clone());
+    application
+        .connect_activate(move |app| app.open(&[gio::File::for_uri(bookmarks_url().as_str())], ""));
+    application.connect_open(move |app, files, _| {
+        let window = widgets::Window::new(&app, config.clone());
         window.present();
-        windows.borrow_mut().push(window);
+        windows.borrow_mut().push(window.clone());
+        for f in files {
+            gtk::prelude::WidgetExt::activate_action(&window, "win.new-tab", None).unwrap();
+            gtk::prelude::WidgetExt::activate_action(
+                &window,
+                "win.open-url",
+                Some(&f.uri().to_variant()),
+            )
+            .unwrap();
+        }
     });
 
     application.set_accels_for_action(

@@ -153,7 +153,7 @@ impl Tab {
             if in_flight_req.now_or_never().is_none() {
                 imp.history.borrow_mut().pop();
                 let i = imp.current_hi.get().unwrap();
-                imp.current_hi.replace(Some(i - 1));
+                imp.current_hi.replace(Some(i.saturating_sub(1)));
             }
         }
 
@@ -170,6 +170,7 @@ impl Tab {
         };
         self.spawn_request(fut);
     }
+    // FIXME: make history functions simpler
     fn add_to_history(&self, item: HistoryItem) -> usize {
         let imp = self.imp();
         let i = {
@@ -177,7 +178,9 @@ impl Tab {
             let i = imp.current_hi.get();
             if let Some(i) = i {
                 let scroll_progress = imp.scroll_win.vadjustment().value();
-                history[i].scroll_progress = scroll_progress;
+                if let Some(item) = history.get_mut(i) {
+                    item.scroll_progress = scroll_progress;
+                }
                 history.truncate(i + 1);
             };
             history.push(item);
