@@ -197,24 +197,15 @@ pub mod imp {
         fn signals() -> &'static [glib::subclass::Signal] {
             static SIGNALS: Lazy<Vec<glib::subclass::Signal>> = Lazy::new(|| {
                 vec![
-                    Signal::builder(
-                        "open",
-                        &[SignalType::from(glib::types::Type::STRING)],
-                        <()>::static_type().into(),
-                    )
-                    .build(),
-                    Signal::builder(
-                        "open-in-new-tab",
-                        &[SignalType::from(glib::types::Type::STRING)],
-                        <()>::static_type().into(),
-                    )
-                    .build(),
-                    Signal::builder(
-                        "open-background-tab",
-                        &[SignalType::from(glib::types::Type::STRING)],
-                        <()>::static_type().into(),
-                    )
-                    .build(),
+                    Signal::builder("open")
+                        .param_types([SignalType::from(glib::types::Type::STRING)])
+                        .build(),
+                    Signal::builder("open-in-new-tab")
+                        .param_types([SignalType::from(glib::types::Type::STRING)])
+                        .build(),
+                    Signal::builder("open-background-tab")
+                        .param_types([SignalType::from(glib::types::Type::STRING)])
+                        .build(),
                 ]
             });
             SIGNALS.as_ref()

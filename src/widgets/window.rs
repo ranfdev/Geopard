@@ -97,10 +97,10 @@ pub mod imp {
                 self.progress_bar.fraction(),
                 progress,
                 &adw::SpringParams::new(1.0, 1.0, 100.0),
-                &adw::CallbackAnimationTarget::new(Some(Box::new(move |v| {
+                &adw::CallbackAnimationTarget::new(move |v| {
                     progress_bar.set_fraction(v);
                     progress_bar.set_opacity(1.0 - v);
-                }))),
+                }),
             );
             animation.play();
             self.progress_animation.replace(Some(animation));

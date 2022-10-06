@@ -29,7 +29,7 @@
             "name" : "Geopard",
             "buildsystem" : "meson",
             "config-opts" : [
-                "-Dbuildtype=development"
+                "-Dbuildtype=release"
             ],
             "sources" : [
                 {
