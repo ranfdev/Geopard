@@ -1,7 +1,7 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
 static R_GEMINI_LINK: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^=>\s+(?P<href>\S+)(\s+(?P<label>.+))?").unwrap());
+    Lazy::new(|| Regex::new(r"^=>\s*(?P<href>\S+)(\s+(?P<label>.+))?").unwrap());
 
 // See gemini://gemini.circumlunar.space/docs/cheatsheet.gmi
 
