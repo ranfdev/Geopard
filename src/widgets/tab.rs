@@ -1,5 +1,6 @@
 use anyhow::{bail, Context, Result};
 use async_fs::File;
+use async_trait::async_trait;
 use futures::future::RemoteHandle;
 use futures::io::BufReader;
 use futures::prelude::*;
@@ -11,9 +12,9 @@ use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::CompositeTemplate;
 use gtk::TemplateChild;
-use log::{debug, info};
+use log::{debug, info, warn};
 use once_cell::sync::Lazy;
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, Ref, RefCell};
 use std::fmt::Write;
 use std::marker::PhantomData;
 use std::pin::Pin;
@@ -28,7 +29,7 @@ use hypertext::HypertextEvent;
 
 const BYTES_BEFORE_YIELD: usize = 1024 * 10;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone)]
 pub struct HistoryItem {
     pub url: url::Url,
     pub cache: Rc<RefCell<Option<Vec<u8>>>>,
@@ -42,17 +43,55 @@ pub struct HistoryStatus {
     pub(crate) available: usize,
 }
 
+#[derive(Default)]
+pub struct History {
+    items: Vec<HistoryItem>,
+    index: Option<usize>,
+}
+
+impl History {
+    fn push(&mut self, item: HistoryItem) -> usize {
+        let new_index = self.index.map_or(0, |i| i + 1);
+        self.index = Some(new_index);
+        self.items.truncate(new_index);
+        self.items.push(item);
+        new_index
+    }
+    fn index(&self) -> Option<usize> {
+        self.index
+    }
+    fn len(&self) -> usize {
+        self.items.len()
+    }
+    fn current(&self) -> Option<&HistoryItem> {
+        self.index.map(|i| &self.items[i])
+    }
+    fn items(&self) -> &[HistoryItem] {
+        &self.items
+    }
+    fn set_index(&mut self, i: usize) -> bool {
+        if (0..self.items.len()).contains(&i) {
+            self.index = Some(i);
+            true
+        } else {
+            false
+        }
+    }
+    fn go_previous(&mut self) -> bool {
+        self.set_index(self.index.unwrap_or(0).saturating_sub(1))
+    }
+}
+
 pub mod imp {
 
     pub use super::*;
-    #[derive(Debug, Default, Properties, CompositeTemplate)]
+    #[derive(Default, Properties, CompositeTemplate)]
     #[template(resource = "/com/ranfdev/Geopard/ui/tab.ui")]
     #[properties(wrapper_type = super::Tab)]
     pub struct Tab {
         pub(crate) gemini_client: RefCell<gemini::Client>,
         pub(crate) config: RefCell<crate::config::Config>,
-        pub(crate) history: RefCell<Vec<HistoryItem>>,
-        pub(crate) current_hi: Cell<Option<usize>>,
+        pub(crate) history: RefCell<History>,
         #[template_child]
         pub(crate) scroll_win: TemplateChild<gtk::ScrolledWindow>,
         #[template_child]
@@ -120,9 +159,10 @@ pub mod imp {
     }
     impl Tab {
         fn history_status(&self) -> HistoryStatus {
+            let history = self.history.borrow();
             HistoryStatus {
-                current: self.current_hi.get().unwrap_or(0),
-                available: self.history.borrow().len(),
+                current: history.index().unwrap_or(0),
+                available: history.len(),
             }
         }
     }
@@ -149,48 +189,44 @@ impl Tab {
 
         // If there's an in flight request, the related history item (the last one)
         // must be removed
-        if let Some(in_flight_req) = imp.req_handle.borrow_mut().take() {
-            if in_flight_req.now_or_never().is_none() {
-                imp.history.borrow_mut().pop();
-                let i = imp.current_hi.get().unwrap();
-                imp.current_hi.replace(Some(i.saturating_sub(1)));
+        {
+            let req = imp.req_handle.take();
+            if let Some(req) = req {
+                // if the request isn't ready, it's still in flight
+                if req.now_or_never().is_none() {
+                    imp.history.borrow_mut().go_previous();
+                }
             }
         }
 
-        let i = self.add_to_history(HistoryItem {
+        let body: Rc<RefCell<Option<Vec<u8>>>> = Rc::new(RefCell::new(None));
+        let body_weak = Rc::downgrade(&body);
+
+        self.add_to_history(HistoryItem {
             url: url.clone(),
-            cache: Default::default(),
+            cache: body,
             scroll_progress: 0.0,
         });
-        let cache_space = Rc::downgrade(&self.imp().history.borrow()[i].cache);
+
         let this = self.clone();
         let fut = async move {
-            let cache = this.open_url(url).await;
-            cache_space.upgrade().map(|rc| rc.replace(cache));
+            let data = this.open_url(url).await;
+            *body_weak.upgrade().unwrap().borrow_mut() = data;
         };
-        self.spawn_request(fut);
+        imp.req_handle
+            .replace(Some(glibctx().spawn_local_with_handle(fut).unwrap()));
     }
-    // FIXME: make history functions simpler
-    fn add_to_history(&self, item: HistoryItem) -> usize {
+    fn add_to_history(&self, mut item: HistoryItem) -> usize {
         let imp = self.imp();
-        let i = {
-            let mut history = imp.history.borrow_mut();
-            let i = imp.current_hi.get();
-            if let Some(i) = i {
-                let scroll_progress = imp.scroll_win.vadjustment().value();
-                if let Some(item) = history.get_mut(i) {
-                    item.scroll_progress = scroll_progress;
-                }
-                history.truncate(i + 1);
-            };
-            history.push(item);
-            let i = history.len() - 1;
-            imp.current_hi.replace(Some(i));
-            i
-        };
+
+        item.scroll_progress = imp.scroll_win.vadjustment().value();
+        {
+            imp.history.borrow_mut().push(item);
+        }
+
         self.emit_history_status();
         self.log_history_position();
-        i
+        imp.history.borrow().index().unwrap()
     }
     fn clear_stack_widgets(&self) {
         let imp = self.imp();
@@ -241,6 +277,7 @@ impl Tab {
     }
     fn open_history(&self, item: HistoryItem) -> Pin<Box<dyn Future<Output = ()>>> {
         let HistoryItem { url, cache, .. } = item;
+
         let cache = cache.borrow();
         match &*cache {
             Some(cache) => Box::pin(self.open_cached(url, cache.clone())),
@@ -272,48 +309,19 @@ impl Tab {
         }
     }
     fn log_history_position(&self) {
-        let i = self.imp().current_hi.get();
+        let i = self.imp().history.borrow().index();
         info!("history position: {i:?}");
     }
-    pub fn previous(&self) -> Result<()> {
-        let imp = self.imp();
-        let i = {
-            imp.current_hi
-                .get()
-                .and_then(|i| i.checked_sub(1))
-                .context("going back in history")?
-        };
-        imp.current_hi.replace(Some(i));
-        self.log_history_position();
-        self.emit_history_status();
-
-        let h = { imp.history.borrow_mut().get(i).cloned() };
-        h.map(|x| self.spawn_request(self.open_history(x)))
-            .context("retrieving previous item from history")
+    pub fn previous(&self) -> bool {
+        self.move_in_history(-1)
     }
-    pub fn next(&self) -> Result<()> {
-        let imp = self.imp();
-        let i = {
-            imp.current_hi
-                .get()
-                .map(|i| i + 1)
-                .filter(|i| *i < imp.history.borrow().len())
-                .context("going forward in history")?
-        };
-        imp.current_hi.replace(Some(i));
-        self.log_history_position();
-        self.emit_history_status();
-
-        let h = { imp.history.borrow_mut().get(i).cloned() };
-        h.map(|x| self.spawn_request(self.open_history(x)))
-            .context("retrieving next item from history")
+    pub fn next(&self) -> bool {
+        self.move_in_history(1)
     }
     pub fn reload(&self) {
         let imp = self.imp();
-        let i = imp.current_hi.get().unwrap();
 
-        if let Some(h) = imp.history.borrow_mut().get(i) {
-            h.cache.replace(None);
+        if let Some(h) = imp.history.borrow_mut().current() {
             self.spawn_request(self.open_history(h.clone()));
         }
     }
@@ -663,5 +671,26 @@ impl Tab {
 
         imp.stack.add_child(&p);
         imp.stack.set_visible_child(&p);
+    }
+    pub fn history_items(&self) -> Ref<[HistoryItem]> {
+        Ref::map(self.imp().history.borrow(), |x| x.items())
+    }
+    pub fn move_in_history(&self, offset: isize) -> bool {
+        let moved = {
+            let mut h = self.imp().history.borrow_mut();
+            let new_index = if offset > 0 {
+                h.index().unwrap_or(0) + offset as usize
+            } else {
+                h.index().unwrap_or(0).saturating_sub(offset.abs() as usize)
+            };
+            h.index() != Some(new_index) && h.set_index(new_index)
+        };
+        if moved {
+            self.spawn_request(
+                self.open_history(self.imp().history.borrow().current().unwrap().clone()),
+            );
+            self.emit_history_status();
+        }
+        moved
     }
 }

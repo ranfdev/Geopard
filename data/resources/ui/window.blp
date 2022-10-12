@@ -11,14 +11,27 @@ template GeopardWindow: Adw.ApplicationWindow {
       transition-type: crossfade;
       Adw.HeaderBar {
         [start]
-        Gtk.Button {
-          icon-name: "go-previous-symbolic";
-          action-name: "win.previous";
+        Gtk.Box {
+          Gtk.Button previous {
+            icon-name: "go-previous-symbolic";
+            action-name: "win.previous";
+          }
+          Gtk.Popover previous_popover {
+            autohide: true;
+            has-arrow: false;
+          }
         }
+
         [start]
-        Gtk.Button {
-          icon-name: "go-next-symbolic";
-          action-name: "win.next";
+        Gtk.Box {
+          Gtk.Button next {
+            icon-name: "go-next-symbolic";
+            action-name: "win.next";
+          }
+          Gtk.Popover next_popover {
+            autohide: true;
+            has-arrow: false;
+          }
         }
         [start]
         Gtk.Button {

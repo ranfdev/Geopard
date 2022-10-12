@@ -12,7 +12,7 @@ use gtk::subclass::prelude::*;
 use gtk::CompositeTemplate;
 use gtk::TemplateChild;
 use log::{error, info, warn};
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use url::Url;
@@ -21,7 +21,7 @@ use crate::build_config;
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
 use crate::config;
 use crate::self_action;
-use crate::widgets::tab::{HistoryStatus, Tab};
+use crate::widgets::tab::{HistoryItem, HistoryStatus, Tab};
 
 const ZOOM_CHANGE_FACTOR: f64 = 1.15;
 const ZOOM_MAX_FACTOR: f64 = 5.0;
@@ -52,6 +52,14 @@ pub mod imp {
         pub(crate) header_small: TemplateChild<gtk::WindowHandle>,
         #[template_child]
         pub(crate) squeezer: TemplateChild<adw::Squeezer>,
+        #[template_child]
+        pub(crate) previous: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub(crate) previous_popover: TemplateChild<gtk::Popover>,
+        #[template_child]
+        pub(crate) next: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub(crate) next_popover: TemplateChild<gtk::Popover>,
         #[template_child]
         pub(crate) progress_bar: TemplateChild<gtk::ProgressBar>,
         #[template_child]
@@ -176,6 +184,7 @@ impl Window {
 
         this.setup_css_providers();
         this.squeezer_changed();
+        this.setup_history_buttons();
         this.setup_settings();
         this.setup_zoom_popover_item();
         this.setup_actions();
@@ -212,6 +221,7 @@ impl Window {
 
         self_action!(self, "reload", reload);
         self_action!(self, "new-tab", new_tab);
+        self_action!(self, "new-empty-tab", new_empty_tab);
         self_action!(self, "show-bookmarks", show_bookmarks);
         self_action!(self, "bookmark-current", bookmark_current);
         self_action!(self, "close-tab", close_tab);
@@ -397,6 +407,71 @@ impl Window {
         );
         popover.add_child(&zoom_box, "zoom");
     }
+    fn setup_history_button(
+        &self,
+        p: gtk::Popover,
+        btn: gtk::Button,
+        f: for<'a> fn(
+            &'a [HistoryItem],
+            usize,
+        ) -> Box<dyn Iterator<Item = (isize, &'a HistoryItem)> + 'a>,
+    ) {
+        let ctrl = gtk::GestureClick::builder().button(3).build();
+
+        let this = self.downgrade();
+        ctrl.connect_pressed(move |_, n, x, y| {
+            let this = this.upgrade().unwrap();
+            let tab = this.current_tab();
+            let items = tab.history_items();
+            let items = f(&*items, tab.history_status().current);
+            let b = gtk::Box::new(gtk::Orientation::Vertical, 0);
+            for (offset, item) in items {
+                let label = gtk::Label::new(Some(item.url.as_str()));
+                label.add_css_class("body");
+                label.set_xalign(0.0);
+                let btn = gtk::Button::new();
+                btn.set_child(Some(&label));
+                btn.add_css_class("flat");
+                let t = tab.clone();
+                let p = p.clone();
+                btn.connect_clicked(move |_| {
+                    t.move_in_history(offset);
+                    p.popdown();
+                });
+
+                b.append(&btn);
+            }
+
+            p.set_child(Some(&b));
+            p.popup();
+        });
+        btn.add_controller(&ctrl);
+    }
+    fn setup_history_buttons(&self) {
+        let imp = self.imp();
+
+        self.setup_history_button(
+            imp.previous_popover.clone(),
+            imp.previous.clone(),
+            |items, i| {
+                Box::new(
+                    items[..i]
+                        .iter()
+                        .rev()
+                        .enumerate()
+                        .map(|(i, x)| (-(i as isize) - 1, x)),
+                )
+            },
+        );
+        self.setup_history_button(imp.next_popover.clone(), imp.next.clone(), |items, i| {
+            Box::new(
+                items[i + 1..]
+                    .iter()
+                    .enumerate()
+                    .map(|(i, x)| (i as isize + 1, x)),
+            )
+        });
+    }
     fn add_tab(&self) -> adw::TabPage {
         let imp = self.imp();
         let tab = Tab::new(imp.config.borrow().clone());
@@ -463,6 +538,12 @@ impl Window {
         self.show_bookmarks();
         self.active_url_bar().grab_focus();
     }
+    fn new_empty_tab(&self) {
+        let imp = self.imp();
+        let p = self.add_tab();
+        imp.tab_view.set_selected_page(&p);
+        self.active_url_bar().grab_focus();
+    }
     fn show_bookmarks(&self) {
         let imp = self.imp();
         let p = self.add_tab();
@@ -515,16 +596,10 @@ impl Window {
             .unwrap()
     }
     fn previous(&self) {
-        match self.current_tab().previous() {
-            Err(e) => warn!("{}", e),
-            Ok(_) => info!("went back"),
-        }
+        self.current_tab().previous();
     }
     fn next(&self) {
-        match self.current_tab().next() {
-            Err(e) => warn!("{}", e),
-            Ok(_) => info!("went forward"),
-        }
+        self.current_tab().next();
     }
     fn reload(&self) {
         self.current_tab().reload();

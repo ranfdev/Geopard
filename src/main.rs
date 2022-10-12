@@ -85,11 +85,11 @@ fn main() {
     application
         .connect_activate(move |app| app.open(&[gio::File::for_uri(bookmarks_url().as_str())], ""));
     application.connect_open(move |app, files, _| {
-        let window = widgets::Window::new(&app, config.clone());
+        let window = widgets::Window::new(app, config.clone());
         window.present();
         windows.borrow_mut().push(window.clone());
         for f in files {
-            gtk::prelude::WidgetExt::activate_action(&window, "win.new-tab", None).unwrap();
+            gtk::prelude::WidgetExt::activate_action(&window, "win.new-empty-tab", None).unwrap();
             gtk::prelude::WidgetExt::activate_action(
                 &window,
                 "win.open-url",
