@@ -29,10 +29,10 @@ stdenv.mkDerivation rec {
   cargoDeps = rustPlatform.importCargoLock {
     lockFile = ../Cargo.lock;
     outputHashes = {
-      "cairo-rs-0.16.0" = "sha256-Y0qRUliZRuEYvLje2ld75BDgSM7lHOnWITyuI/RoxwI=";
-      "gdk4-0.5.0" = "sha256-cRZS8csxpPZm6yxyb6MYiGO7rdw207E4w4uiuJqJoaU=";
-      "gio-0.16.0" = "sha256-wENBSDGVUQIa6CK4d5oZ9ih0h1SY1CKWBKVtVcxsXP0=";
-      "libadwaita-0.2.0" = "sha256-+ATfy8QIgpoifSCrcqdoub1ust3pEdU3skjOPfIaDQc=";
+      "cairo-rs-0.16.0" = "sha256-cqWL8PKmakObkHZWFtfLQtMKKBfSPQNvqLFkh0JaBGY=";
+      "gdk4-0.5.0" = "sha256-ICUZ8Y/4D4iAzZosusZL2sB/EXGkWarWk5ZIW84crg4=";
+      "gio-0.16.0" = "sha256-34RcAmMozLAqrGPalGvyBdtTwurcoYs2VKtNenDOK3E=";
+      "libadwaita-0.2.0" = "sha256-47GmghKbdaK+5F7GeeMEczDqMP3X+daHY2UEhmC5Qtc=";
     };
   };
 
