@@ -1,6 +1,5 @@
 use anyhow::{bail, Context, Result};
 use async_fs::File;
-use async_trait::async_trait;
 use futures::future::RemoteHandle;
 use futures::io::BufReader;
 use futures::prelude::*;
@@ -12,7 +11,7 @@ use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::CompositeTemplate;
 use gtk::TemplateChild;
-use log::{debug, info, warn};
+use log::{debug, info};
 use once_cell::sync::Lazy;
 use std::cell::{Cell, Ref, RefCell};
 use std::fmt::Write;
@@ -247,7 +246,7 @@ impl Tab {
     fn open_url(&self, url: Url) -> impl Future<Output = Option<Vec<u8>>> {
         let imp = self.imp();
 
-        self.set_progress(&0.0);
+        self.set_progress(0.0);
         *imp.title.borrow_mut() = url.to_string();
         self.emit_title();
         *imp.url.borrow_mut() = url.to_string();
@@ -269,10 +268,10 @@ impl Tab {
                     None
                 }
             };
-            this.set_progress(&1.0);
+            this.set_progress(1.0);
             cache
         };
-        self.set_progress(&0.3);
+        self.set_progress(0.3);
         fut
     }
     fn open_history(&self, item: HistoryItem) -> Pin<Box<dyn Future<Output = ()>>> {
@@ -681,7 +680,7 @@ impl Tab {
             let new_index = if offset > 0 {
                 h.index().unwrap_or(0) + offset as usize
             } else {
-                h.index().unwrap_or(0).saturating_sub(offset.abs() as usize)
+                h.index().unwrap_or(0).saturating_sub(offset.unsigned_abs())
             };
             h.index() != Some(new_index) && h.set_index(new_index)
         };

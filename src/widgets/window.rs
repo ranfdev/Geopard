@@ -12,7 +12,7 @@ use gtk::subclass::prelude::*;
 use gtk::CompositeTemplate;
 use gtk::TemplateChild;
 use log::{error, info, warn};
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use url::Url;
@@ -407,23 +407,26 @@ impl Window {
         );
         popover.add_child(&zoom_box, "zoom");
     }
-    fn setup_history_button(
+    fn setup_history_button<
+        F: for<'a> Fn(
+                &'a [HistoryItem],
+                usize,
+            ) -> Box<dyn Iterator<Item = (isize, &'a HistoryItem)> + 'a>
+            + 'static,
+    >(
         &self,
         p: gtk::Popover,
         btn: gtk::Button,
-        f: for<'a> fn(
-            &'a [HistoryItem],
-            usize,
-        ) -> Box<dyn Iterator<Item = (isize, &'a HistoryItem)> + 'a>,
+        f: F,
     ) {
         let ctrl = gtk::GestureClick::builder().button(3).build();
 
         let this = self.downgrade();
-        ctrl.connect_pressed(move |_, n, x, y| {
+        ctrl.connect_pressed(move |_, _, _, _| {
             let this = this.upgrade().unwrap();
             let tab = this.current_tab();
             let items = tab.history_items();
-            let items = f(&*items, tab.history_status().current);
+            let items = f(&items, tab.history_status().current);
             let b = gtk::Box::new(gtk::Orientation::Vertical, 0);
             for (offset, item) in items {
                 let label = gtk::Label::new(Some(item.url.as_str()));
@@ -561,9 +564,9 @@ impl Window {
     fn active_url_bar(&self) -> &gtk::SearchEntry {
         let imp = self.imp();
         if self.is_small_screen() {
-            &*imp.small_url_bar
+            &imp.small_url_bar
         } else {
-            &*imp.url_bar
+            &imp.url_bar
         }
     }
     fn focus_url_bar(&self) {
@@ -750,12 +753,12 @@ impl Window {
     }
 
     fn zoom_in(&self) {
-        self.set_zoom(&(self.zoom() * ZOOM_CHANGE_FACTOR));
+        self.set_zoom(self.zoom() * ZOOM_CHANGE_FACTOR);
     }
     fn zoom_out(&self) {
-        self.set_zoom(&(self.zoom() * 1.0 / ZOOM_CHANGE_FACTOR));
+        self.set_zoom(self.zoom() * 1.0 / ZOOM_CHANGE_FACTOR);
     }
     fn reset_zoom(&self) {
-        self.set_zoom(&1.0);
+        self.set_zoom(1.0);
     }
 }

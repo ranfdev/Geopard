@@ -26,7 +26,7 @@ async fn read_config() -> anyhow::Result<config::Config> {
 }
 async fn create_dir_if_not_exists(path: &std::path::Path) -> anyhow::Result<()> {
     if !path.exists() {
-        async_fs::create_dir_all(&*path)
+        async_fs::create_dir_all(path)
             .await
             .context(format!("Failed to create directory {:?}", path))?
     }

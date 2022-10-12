@@ -123,26 +123,28 @@ impl Client {
             options: Default::default(),
         }
     }
-    pub async fn fetch(&self, url: &str) -> Result<Response, Error> {
-        let url = Url::parse(url)?;
-        let mut res = Self::fetch_internal(url).await?;
-        if self.options.redirect {
-            let mut n_redirect: u8 = 0;
-            loop {
-                match res.status {
-                    Status::Redirect(_) => {
-                        let url = Url::parse(res.meta())?;
-                        res = Self::fetch_internal(url).await?;
-                        n_redirect += 1;
-                    }
-                    _ => break,
+    pub async fn fetch(&self, url_str: &str) -> Result<Response, Error> {
+        let mut url_str = url_str;
+        let mut res;
+        let mut i = 0;
+        let max_redirect = if self.options.redirect {
+            MAX_REDIRECT
+        } else {
+            1
+        };
+        while {
+            let url = Url::parse(url_str)?;
+            res = Self::fetch_internal(url).await?;
+            i < max_redirect
+        } {
+            match res.status() {
+                Status::Redirect(_) => {
+                    url_str = res.meta();
+                    i += 1;
                 }
-                if n_redirect > MAX_REDIRECT {
-                    return Err(Error::TooManyRedirects(res.meta_owned()));
-                }
+                _ => break,
             }
         }
-
         Ok(res)
     }
     async fn fetch_internal(url: Url) -> Result<Response, Error> {

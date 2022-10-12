@@ -423,7 +423,7 @@ impl Hypertext {
         let (x, y) =
             text_view.window_to_buffer_coords(gtk::TextWindowType::Widget, x as i32, y as i32);
         let iter = text_view
-            .iter_at_location(x as i32, y as i32)
+            .iter_at_location(x, y)
             .context("Can't get text iter where clicked")?;
 
         iter.tags()
@@ -441,7 +441,7 @@ impl Hypertext {
         }
         let url = {
             let links = imp.links.borrow();
-            let (_, link) = Self::extract_linkhandler(&*links, text_view, x, y)?;
+            let (_, link) = Self::extract_linkhandler(&links, text_view, x, y)?;
             self.parse_link(link)?
         };
         if ctrl
@@ -464,7 +464,7 @@ impl Hypertext {
 
         let link = {
             let links = imp.links.borrow();
-            let (_, link) = Self::extract_linkhandler(&*links, text_view, x, y)?;
+            let (_, link) = Self::extract_linkhandler(&links, text_view, x, y)?;
             self.parse_link(link)?
         };
         let link_variant = link.as_str().to_variant();
@@ -489,7 +489,7 @@ impl Hypertext {
         let text_view = &surface.as_ref().unwrap().text_view;
 
         let links = imp.links.borrow();
-        let entry = Self::extract_linkhandler(&*links, text_view, x, y);
+        let entry = Self::extract_linkhandler(&links, text_view, x, y);
 
         let link_ref = entry.as_ref().map(|x| x.1).unwrap_or("");
         if link_ref == *imp.hover_url.borrow() {
