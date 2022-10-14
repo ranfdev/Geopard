@@ -1,3 +1,9 @@
+use std::cell::{Cell, Ref, RefCell};
+use std::fmt::Write;
+use std::marker::PhantomData;
+use std::pin::Pin;
+use std::rc::Rc;
+
 use anyhow::{bail, Context, Result};
 use async_fs::File;
 use futures::future::RemoteHandle;
@@ -6,25 +12,18 @@ use futures::prelude::*;
 use futures::task::LocalSpawnExt;
 use glib::{clone, Properties};
 use gtk::gdk::prelude::*;
-use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::CompositeTemplate;
-use gtk::TemplateChild;
+use gtk::{glib, CompositeTemplate, TemplateChild};
+use hypertext::HypertextEvent;
 use log::{debug, info};
 use once_cell::sync::Lazy;
-use std::cell::{Cell, Ref, RefCell};
-use std::fmt::Write;
-use std::marker::PhantomData;
-use std::pin::Pin;
-use std::rc::Rc;
 use url::Url;
 
 use super::pages::{self, hypertext};
 use crate::common;
 use crate::common::glibctx;
 use crate::lossy_text_read::*;
-use hypertext::HypertextEvent;
 
 const BYTES_BEFORE_YIELD: usize = 1024 * 10;
 

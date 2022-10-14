@@ -1,6 +1,5 @@
 use gtk::glib;
 use once_cell::sync::Lazy;
-
 use url::Url;
 
 pub static DOWNLOAD_PATH: Lazy<std::path::PathBuf> = Lazy::new(|| {

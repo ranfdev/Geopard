@@ -1,17 +1,17 @@
-use crate::config;
-use anyhow::Context;
-use gemini::Event;
-use glib::clone;
-use glib::subclass::{Signal, SignalType};
-use glib::Properties;
-use gtk::glib;
-use gtk::prelude::*;
-use gtk::subclass::prelude::*;
-use gtk::{gdk, gio};
-use once_cell::sync::Lazy;
 use std::cell::RefCell;
 use std::collections::HashMap;
+
+use anyhow::Context;
+use gemini::Event;
+use glib::subclass::{Signal, SignalType};
+use glib::{clone, Properties};
+use gtk::prelude::*;
+use gtk::subclass::prelude::*;
+use gtk::{gdk, gio, glib};
+use once_cell::sync::Lazy;
 use url::Url;
+
+use crate::config;
 
 #[derive(Debug, Clone)]
 pub struct Surface {

@@ -1,8 +1,6 @@
-use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::CompositeTemplate;
-use gtk::TemplateChild;
+use gtk::{glib, CompositeTemplate, TemplateChild};
 
 mod imp {
     pub use super::*;

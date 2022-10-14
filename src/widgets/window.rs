@@ -1,3 +1,7 @@
+use std::cell::RefCell;
+use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
+
 use adw::builders::AboutWindowBuilder;
 use adw::prelude::*;
 use adw::subclass::application_window::AdwApplicationWindowImpl;
@@ -5,23 +9,14 @@ use anyhow::Context;
 use config::APP_ID;
 use futures::prelude::*;
 use glib::{clone, Properties};
-use gtk::gdk;
-use gtk::gio;
-use gtk::glib;
 use gtk::subclass::prelude::*;
-use gtk::CompositeTemplate;
-use gtk::TemplateChild;
+use gtk::{gdk, gio, glib, CompositeTemplate, TemplateChild};
 use log::{error, info, warn};
-use std::cell::RefCell;
-use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
 use url::Url;
 
-use crate::build_config;
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
-use crate::config;
-use crate::self_action;
 use crate::widgets::tab::{HistoryItem, HistoryStatus, Tab};
+use crate::{build_config, config, self_action};
 
 const ZOOM_CHANGE_FACTOR: f64 = 1.15;
 const ZOOM_MAX_FACTOR: f64 = 5.0;

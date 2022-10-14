@@ -1,8 +1,9 @@
+use std::convert::TryFrom;
+
 use async_net::TcpStream;
 use futures::io::Cursor;
 use futures::prelude::*;
 use log::debug;
-use std::convert::TryFrom;
 use url::Url;
 
 const INIT_BUFFER_SIZE: usize = 8192; // 8Kb
@@ -232,8 +233,9 @@ impl Client {
 }
 #[cfg(test)]
 mod tests {
-    use crate::gemini::*;
     use futures::executor::block_on;
+
+    use crate::gemini::*;
     #[test]
     fn client_builder() {
         let client = ClientBuilder::new().redirect(true).build();

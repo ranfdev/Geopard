@@ -1,7 +1,7 @@
-pub use crate::build_config::*;
-
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+
+pub use crate::build_config::*;
 
 pub static DEFAULT_CONFIG: Lazy<Config> = Lazy::new(|| Config {
     colors: true,

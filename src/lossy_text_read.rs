@@ -1,6 +1,7 @@
+use std::borrow::Cow;
+
 use async_trait::async_trait;
 use futures::prelude::*;
-use std::borrow::Cow;
 
 #[async_trait(?Send)]
 pub trait LossyTextRead {
