@@ -1,16 +1,3 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
-use anyhow::Context;
-use async_fs::File;
-use futures::prelude::*;
-use gtk::gio;
-
-use crate::common::{
-    BOOKMARK_FILE_PATH, CONFIG_DIR_PATH, DATA_DIR_PATH, DEFAULT_BOOKMARKS, HISTORY_FILE_PATH,
-    SETTINGS_FILE_PATH,
-};
-
 #[rustfmt::skip]
 mod build_config;
 mod common;
@@ -19,8 +6,21 @@ mod lossy_text_read;
 mod macros;
 mod widgets;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use anyhow::Context;
+use async_fs::File;
 use common::bookmarks_url;
+use futures::prelude::*;
+use gtk::gio;
 use gtk::prelude::*;
+
+use crate::common::{
+    BOOKMARK_FILE_PATH, CONFIG_DIR_PATH, DATA_DIR_PATH, DEFAULT_BOOKMARKS, HISTORY_FILE_PATH,
+    SETTINGS_FILE_PATH,
+};
+
 async fn read_config() -> anyhow::Result<config::Config> {
     toml::from_str(&async_fs::read_to_string(&*SETTINGS_FILE_PATH).await?)
         .context("Reading config file")
