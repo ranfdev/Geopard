@@ -603,8 +603,7 @@ impl Window {
         self.current_tab().reload();
     }
     fn bookmark_current(&self) {
-        let imp = self.imp();
-        let url = imp.url_bar.text().to_string();
+        let url = self.active_url_bar().text().to_string();
         glibctx().spawn_local(async move {
             match Self::append_bookmark(&url).await {
                 Ok(_) => info!("{} saved to bookmarks", url),
