@@ -5,7 +5,7 @@ use futures::prelude::*;
 
 #[async_trait(?Send)]
 pub trait LossyTextRead {
-    async fn read_line_lossy(&mut self, mut buf: &mut String) -> std::io::Result<usize>;
+    async fn read_line_lossy(&mut self, buf: &mut String) -> std::io::Result<usize>;
 }
 
 #[async_trait(?Send)]

@@ -1,4 +1,3 @@
-use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{glib, CompositeTemplate, TemplateChild};
 
@@ -45,7 +44,7 @@ glib::wrapper! {
 
 impl Download {
     pub fn new() -> Self {
-        glib::Object::new(&[]).unwrap()
+        glib::Object::new()
     }
 }
 impl Default for Download {
