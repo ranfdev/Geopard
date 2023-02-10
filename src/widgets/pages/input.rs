@@ -41,7 +41,7 @@ glib::wrapper! {
 
 impl Input {
     pub fn new() -> Self {
-        glib::Object::new(&[]).unwrap()
+        glib::Object::new()
     }
 }
 impl Default for Input {

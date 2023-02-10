@@ -119,5 +119,5 @@ fn main() {
     application.set_accels_for_action("win.reset-zoom", &["<Ctrl>0"]);
     // FIXME: win.view-source
     let ret = application.run();
-    std::process::exit(ret);
+    std::process::exit(ret.into());
 }

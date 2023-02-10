@@ -134,7 +134,7 @@ impl Surface {
         tag_table
     }
     fn create_tag(name: &str, config: &crate::config::Font) -> gtk::TextTag {
-        gtk::builders::TextTagBuilder::new()
+        gtk::TextTag::builder()
             .family(&config.family)
             .weight(config.weight)
             .name(name)
@@ -182,17 +182,11 @@ pub mod imp {
         fn properties() -> &'static [glib::ParamSpec] {
             Self::derived_properties()
         }
-        fn set_property(
-            &self,
-            obj: &Self::Type,
-            id: usize,
-            value: &glib::Value,
-            pspec: &glib::ParamSpec,
-        ) {
-            Self::derived_set_property(self, obj, id, value, pspec).unwrap()
+        fn set_property(&self, id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
+            Self::derived_set_property(self, id, value, pspec)
         }
-        fn property(&self, obj: &Self::Type, id: usize, pspec: &glib::ParamSpec) -> glib::Value {
-            Self::derived_property(self, obj, id, pspec).unwrap()
+        fn property(&self, id: usize, pspec: &glib::ParamSpec) -> glib::Value {
+            Self::derived_property(self, id, pspec)
         }
         fn signals() -> &'static [glib::subclass::Signal] {
             static SIGNALS: Lazy<Vec<glib::subclass::Signal>> = Lazy::new(|| {
@@ -227,24 +221,20 @@ glib::wrapper! {
 }
 impl Default for Hypertext {
     fn default() -> Self {
-        glib::Object::new(&[]).unwrap()
+        glib::Object::new()
     }
 }
 impl Hypertext {
     pub fn new(url: String, surface: Surface) -> Self {
         let text_view = surface.text_view.clone();
 
-        let this: Self = glib::Object::new(&[]).unwrap();
+        let this: Self = glib::Object::new();
         this.imp().url.replace(url);
         this.imp().surface.replace(Some(surface));
 
         let left_click_ctrl = gtk::GestureClick::builder().button(1).build();
         let right_click_ctrl = gtk::GestureClick::builder().button(3).build();
         let motion_ctrl = gtk::EventControllerMotion::new();
-
-        text_view.add_controller(&left_click_ctrl);
-        text_view.add_controller(&right_click_ctrl);
-        text_view.add_controller(&motion_ctrl);
 
         left_click_ctrl.connect_released(
             clone!(@strong this => @default-panic, move |ctrl, _n_press, x, y| {
@@ -265,6 +255,10 @@ impl Hypertext {
         motion_ctrl.connect_motion(clone!(@strong this => @default-panic,move |_ctrl, x, y|  {
             let _ = this.handle_motion(x, y);
         }));
+
+        text_view.add_controller(left_click_ctrl);
+        text_view.add_controller(right_click_ctrl);
+        text_view.add_controller(motion_ctrl);
 
         this
     }
@@ -506,7 +500,7 @@ impl Hypertext {
         };
 
         imp.hover_url.replace(link_ref.to_owned());
-        self.emit_hover_url();
+        self.notify_hover_url();
         Ok(())
     }
 }

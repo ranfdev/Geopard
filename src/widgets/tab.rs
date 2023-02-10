@@ -124,8 +124,8 @@ pub mod imp {
     }
 
     impl ObjectImpl for Tab {
-        fn constructed(&self, obj: &Self::Type) {
-            self.parent_constructed(obj);
+        fn constructed(&self) {
+            self.parent_constructed();
 
             self.gemini_client
                 .replace(gemini::ClientBuilder::new().redirect(true).build());
@@ -141,18 +141,12 @@ pub mod imp {
             Self::derived_properties()
         }
 
-        fn set_property(
-            &self,
-            obj: &Self::Type,
-            id: usize,
-            value: &glib::Value,
-            pspec: &glib::ParamSpec,
-        ) {
-            self.derived_set_property(obj, id, value, pspec).unwrap()
+        fn set_property(&self, id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
+            self.derived_set_property(id, value, pspec)
         }
 
-        fn property(&self, obj: &Self::Type, id: usize, pspec: &glib::ParamSpec) -> glib::Value {
-            self.derived_property(obj, id, pspec).unwrap()
+        fn property(&self, id: usize, pspec: &glib::ParamSpec) -> glib::Value {
+            self.derived_property(id, pspec)
         }
     }
     impl Tab {
@@ -174,7 +168,7 @@ glib::wrapper! {
 
 impl Tab {
     pub fn new(config: crate::config::Config) -> Self {
-        let this: Self = glib::Object::new(&[]).unwrap();
+        let this: Self = glib::Object::new();
         let imp = this.imp();
 
         imp.config.replace(config);
@@ -222,14 +216,14 @@ impl Tab {
             imp.history.borrow_mut().push(item);
         }
 
-        self.emit_history_status();
+        self.notify_history_status();
         self.log_history_position();
         imp.history.borrow().index().unwrap()
     }
     fn clear_stack_widgets(&self) {
         let imp = self.imp();
         let pages = imp.stack.pages();
-        let mut iter = pages.iter::<gtk::StackPage>().unwrap();
+        let mut iter = pages.iter::<gtk::StackPage>();
         let first_page = iter.next().unwrap().unwrap();
         imp.stack.set_visible_child(&first_page.child());
         for page in iter.skip(1) {
@@ -247,9 +241,9 @@ impl Tab {
 
         self.set_progress(0.0);
         *imp.title.borrow_mut() = url.to_string();
-        self.emit_title();
+        self.notify_title();
         *imp.url.borrow_mut() = url.to_string();
-        self.emit_url();
+        self.notify_url();
 
         let this = self.clone();
         let fut = async move {
@@ -286,13 +280,13 @@ impl Tab {
         let imp = self.imp();
 
         imp.progress.set(0.0);
-        self.emit_progress();
+        self.notify_progress();
 
         *imp.title.borrow_mut() = url.to_string();
-        self.emit_title();
+        self.notify_title();
 
         *imp.url.borrow_mut() = url.to_string();
-        self.emit_url();
+        self.notify_url();
 
         let this = self.clone();
         async move {
@@ -687,7 +681,7 @@ impl Tab {
             self.spawn_request(
                 self.open_history(self.imp().history.borrow().current().unwrap().clone()),
             );
-            self.emit_history_status();
+            self.notify_history_status();
         }
         moved
     }

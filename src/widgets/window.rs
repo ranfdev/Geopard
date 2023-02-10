@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 
-use adw::builders::AboutWindowBuilder;
 use adw::prelude::*;
 use adw::subclass::application_window::AdwApplicationWindowImpl;
 use anyhow::Context;
@@ -25,6 +24,14 @@ const ZOOM_MAX_FACTOR: f64 = 5.0;
 pub(crate) struct Zoom {
     value: f64,
     provider: gtk::CssProvider,
+}
+
+#[derive(Debug, Clone)]
+pub struct AppSettings(gio::Settings);
+impl Default for AppSettings {
+    fn default() -> Self {
+        AppSettings(gio::Settings::new(APP_ID))
+    }
 }
 
 pub mod imp {
@@ -77,7 +84,7 @@ pub mod imp {
         pub(crate) style_provider: RefCell<gtk::CssProvider>,
         #[property(get, set = Self::set_zoom, type = f64, member = value)]
         pub(crate) zoom: RefCell<Zoom>,
-        pub(crate) settings: glib::ConstructRefCell<gio::Settings>,
+        pub(crate) settings: AppSettings,
     }
 
     impl Window {
@@ -101,8 +108,8 @@ pub mod imp {
                 &*self.progress_bar,
                 self.progress_bar.fraction(),
                 progress,
-                &adw::SpringParams::new(1.0, 1.0, 100.0),
-                &adw::CallbackAnimationTarget::new(move |v| {
+                adw::SpringParams::new(1.0, 1.0, 100.0),
+                adw::CallbackAnimationTarget::new(move |v| {
                     progress_bar.set_fraction(v);
                     progress_bar.set_opacity(1.0 - v);
                 }),
@@ -113,15 +120,12 @@ pub mod imp {
         fn set_zoom(&self, v: f64) {
             let Zoom { value, provider } = &mut *self.zoom.borrow_mut();
             *value = v.clamp(1.0 / ZOOM_MAX_FACTOR, ZOOM_MAX_FACTOR);
-            provider.load_from_data(
-                format!(
-                    "textview {{
+            provider.load_from_data(&format!(
+                "textview {{
                         font-size: {}rem;
                     }}",
-                    value
-                )
-                .as_bytes(),
-            );
+                value
+            ));
         }
     }
 
@@ -145,18 +149,12 @@ pub mod imp {
             Self::derived_properties()
         }
 
-        fn set_property(
-            &self,
-            obj: &Self::Type,
-            id: usize,
-            value: &glib::Value,
-            pspec: &glib::ParamSpec,
-        ) {
-            Self::derived_set_property(self, obj, id, value, pspec).unwrap();
+        fn set_property(&self, id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
+            Self::derived_set_property(self, id, value, pspec)
         }
 
-        fn property(&self, obj: &Self::Type, id: usize, pspec: &glib::ParamSpec) -> glib::Value {
-            Self::derived_property(self, obj, id, pspec).unwrap()
+        fn property(&self, id: usize, pspec: &glib::ParamSpec) -> glib::Value {
+            Self::derived_property(self, id, pspec)
         }
     }
     impl WidgetImpl for Window {}
@@ -172,7 +170,9 @@ glib::wrapper! {
 
 impl Window {
     pub fn new(app: &adw::Application, config: config::Config) -> Self {
-        let this: Self = glib::Object::new(&[("application", app)]).unwrap();
+        let this: Self = glib::Object::builder::<Self>()
+            .property("application", app)
+            .build();
         let imp = this.imp();
         imp.config.replace(config);
         imp.zoom.borrow_mut().value = 1.0;
@@ -188,9 +188,7 @@ impl Window {
     }
     fn setup_settings(&self) {
         let imp = self.imp();
-        let settings = gio::Settings::new(APP_ID);
-        settings.bind("zoom", self, "zoom").build();
-        imp.settings.replace(Some(settings));
+        imp.settings.0.bind("zoom", self, "zoom").build();
     }
     fn setup_css_providers(&self) {
         let imp = self.imp();
@@ -259,8 +257,8 @@ impl Window {
     fn setup_signals(&self) {
         let imp = self.imp();
 
-        self.add_controller(&imp.scroll_ctrl);
-        self.add_controller(&imp.mouse_prev_next_ctrl);
+        self.add_controller(imp.scroll_ctrl.clone());
+        self.add_controller(imp.mouse_prev_next_ctrl.clone());
         imp.scroll_ctrl
             .set_propagation_phase(gtk::PropagationPhase::Capture);
         imp.scroll_ctrl
@@ -336,16 +334,16 @@ impl Window {
         );
 
         let ctrl = gtk::EventControllerMotion::new();
-        imp.url_status_box.add_controller(&ctrl);
         let url_status_box_clone = imp.url_status_box.clone();
         ctrl.connect_motion(move |_, _, _| {
             url_status_box_clone.set_visible(false);
         });
+        imp.url_status_box.add_controller(ctrl);
 
         let ctrl = gtk::EventControllerKey::new();
         ctrl.set_propagation_limit(gtk::PropagationLimit::None);
         ctrl.set_propagation_phase(gtk::PropagationPhase::Capture);
-        self.add_controller(&ctrl);
+
         ctrl.connect_key_pressed(
             clone!(@weak self as this => @default-panic, move |_, key, _, modif| {
               let action = match (modif.contains(gdk::ModifierType::CONTROL_MASK), key) {
@@ -359,6 +357,7 @@ impl Window {
                   .unwrap_or(gtk::Inhibit(false))
             }),
         );
+        self.add_controller(ctrl);
     }
     fn setup_zoom_popover_item(&self) {
         let imp = self.imp();
@@ -374,7 +373,7 @@ impl Window {
             &gtk::Button::builder()
                 .icon_name("zoom-out-symbolic")
                 .action_name("win.zoom-out")
-                .css_classes(vec!["flat".into(), "circular".into()])
+                .css_classes(vec!["flat", "circular"])
                 .build(),
         );
 
@@ -382,10 +381,7 @@ impl Window {
         value_btn.set_hexpand(true);
         self.bind_property("zoom", &value_btn, "label")
             .flags(glib::BindingFlags::SYNC_CREATE)
-            .transform_to(|_, v| {
-                let zoom: f64 = v.get().unwrap();
-                Some(format!("{:3}%", (zoom * 100.0) as usize).to_value())
-            })
+            .transform_to(|_, zoom: f64| Some(format!("{:3}%", (zoom * 100.0) as usize).to_value()))
             .build();
         value_btn.set_action_name(Some("win.reset-zoom"));
         value_btn.add_css_class("flat");
@@ -396,7 +392,7 @@ impl Window {
         zoom_box.append(
             &gtk::Button::builder()
                 .icon_name("zoom-in-symbolic")
-                .css_classes(vec!["flat".into(), "circular".into()])
+                .css_classes(vec!["flat", "circular"])
                 .action_name("win.zoom-in")
                 .build(),
         );
@@ -443,7 +439,7 @@ impl Window {
             p.set_child(Some(&b));
             p.popup();
         });
-        btn.add_controller(&ctrl);
+        btn.add_controller(ctrl);
     }
     fn setup_history_buttons(&self) {
         let imp = self.imp();
@@ -503,8 +499,7 @@ impl Window {
                     "enabled",
                 )
                 .flags(glib::BindingFlags::SYNC_CREATE)
-                .transform_to(|_, v| {
-                    let v: HistoryStatus = v.get().unwrap();
+                .transform_to(|_, v: HistoryStatus| {
                     let res = v.current + 1 < v.available;
                     Some(res.to_value())
                 })
@@ -515,8 +510,7 @@ impl Window {
                     "enabled",
                 )
                 .flags(glib::BindingFlags::SYNC_CREATE)
-                .transform_to(|_, v| {
-                    let v: HistoryStatus = v.get().unwrap();
+                .transform_to(|_, v: HistoryStatus| {
                     let res = v.available >= 1 && v.current > 0;
                     Some(res.to_value())
                 })
@@ -524,10 +518,7 @@ impl Window {
                 tab.bind_property("hover-url", &*imp.url_status, "label")
                     .build(),
                 tab.bind_property("hover-url", &*imp.url_status_box, "visible")
-                    .transform_to(|_, v| {
-                        let v: &str = v.get().unwrap();
-                        Some((!v.is_empty()).to_value())
-                    })
+                    .transform_to(|_, v: &str| Some((!v.is_empty()).to_value()))
                     .build(),
             ]);
         };
@@ -683,9 +674,7 @@ impl Window {
             )
         };
 
-        imp.style_provider
-            .borrow()
-            .load_from_data(stylesheet.as_bytes());
+        imp.style_provider.borrow().load_from_data(&stylesheet);
 
         Ok(())
     }
@@ -717,7 +706,7 @@ impl Window {
         gtk::Builder::from_resource("/com/ranfdev/Geopard/ui/shortcuts.ui");
     }
     fn present_about(&self) {
-        let about = AboutWindowBuilder::new()
+        let about = adw::AboutWindow::builder()
             .application_icon(build_config::APP_ID)
             .application_name("Geopard")
             .developer_name("ranfdev")

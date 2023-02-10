@@ -45,7 +45,7 @@ glib::wrapper! {
 
 impl Download {
     pub fn new() -> Self {
-        glib::Object::new(&[]).unwrap()
+        glib::Object::new()
     }
 }
 impl Default for Download {
