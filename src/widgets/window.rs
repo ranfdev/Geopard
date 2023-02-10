@@ -177,6 +177,11 @@ impl Window {
         imp.config.replace(config);
         imp.zoom.borrow_mut().value = 1.0;
 
+        imp.url_bar
+            .bind_property("text", &*imp.small_url_bar, "text")
+            .bidirectional()
+            .build();
+
         this.setup_css_providers();
         this.squeezer_changed();
         this.setup_history_buttons();
