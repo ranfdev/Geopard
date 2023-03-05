@@ -7,14 +7,16 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2.4.0
-    - uses: cachix/install-nix-action@v15
-      with:
-        extra_nix_config: |
-          access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-    - uses: cachix/cachix-action@v10
+    - name: git checkout
+      uses: actions/checkout@v2.4.0
+    - name: Install Nix
+      uses: DeterminateSystems/nix-installer-action@main
+    - name: configure cachix
+      uses: cachix/cachix-action@v10
       with:
         name: ranfdev-geopard
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - run: nix --print-build-logs flake check
-    - run: nix --print-build-logs build
+    - name: run checks
+      run: nix --print-build-logs flake check
+    - name: build
+      run: nix --print-build-logs build
