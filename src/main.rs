@@ -28,14 +28,17 @@ async fn read_config() -> anyhow::Result<config::Config> {
     toml::from_str(&async_fs::read_to_string(&*SETTINGS_FILE_PATH).await?)
         .context("Reading config file")
 }
+
 async fn create_dir_if_not_exists(path: &std::path::Path) -> anyhow::Result<()> {
     if !path.exists() {
         async_fs::create_dir_all(path)
             .await
             .context(format!("Failed to create directory {:?}", path))?
     }
+
     Ok(())
 }
+
 async fn init_file_if_not_exists(
     path: &std::path::Path,
     text: Option<&[u8]>,
@@ -48,17 +51,20 @@ async fn init_file_if_not_exists(
         if let Some(text) = text {
             file.write_all(text).await?;
         }
+
         file.flush().await?;
     }
+
     Ok(())
 }
+
 async fn create_base_files() -> anyhow::Result<()> {
+    let default_config = toml::to_string(&*config::DEFAULT_CONFIG).unwrap();
+
     create_dir_if_not_exists(&DATA_DIR_PATH).await?;
     create_dir_if_not_exists(&CONFIG_DIR_PATH).await?;
     init_file_if_not_exists(&BOOKMARK_FILE_PATH, Some(DEFAULT_BOOKMARKS.as_bytes())).await?;
     init_file_if_not_exists(&HISTORY_FILE_PATH, None).await?;
-    let default_config = toml::to_string(&*config::DEFAULT_CONFIG).unwrap();
-
     init_file_if_not_exists(&SETTINGS_FILE_PATH, Some(default_config.as_bytes())).await?;
 
     Ok(())
@@ -80,7 +86,7 @@ fn main() {
                 }
                 resource_path.push("share/geopard/resources.gresource");
 
-                gio::Resource::load(config::RESOURCES_FILE.to_owned())
+                gio::Resource::load(&resource_path)
                     .expect("Unable to load resources.gresource in devenv")
             }
             Err(err) => {
