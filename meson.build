@@ -66,6 +66,16 @@ subdir('data')
 subdir('po')
 subdir('src')
 
+if get_option('profile') == 'development'
+  devenv = environment()
+
+  devenv.prepend('XDG_DATA_DIRS', [
+    join_paths(meson.current_build_dir(), get_option('datadir'))
+  ])
+
+  meson.add_devenv(devenv)
+endif
+
 gnome.post_install(
   gtk_update_icon_cache: true,
   glib_compile_schemas: true,

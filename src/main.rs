@@ -6,6 +6,9 @@ mod lossy_text_read;
 mod macros;
 mod widgets;
 
+use log::error;
+use std::{env, process};
+
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -65,8 +68,29 @@ fn main() {
     gtk::init().unwrap();
     env_logger::init();
 
-    let res = gio::Resource::load(config::RESOURCES_FILE).expect("Could not load gresource file");
-    gio::resources_register(&res);
+    let resources = match env::var("MESON_DEVENV") {
+        Err(_) => gio::Resource::load(config::RESOURCES_FILE.to_owned())
+            .expect("Unable to load resources.gresource"),
+        Ok(_) => match env::current_exe() {
+            Ok(path) => {
+                let mut resource_path = path;
+
+                for _ in 0..2 {
+                    resource_path.pop();
+                }
+                resource_path.push("share/geopard/resources.gresource");
+
+                gio::Resource::load(config::RESOURCES_FILE.to_owned())
+                    .expect("Unable to load resources.gresource in devenv")
+            }
+            Err(err) => {
+                error!("Unable to find the current path: {}", err);
+                process::exit(0x0100);
+            }
+        },
+    };
+
+    gio::resources_register(&resources);
 
     let application = adw::Application::builder()
         .application_id(config::APP_ID)
@@ -85,10 +109,12 @@ fn main() {
 
     application
         .connect_activate(move |app| app.open(&[gio::File::for_uri(bookmarks_url().as_str())], ""));
+
     application.connect_open(move |app, files, _| {
         let window = widgets::Window::new(app, config.clone());
         window.present();
         windows.borrow_mut().push(window.clone());
+
         for f in files {
             gtk::prelude::WidgetExt::activate_action(&window, "win.new-empty-tab", None).unwrap();
             gtk::prelude::WidgetExt::activate_action(
@@ -118,6 +144,7 @@ fn main() {
     application.set_accels_for_action("win.zoom-out", &["<Ctrl>minus"]);
     application.set_accels_for_action("win.reset-zoom", &["<Ctrl>0"]);
     // FIXME: win.view-source
+
     let ret = application.run();
-    std::process::exit(ret.into());
+    process::exit(ret.into());
 }
