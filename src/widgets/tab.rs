@@ -342,7 +342,7 @@ impl Tab {
                 let mut about = common::ABOUT_PAGE.to_owned();
                 write!(
                     &mut about,
-                    "\n\n## Metadata\n\nApp ID: {}\nVersion: {}",
+                    "\n## Metadata\nApp ID: {}\nVersion: {}",
                     crate::config::APP_ID,
                     crate::config::VERSION
                 )

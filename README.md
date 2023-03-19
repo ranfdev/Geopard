@@ -3,9 +3,9 @@
 Geopard
 =======
 
-Geopard is a GTK 4 Gemini client.
+Geopard is a GTK 4 Gemini client written in Rust.
 
-<br><br>
+<br>
 
 ![4-light](data/screenshots/4-light.png#gh-light-mode-only)
 ![4-dark](data/screenshots/4-light.png#gh-dark-mode-only)
@@ -27,7 +27,7 @@ Geopard is a GTK 4 Gemini client.
 
 ## Technical details
 Under the hood, it uses GTK 4 and Rust. Everything related to IO is asynchronous.
-To do that, it makes use of rust async/await capabilities and the async-std crate.
+To do that, it makes use of Rust's async/await capabilities and the `async-std` crate.
 
 ## How to change settings
 You should find the configuration files in `~/.config/geopard/`
