@@ -229,7 +229,6 @@ impl Window {
         self_action!(self, "about", present_about);
         self_action!(self, "focus-previous-tab", focus_previous_tab);
         self_action!(self, "focus-next-tab", focus_next_tab);
-        self_action!(self, "donate", donate);
         self_action!(self, "zoom-in", zoom_in);
         self_action!(self, "zoom-out", zoom_out);
         self_action!(self, "reset-zoom", reset_zoom);
@@ -728,13 +727,7 @@ impl Window {
         about.add_link("Donate 💝", "https://github.com/sponsors/ranfdev");
         about.present();
     }
-    fn donate(&self) {
-        gtk::show_uri(
-            None::<&gtk::Window>,
-            "https://github.com/sponsors/ranfdev",
-            0,
-        );
-    }
+
     fn focus_next_tab(&self) {
         let imp = self.imp();
         imp.tab_view.select_next_page();
