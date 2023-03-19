@@ -1,6 +1,8 @@
-data/resources/ui/about_dialog.ui.in
-data/resources/ui/shortcuts.ui
-data/resources/ui/window.ui.in
-data/com.belmoussaoui.GtkRustTemplate.desktop.in.in
-data/com.belmoussaoui.GtkRustTemplate.gschema.xml.in
-data/com.belmoussaoui.GtkRustTemplate.metainfo.xml.in.in
+data/resources/ui/download_page.blp
+data/resources/ui/input_page.blp
+data/resources/ui/shortcuts.blp
+data/resources/ui/tab.blp
+data/resources/ui/window.blp
+data/com.ranfdev.Geopard.desktop.in.in
+data/com.ranfdev.Geopard.gschema.xml.in
+data/com.ranfdev.Geopard.metainfo.xml.in.in
