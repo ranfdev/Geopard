@@ -19,18 +19,17 @@ glib_compile_resources = find_program('glib-compile-resources', required: true)
 glib_compile_schemas = find_program('glib-compile-schemas', required: true)
 desktop_file_validate = find_program('desktop-file-validate', required: false)
 appstream_util = find_program('appstream-util', required: false)
+
 cargo = find_program('cargo', required: true)
 
 version = meson.project_version()
 
-prefix = get_option('prefix')
-bindir = prefix / get_option('bindir')
-localedir = prefix / get_option('localedir')
+bindir = join_paths(get_option('prefix'), get_option('bindir'))
+localedir = join_paths(get_option('prefix'), get_option('localedir'))
+pkgdatadir = join_paths(get_option('prefix'), get_option('datadir'), meson.project_name())
+iconsdir = join_paths(get_option('prefix'), get_option('datadir'), 'icons')
+podir = join_paths(meson.project_source_root(), 'po')
 
-datadir = prefix / get_option('datadir')
-pkgdatadir = datadir / meson.project_name()
-iconsdir = datadir / 'icons'
-podir = meson.project_source_root() / 'po'
 gettext_package = meson.project_name()
 
 if get_option('profile') == 'development'
@@ -51,7 +50,7 @@ endif
 
 meson.add_dist_script(
   'build-aux/dist-vendor.sh',
-  meson.project_build_root() / 'meson-dist' / meson.project_name() + '-' + version,
+  join_paths(meson.project_build_root(), 'meson-dist', meson.project_name() + '-' + version),
   meson.project_source_root()
 )
 
