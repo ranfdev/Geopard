@@ -5,17 +5,20 @@ template GeopardWindow: Adw.ApplicationWindow {
   title: _("Geopard");
   default-width: 800;
   default-height: 600;
+
   [content]
   Gtk.Box {
     orientation: vertical;
     Adw.Squeezer squeezer {
       transition-type: crossfade;
+
       Adw.HeaderBar {
         [start]
         Gtk.Box {
           Gtk.Button previous {
             icon-name: "go-previous-symbolic";
             action-name: "win.previous";
+            tooltip-text: _("Go back one page (Alt+←)\nRight-click to show history");
           }
           Gtk.Popover previous_popover {
             autohide: true;
@@ -28,6 +31,7 @@ template GeopardWindow: Adw.ApplicationWindow {
           Gtk.Button next {
             icon-name: "go-next-symbolic";
             action-name: "win.next";
+            tooltip-text: _("Go forward one page (Alt+→)\nRight-click to show history");
           }
           Gtk.Popover next_popover {
             autohide: true;
@@ -38,11 +42,13 @@ template GeopardWindow: Adw.ApplicationWindow {
         Gtk.Button {
           icon-name: "view-refresh-symbolic";
           action-name: "win.reload";
+          tooltip-text: _("Reload current page (Ctrl+R)");
         }
         [start]
         Gtk.Button {
           icon-name: "tab-new-symbolic";
           action-name: "win.new-tab";
+          tooltip-text: _("Open a new tab (Ctrl+T)");
         }
         [title]
         Adw.Clamp {
@@ -51,12 +57,14 @@ template GeopardWindow: Adw.ApplicationWindow {
           width-request: 360;
           Gtk.SearchEntry url_bar {
             hexpand: true;
+            placeholder-text: _("Enter Gemini address or search with Geminispace");
           }
         }
         [end]
         Gtk.MenuButton primary_menu_btn {
           icon-name: "open-menu";
           menu-model: primary_menu;
+          tooltip-text: _("Main menu");
         }
       }
       Gtk.WindowHandle header_small {
@@ -67,6 +75,7 @@ template GeopardWindow: Adw.ApplicationWindow {
           margin-end: 6;
           spacing: 6;
           styles ["headerbar"]
+
           Gtk.WindowControls ws {
             side: start;
             visible: bind ws.empty inverted;
@@ -74,6 +83,7 @@ template GeopardWindow: Adw.ApplicationWindow {
           [title]
           Gtk.SearchEntry small_url_bar {
             hexpand: true;
+            placeholder-text: _("Enter Gemini address or search with Geminispace");
           }
           Gtk.WindowControls we {
             side: end;
@@ -123,31 +133,37 @@ template GeopardWindow: Adw.ApplicationWindow {
             Gtk.Button {
               icon-name: "go-previous-symbolic";
               action-name: "win.previous";
+              tooltip-text: _("Go back one page (Alt+←)\nRight-click to show history");
             }
             [start]
             Gtk.Button {
               icon-name: "go-next-symbolic";
               action-name: "win.next";
+              tooltip-text: _("Go forward one page (Alt+→)\nRight-click to show history");
             }
             [start]
             Gtk.Button {
               icon-name: "view-refresh-symbolic";
               action-name: "win.reload";
+              tooltip-text: _("Reload current page (Ctrl+R)");
             }
             [title]
             Gtk.Button {
               icon-name: "system-search-symbolic";
               action-name: "win.focus-url-bar";
+              tooltip-text: _("Start searching (Ctrl+L)");
             }
             [end]
             Gtk.MenuButton {
               icon-name: "open-menu";
               menu-model: primary_menu;
+              tooltip-text: _("Main menu");
             }
             [end]
             Gtk.Button {
               icon-name: "tab-new-symbolic";
               action-name: "win.new-tab";
+              tooltip-text: _("Open a new tab (Ctrl+T)");
             }
           }
         }
