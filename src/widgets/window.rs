@@ -720,6 +720,8 @@ impl Window {
             .developer_name("ranfdev")
             .license_type(gtk::License::Gpl30)
             .version(build_config::VERSION)
+            .developers(vec!["ranfdev"])
+            .copyright("Copyright © 2022-2023 ranfdev")
             .issue_url("https://github.com/ranfdev/Geopard/issues")
             .website("https://github.com/ranfdev/Geopard")
             .transient_for(self)
