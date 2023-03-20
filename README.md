@@ -8,7 +8,7 @@ Geopard is a GTK 4 Gemini client written in Rust.
 <br>
 
 ![4-light](data/screenshots/4-light.png#gh-light-mode-only)
-![4-dark](data/screenshots/4-light.png#gh-dark-mode-only)
+![4-dark](data/screenshots/4-dark.png#gh-dark-mode-only)
 
 ## Some notable features
 - **Colors!**
