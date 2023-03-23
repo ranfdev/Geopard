@@ -6,11 +6,9 @@ mod lossy_text_read;
 mod macros;
 mod widgets;
 
-use log::error;
-use std::{env, process};
-
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::{env, process};
 
 use anyhow::Context;
 use async_fs::File;
@@ -18,6 +16,7 @@ use common::bookmarks_url;
 use futures::prelude::*;
 use gtk::gio;
 use gtk::prelude::*;
+use log::error;
 
 use crate::common::{
     BOOKMARK_FILE_PATH, CONFIG_DIR_PATH, DATA_DIR_PATH, DEFAULT_BOOKMARKS, HISTORY_FILE_PATH,
@@ -75,8 +74,9 @@ fn main() {
     env_logger::init();
 
     let resources = match env::var("MESON_DEVENV") {
-        Err(_) => gio::Resource::load(config::RESOURCES_FILE)
-            .expect("Unable to load resources.gresource"),
+        Err(_) => {
+            gio::Resource::load(config::RESOURCES_FILE).expect("Unable to load resources.gresource")
+        }
         Ok(_) => match env::current_exe() {
             Ok(path) => {
                 let mut resource_path = path;
