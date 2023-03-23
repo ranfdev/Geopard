@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: geopard\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-03-19 23:13+0100\n"
+"POT-Creation-Date: 2023-03-23 22:24+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -112,36 +112,40 @@ msgstr ""
 msgid "Geopard"
 msgstr ""
 
-#: data/resources/ui/window.blp:21 data/resources/ui/window.blp:159
+#: data/resources/ui/window.blp:25 data/resources/ui/window.blp:161
 msgid ""
-"Go back one page (Alt+←)\n"
+"Go back one page\n"
 "Right-click to show history"
 msgstr ""
 
-#: data/resources/ui/window.blp:35 data/resources/ui/window.blp:166
+#: data/resources/ui/window.blp:39 data/resources/ui/window.blp:168
 msgid ""
-"Go forward one page (Alt+→)\n"
+"Go forward one page\n"
 "Right-click to show history"
 msgstr ""
 
-#: data/resources/ui/window.blp:48 data/resources/ui/window.blp:173
-msgid "Reload current page (Ctrl+R)"
+#: data/resources/ui/window.blp:52 data/resources/ui/window.blp:175
+msgid "Reload current page"
 msgstr ""
 
-#: data/resources/ui/window.blp:55 data/resources/ui/window.blp:194
-msgid "Open a new tab (Ctrl+T)"
+#: data/resources/ui/window.blp:59
+msgid "Open a new tab"
 msgstr ""
 
-#: data/resources/ui/window.blp:66 data/resources/ui/window.blp:95
+#: data/resources/ui/window.blp:70 data/resources/ui/window.blp:99
 msgid "Enter Gemini address or search with Geminispace"
 msgstr ""
 
-#: data/resources/ui/window.blp:74 data/resources/ui/window.blp:187
+#: data/resources/ui/window.blp:78 data/resources/ui/window.blp:189
 msgid "Main menu"
 msgstr ""
 
-#: data/resources/ui/window.blp:180
-msgid "Start searching (Ctrl+L)"
+#: data/resources/ui/window.blp:182
+msgid "Start searching"
+msgstr ""
+
+#: data/resources/ui/window.blp:196
+msgid "Open tab overview"
 msgstr ""
 
 #: data/com.ranfdev.Geopard.desktop.in.in:4
