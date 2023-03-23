@@ -190,7 +190,7 @@ impl Window {
         this.setup_actions();
         this.setup_signals();
 
-        return this;
+        this
     }
     fn setup_settings(&self) {
         let imp = self.imp();
