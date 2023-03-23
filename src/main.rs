@@ -90,7 +90,7 @@ fn main() {
             }
             Err(err) => {
                 error!("Unable to find the current path: {}", err);
-                process::exit(0x0100);
+                process::exit(-1);
             }
         },
     };
