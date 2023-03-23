@@ -75,7 +75,7 @@ fn main() {
     env_logger::init();
 
     let resources = match env::var("MESON_DEVENV") {
-        Err(_) => gio::Resource::load(config::RESOURCES_FILE.to_owned())
+        Err(_) => gio::Resource::load(config::RESOURCES_FILE)
             .expect("Unable to load resources.gresource"),
         Ok(_) => match env::current_exe() {
             Ok(path) => {
