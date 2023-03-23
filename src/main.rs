@@ -77,9 +77,7 @@ fn main() {
         Err(_) => gio::Resource::load(config::RESOURCES_FILE)
             .unwrap_or_else(|_| panic!("Unable to load {}", config::RESOURCES_FILE)),
         Ok(_) => match env::current_exe() {
-            Ok(path) => {
-                let mut resource_path = path;
-
+            Ok(mut resource_path) => {
                 for _ in 0..2 {
                     resource_path.pop();
                 }
