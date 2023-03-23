@@ -378,7 +378,7 @@ impl Window {
             &gtk::Button::builder()
                 .icon_name("zoom-out-symbolic")
                 .action_name("win.zoom-out")
-                .tooltip_text("Zoom out (Ctrl+-)")
+                .tooltip_text("Zoom out")
                 .css_classes(vec!["flat", "circular"])
                 .build(),
         );
@@ -389,7 +389,7 @@ impl Window {
             .flags(glib::BindingFlags::SYNC_CREATE)
             .transform_to(|_, zoom: f64| Some(format!("{:3}%", (zoom * 100.0) as usize).to_value()))
             .build();
-        value_btn.set_tooltip_text(Some("Reset zoom level (Ctrl+0)"));
+        value_btn.set_tooltip_text(Some("Reset zoom level"));
         value_btn.set_action_name(Some("win.reset-zoom"));
         value_btn.add_css_class("flat");
         value_btn.add_css_class("body");
@@ -399,7 +399,7 @@ impl Window {
         zoom_box.append(
             &gtk::Button::builder()
                 .icon_name("zoom-in-symbolic")
-                .tooltip_text("Zoom in (Ctrl++)")
+                .tooltip_text("Zoom in")
                 .css_classes(vec!["flat", "circular"])
                 .action_name("win.zoom-in")
                 .build(),
