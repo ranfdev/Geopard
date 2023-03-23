@@ -67,7 +67,11 @@ pub mod imp {
         #[template_child]
         pub(crate) tab_view: TemplateChild<adw::TabView>,
         #[template_child]
+        pub(crate) tab_overview: TemplateChild<adw::TabOverview>,
+        #[template_child]
         pub(crate) tab_bar: TemplateChild<adw::TabBar>,
+        #[template_child]
+        pub(crate) tab_bar_revealer: TemplateChild<gtk::Revealer>,
         #[template_child]
         pub(crate) primary_menu_btn: TemplateChild<gtk::MenuButton>,
         pub(crate) config: RefCell<config::Config>,
@@ -315,6 +319,12 @@ impl Window {
         imp.tab_view.connect_selected_page_notify(
             clone!(@weak self as this => @default-panic, move |tab_view| {
               this.page_switched(tab_view);
+            }),
+        );
+        imp.tab_overview.connect_create_tab(
+            clone!(@weak self as this => @default-panic, move |_| {
+              this.new_tab();
+              this.imp().tab_view.selected_page().unwrap()
             }),
         );
         imp.squeezer.connect_visible_child_notify(
@@ -704,11 +714,8 @@ impl Window {
         let imp = self.imp();
         let is_small = self.is_small_screen();
         imp.bottom_bar_revealer.set_reveal_child(is_small);
-        if is_small {
-            imp.tab_bar.add_css_class("inline");
-        } else {
-            imp.tab_bar.remove_css_class("inline");
-        }
+        imp.tab_bar_revealer.set_reveal_child(!is_small);
+        imp.tab_view.invalidate_thumbnails();
     }
     fn present_shortcuts(&self) {
         gtk::Builder::from_resource("/com/ranfdev/Geopard/ui/shortcuts.ui");
