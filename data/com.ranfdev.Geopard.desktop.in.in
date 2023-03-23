@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Geopard
-Comment=A gemini browser
+Comment=A GTK 4 Gemini browser written in Rust
 Type=Application
 Exec=geopard
 Terminal=false

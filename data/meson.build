@@ -1,5 +1,3 @@
-subdir('icons')
-subdir('resources')
 # Desktop file
 desktop_conf = configuration_data()
 desktop_conf.set('icon', application_id)
@@ -13,8 +11,9 @@ desktop_file = i18n.merge_file(
   output: '@0@.desktop'.format(application_id),
   po_dir: podir,
   install: true,
-  install_dir: datadir / 'applications'
+  install_dir: join_paths(get_option('datadir'), 'applications')
 )
+
 # Validate Desktop file
 if desktop_file_validate.found()
   test(
@@ -40,8 +39,9 @@ appdata_file = i18n.merge_file(
   output: '@0@.metainfo.xml'.format(application_id),
   po_dir: podir,
   install: true,
-  install_dir: datadir / 'metainfo'
+  install_dir: join_paths(get_option('datadir'), 'metainfo')
 )
+
 # Validate Appdata
 if appstream_util.found()
   test(
@@ -57,12 +57,13 @@ endif
 gschema_conf = configuration_data()
 gschema_conf.set('app-id', application_id)
 gschema_conf.set('gettext-package', gettext_package)
+
 configure_file(
   input: '@0@.gschema.xml.in'.format(base_id),
   output: '@0@.gschema.xml'.format(application_id),
   configuration: gschema_conf,
   install: true,
-  install_dir: datadir / 'glib-2.0' / 'schemas'
+  install_dir: join_paths(get_option('datadir'), 'glib-2.0/schemas')
 )
 
 # Validata GSchema
@@ -74,3 +75,6 @@ if glib_compile_schemas.found()
     ],
   )
 endif
+
+subdir('icons')
+subdir('resources')
