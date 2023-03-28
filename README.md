@@ -37,8 +37,7 @@ In the future I will probably introduce a settings GUI.
 ## How to build
 
 ### With Flatpak
-If you have `gnome-builder` installed, use it to the open the folder of the source
-code and hit the run button.
+If you have `gnome-builder` installed, use it to open the folder of the source code and hit the run button.
 
 ### Build with Nix
 If you have the [nix](https://nixos.org/) package manager and flakes enabled, you can simply do:
