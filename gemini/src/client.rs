@@ -6,7 +6,7 @@ use futures::io::Cursor;
 use futures::prelude::*;
 use futures::task::{Context, Poll};
 use gio::prelude::*;
-use log::{debug, warn};
+use log::debug;
 use url::Url;
 
 use crate::{CertProvider, CertificateError};
@@ -208,28 +208,25 @@ impl Client {
         let tls_error_clone = tls_error.clone();
         socket.connect_event(move |_this, event, _connectable, connection| {
             use gio::SocketClientEvent;
-            match event {
-                SocketClientEvent::TlsHandshaking => {
-                    let connection = connection
-                        .as_ref()
-                        .unwrap()
-                        .dynamic_cast_ref::<gio::TlsClientConnection>()
-                        .unwrap();
+            if event == SocketClientEvent::TlsHandshaking {
+                let connection = connection
+                    .as_ref()
+                    .unwrap()
+                    .dynamic_cast_ref::<gio::TlsClientConnection>()
+                    .unwrap();
 
-                    let host = host.clone();
-                    let cert_provider = cert_provider.clone();
-                    let tls_error_clone = tls_error_clone.clone();
-                    connection.connect_accept_certificate(move |_this, cert, _cert_flags| {
-                        match cert_provider.is_valid(&host.to_string(), cert.clone()) {
-                            Ok(()) => true,
-                            Err(e) => {
-                                *tls_error_clone.borrow_mut() = Some(e);
-                                false
-                            }
+                let host = host.clone();
+                let cert_provider = cert_provider.clone();
+                let tls_error_clone = tls_error_clone.clone();
+                connection.connect_accept_certificate(move |_this, cert, _cert_flags| {
+                    match cert_provider.is_valid(&host.to_string(), cert.clone()) {
+                        Ok(()) => true,
+                        Err(e) => {
+                            *tls_error_clone.borrow_mut() = Some(e);
+                            false
                         }
-                    });
-                }
-                _ => {}
+                    }
+                });
             }
         });
 
@@ -238,7 +235,7 @@ impl Client {
 
         // Handle the custom tls errors, before handling the automatic iostream errors
         if let Some(e) = tls_error.borrow().as_ref() {
-            return Err(Error::Tls(e.clone()));
+            return Err(Error::Tls(*e));
         };
 
         let iostream = iostream.map_err(|e| Error::Gio(e.to_string()))?;
