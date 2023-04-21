@@ -1,14 +1,11 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
 read -p "Do you want to do a clean compilation? [N/y] " answer
 
 if [[ "$answer" == "y" ]]; then
-    rm -r _builddir
+    rm -r _build
 fi
 
-meson setup _builddir
-meson configure _builddir -Dprefix="$(pwd)/_builddir" -Dprofile=development
-ninja -C _builddir install
-
-meson compile -C _builddir --verbose
-meson devenv -C _builddir ./src/geopard
+meson setup _build -Dprefix="$(pwd)/_build" -Dprofile=development
+ninja -C _build install
+meson devenv -C _build ./src/geopard
