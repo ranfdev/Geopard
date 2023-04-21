@@ -1,8 +1,10 @@
 use std::cell::{Cell, Ref, RefCell};
-use std::fmt::Write;
+use std::collections::HashMap;
+use std::io::Write;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
+use std::{fs, path};
 
 use anyhow::{bail, Context, Result};
 use async_fs::File;
@@ -10,11 +12,12 @@ use futures::future::RemoteHandle;
 use futures::io::BufReader;
 use futures::prelude::*;
 use futures::task::LocalSpawnExt;
+use gemini::CertificateError;
 use glib::{clone, Properties};
 use gtk::gdk::prelude::*;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::{glib, CompositeTemplate, TemplateChild};
+use gtk::{gio, glib, CompositeTemplate, TemplateChild};
 use hypertext::HypertextEvent;
 use log::{debug, info};
 use once_cell::sync::Lazy;
@@ -26,6 +29,146 @@ use crate::common::glibctx;
 use crate::lossy_text_read::*;
 
 const BYTES_BEFORE_YIELD: usize = 1024 * 10;
+
+#[derive(Debug, Clone)]
+struct KnownHostCert {
+    sha: String,
+    session_override: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct FileCertProvider {
+    known_hosts_path: path::PathBuf,
+    known_hosts: RefCell<HashMap<String, KnownHostCert>>,
+}
+impl FileCertProvider {
+    fn from_path(path: &std::path::Path) -> anyhow::Result<Self> {
+        let known_hosts = if !path.exists() {
+            HashMap::new()
+        } else {
+            fs::read_to_string(path)
+                .with_context(|| format!("parsing file at {:?}", path))?
+                .lines()
+                .map(|line| {
+                    let mut parts = line.split(' ');
+                    let host = parts.next().unwrap();
+                    let sha = parts.next().unwrap();
+                    (
+                        host.to_string(),
+                        KnownHostCert {
+                            sha: sha.to_string(),
+                            session_override: false,
+                        },
+                    )
+                })
+                .collect()
+        };
+
+        Ok(Self {
+            known_hosts: RefCell::new(known_hosts),
+            known_hosts_path: path.into(),
+        })
+    }
+    fn add_server_cert(&self, host: &str, cert: gio::TlsCertificate) {
+        let cert_sha = {
+            let mut ck = glib::Checksum::new(glib::ChecksumType::Sha256).unwrap();
+            ck.update(&cert.certificate().unwrap());
+            ck.string().unwrap()
+        };
+
+        let mut known_hosts_file = fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .append(true)
+            .open(&self.known_hosts_path)
+            .unwrap();
+
+        writeln!(known_hosts_file, "{} {}", &host, &cert_sha).unwrap();
+
+        self.known_hosts.borrow_mut().insert(
+            host.to_string(),
+            KnownHostCert {
+                sha: cert_sha,
+                session_override: false,
+            },
+        );
+    }
+}
+impl Default for FileCertProvider {
+    fn default() -> Self {
+        Self::from_path(&common::KNOWN_HOSTS_PATH).unwrap()
+    }
+}
+
+impl gemini::CertProvider for FileCertProvider {
+    fn is_valid(&self, host: &str, cert: gio::TlsCertificate) -> Result<(), CertificateError> {
+        {
+            if let Some(known_host) = { self.known_hosts.borrow().get(host) } {
+                if known_host.session_override {
+                    return Ok(());
+                }
+                let cert_sha = {
+                    let mut ck = glib::Checksum::new(glib::ChecksumType::Sha256).unwrap();
+                    ck.update(&cert.certificate().unwrap());
+                    ck.string().unwrap()
+                };
+
+                if known_host.sha != cert_sha {
+                    return Err(CertificateError::BadIdentity);
+                }
+                if let Some(cert_end_date) = cert.not_valid_after() {
+                    if cert_end_date < glib::DateTime::now_utc().unwrap() {
+                        return Err(CertificateError::Expired);
+                    }
+                }
+                if let Some(cert_start_date) = cert.not_valid_before() {
+                    if cert_start_date > glib::DateTime::now_utc().unwrap() {
+                        return Err(CertificateError::NotActivated);
+                    }
+                }
+
+                return Ok(());
+            }
+        }
+        self.add_server_cert(host, cert.clone());
+        self.is_valid(host, cert)
+    }
+
+    fn override_temp_validity(&self, host: &str) {
+        if let Some(known_host) = self.known_hosts.borrow_mut().get_mut(host) {
+            known_host.session_override = true;
+        }
+    }
+
+    fn remove_cert(&self, host: &str) {
+        let mut known_hosts = self.known_hosts.borrow_mut();
+        known_hosts.remove(host);
+
+        let mut known_hosts_file = fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&self.known_hosts_path)
+            .unwrap();
+
+        for (host, cert) in known_hosts.iter() {
+            writeln!(known_hosts_file, "{} {}", &host, &cert.sha).unwrap();
+        }
+    }
+}
+
+pub struct Client(gemini::Client);
+
+impl Default for Client {
+    fn default() -> Self {
+        Client(
+            gemini::ClientBuilder::new()
+                .redirect(true)
+                .cert_provider(FileCertProvider::default())
+                .build(),
+        )
+    }
+}
 
 #[derive(Clone)]
 pub struct HistoryItem {
@@ -87,7 +230,7 @@ pub mod imp {
     #[template(resource = "/com/ranfdev/Geopard/ui/tab.ui")]
     #[properties(wrapper_type = super::Tab)]
     pub struct Tab {
-        pub(crate) gemini_client: RefCell<gemini::Client>,
+        pub(crate) gemini_client: Client,
         pub(crate) config: RefCell<crate::config::Config>,
         pub(crate) history: RefCell<History>,
         #[template_child]
@@ -124,13 +267,6 @@ pub mod imp {
     }
 
     impl ObjectImpl for Tab {
-        fn constructed(&self) {
-            self.parent_constructed();
-
-            self.gemini_client
-                .replace(gemini::ClientBuilder::new().redirect(true).build());
-        }
-
         fn signals() -> &'static [glib::subclass::Signal] {
             static SIGNALS: Lazy<Vec<glib::subclass::Signal>> =
                 Lazy::new(|| vec![glib::subclass::Signal::builder("open-background-tab").build()]);
@@ -340,6 +476,7 @@ impl Tab {
         match url.scheme() {
             "about" => {
                 let mut about = common::ABOUT_PAGE.to_owned();
+                use std::fmt::Write;
                 write!(
                     &mut about,
                     "\n## Metadata\nApp ID: {}\nVersion: {}",
@@ -364,7 +501,20 @@ impl Tab {
     }
     async fn open_gemini_url(&self, url: Url) -> anyhow::Result<Option<Vec<u8>>> {
         let imp = self.imp();
-        let res: gemini::Response = { imp.gemini_client.borrow().fetch(url.as_str()) }.await?;
+        let res = { imp.gemini_client.0.fetch(url.as_str()) }.await;
+
+        let res = match res {
+            Ok(res) => res,
+            Err(gemini::Error::Tls(CertificateError::BadIdentity)) => {
+                self.display_mitm_error();
+                return Ok(None);
+            }
+            Err(gemini::Error::Tls(e)) => {
+                self.display_tls_error(e);
+                return Ok(None);
+            }
+            Err(e) => return Err(e.into()),
+        };
 
         use gemini::Status::*;
         let meta = res.meta().to_owned();
@@ -380,6 +530,7 @@ impl Tab {
             Success(_) => {
                 let body = res.body().context("Body not found")?;
                 let buffered = futures::io::BufReader::new(body);
+
                 if meta.contains("text/gemini") {
                     let res = this.display_gemini(buffered).await?;
                     Some(res)
@@ -610,17 +761,20 @@ impl Tab {
         let mut parser = gemini::Parser::new();
         let mut data = String::with_capacity(1024);
         let mut total = 0;
-        let mut n;
         let mut last_yield_at_bytes = 0;
 
         let page = self.new_hypertext_page();
         let mut page_events = vec![];
 
         loop {
-            n = reader.read_line_lossy(&mut data).await?;
-            if n == 0 {
-                break;
-            }
+            let res = reader.read_line_lossy(&mut data).await;
+
+            let n = match res {
+                Ok(0) => break,
+                Ok(n) => n,
+                Err(err) => return Err(anyhow::anyhow!(err.to_string())),
+            };
+
             {
                 let line = &data[total..];
                 let mut tokens = vec![];
@@ -660,6 +814,61 @@ impl Tab {
         p.set_title("Error");
         p.set_description(Some(&error.to_string()));
         p.set_icon_name(Some("dialog-error-symbolic"));
+
+        imp.stack.add_child(&p);
+        imp.stack.set_visible_child(&p);
+    }
+    pub fn display_mitm_error(&self) {
+        let imp = self.imp();
+
+        let p = adw::StatusPage::new();
+        p.set_title("Tls Server Certificate Changed");
+        p.set_description(Some(
+            "This may be caused by a malicious actor trying to intercept your connection",
+        ));
+        p.set_icon_name(Some("dialog-error-symbolic"));
+
+        let override_btn = gtk::Button::with_label("Trust New Certificate");
+        override_btn.connect_clicked(clone!(@weak self as this => move |_| {
+            let imp = this.imp();
+            let url = Url::parse(&this.url()).unwrap();
+
+            imp.gemini_client.0.cert_provider().remove_cert(url.host_str().unwrap());
+            this.reload();
+        }));
+        override_btn.set_halign(gtk::Align::Center);
+        override_btn.add_css_class("destructive-action");
+        override_btn.add_css_class("pill");
+        p.set_child(Some(&override_btn));
+
+        imp.stack.add_child(&p);
+        imp.stack.set_visible_child(&p);
+    }
+    pub fn display_tls_error(&self, error: CertificateError) {
+        let imp = self.imp();
+
+        let p = adw::StatusPage::new();
+        p.set_title("Tls Server Certificate Error");
+        p.set_description(Some(&format!(
+            "{:?}
+        You can override the certificate validity for this session
+        and continue",
+            &error.to_string()
+        )));
+        p.set_icon_name(Some("dialog-error-symbolic"));
+
+        let override_btn = gtk::Button::with_label("Continue");
+        override_btn.connect_clicked(clone!(@weak self as this => move |_| {
+            let imp = this.imp();
+            let url = Url::parse(&this.url()).unwrap();
+
+            imp.gemini_client.0.cert_provider().override_temp_validity(url.host_str().unwrap());
+            this.reload();
+        }));
+        override_btn.set_halign(gtk::Align::Center);
+        override_btn.add_css_class("destructive-action");
+        override_btn.add_css_class("pill");
+        p.set_child(Some(&override_btn));
 
         imp.stack.add_child(&p);
         imp.stack.set_visible_child(&p);
