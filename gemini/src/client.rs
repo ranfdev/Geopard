@@ -1,10 +1,15 @@
+use std::cell::RefCell;
 use std::convert::TryFrom;
+use std::rc::Rc;
 
-use async_net::TcpStream;
 use futures::io::Cursor;
 use futures::prelude::*;
+use futures::task::{Context, Poll};
+use gio::prelude::*;
 use log::debug;
 use url::Url;
+
+use crate::{CertProvider, CertificateError};
 
 const INIT_BUFFER_SIZE: usize = 8192; // 8Kb
 const MAX_REDIRECT: u8 = 5;
@@ -25,6 +30,8 @@ pub struct InvalidStatus;
 pub enum Error {
     #[error("Io error: {0:?}")]
     Io(#[from] std::io::Error),
+    #[error("Gio error: {0:?}")]
+    Gio(String),
     #[error("The server doesn't follow the gemini protocol: {0:?}")]
     InvalidProtocolData(#[from] ProtoError),
     #[error("The server sent invalid utf8: {0:?}")]
@@ -32,7 +39,7 @@ pub enum Error {
     #[error("Invalid url: {0:?}")]
     InvalidUrl(#[from] url::ParseError),
     #[error("Tls error: {0:?}")]
-    Tls(#[from] async_native_tls::Error),
+    Tls(#[from] CertificateError),
     #[error("Invalid host")]
     InvalidHost,
     #[error("Too many redirections. Last requested redirect was {0}")]
@@ -65,12 +72,33 @@ impl TryFrom<u8> for Status {
     }
 }
 
-#[derive(Debug)]
+pub struct ResponseBody<T: AsyncRead> {
+    // WARNING: The connection MUST STAY IN SCOPE while the body is read. If the connection
+    // goes out of scope, it gets closed and reading it becomes impossible.
+    pub connection: gio::SocketConnection,
+    pub cursor_stream: T,
+}
+
+impl<T: AsyncRead + std::marker::Unpin> AsyncRead for ResponseBody<T> {
+    // Required method
+    fn poll_read(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut [u8],
+    ) -> Poll<Result<usize, std::io::Error>> {
+        let cursor_stream = &mut self.as_mut().cursor_stream;
+        futures::pin_mut!(cursor_stream);
+        let cursor_stream: std::pin::Pin<_> = cursor_stream.as_mut();
+        AsyncRead::poll_read(cursor_stream, cx, buf)
+    }
+}
+
 pub struct Response {
     cursor: Cursor<Vec<u8>>,
     status: Status,
     meta: String,
-    tls_s: async_native_tls::TlsStream<TcpStream>,
+    pub connection: gio::SocketConnection,
+    pub async_read_stream: gio::InputStreamAsyncBufRead<gio::PollableInputStream>,
 }
 impl Response {
     pub fn status(&self) -> Status {
@@ -84,7 +112,10 @@ impl Response {
     }
     pub fn body(self) -> Option<impl AsyncRead> {
         match self.status {
-            Status::Success(_) => Some(self.cursor.chain(self.tls_s)),
+            Status::Success(_) => Some(ResponseBody {
+                connection: self.connection,
+                cursor_stream: self.cursor.chain(self.async_read_stream),
+            }),
             _ => None,
         }
     }
@@ -97,6 +128,7 @@ pub struct ClientOptions {
 #[derive(Default, Debug, Clone)]
 pub struct ClientBuilder {
     options: ClientOptions,
+    cert_provider: Option<Rc<dyn CertProvider>>,
 }
 
 impl ClientBuilder {
@@ -107,22 +139,33 @@ impl ClientBuilder {
         self.options.redirect = redirect;
         self
     }
+    pub fn cert_provider(mut self, provider: impl CertProvider + 'static) -> Self {
+        self.cert_provider = Some(Rc::new(provider));
+        self
+    }
     pub fn build(self) -> Client {
         Client {
             options: self.options,
+            cert_provider: self.cert_provider.unwrap(),
         }
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Client {
     options: ClientOptions,
+    cert_provider: Rc<dyn CertProvider>,
 }
 impl Client {
-    pub fn new() -> Self {
+    pub fn new(cert_provider: Rc<dyn CertProvider>) -> Self {
         Self {
             options: Default::default(),
+            cert_provider,
         }
+    }
+
+    pub fn cert_provider(&self) -> Rc<dyn CertProvider> {
+        self.cert_provider.clone()
     }
     pub async fn fetch(&self, url_str: &str) -> Result<Response, Error> {
         let mut url_str = url_str;
@@ -135,7 +178,7 @@ impl Client {
         };
         while {
             let url = Url::parse(url_str)?;
-            res = Self::fetch_internal(url).await?;
+            res = self.fetch_internal(url).await?;
             i < max_redirect
         } {
             match res.status() {
@@ -148,26 +191,61 @@ impl Client {
         }
         Ok(res)
     }
-    async fn fetch_internal(url: Url) -> Result<Response, Error> {
+    async fn fetch_internal(&self, url: Url) -> Result<Response, Error> {
         if url.scheme() != "gemini" {
             return Err(Error::SchemeNotSupported);
         }
 
-        let port = url.port().unwrap_or(1965);
-        let host = url.host_str().ok_or(Error::InvalidHost)?;
-        let addr = async_net::resolve((host, port))
-            .await?
-            .into_iter()
-            .next()
-            .ok_or(Error::InvalidHost)?;
-        let tcp_s = TcpStream::connect(addr).await?;
-        let mut tls_s = async_native_tls::TlsConnector::new()
-            .danger_accept_invalid_certs(true) // FIXME: handle certs
-            .connect(host, tcp_s)
-            .await?;
+        let host = url.host().ok_or(Error::InvalidHost)?.to_owned();
+        let addr =
+            gio::NetworkAddress::parse_uri(url.as_str(), 1965).map_err(|_| Error::InvalidHost)?;
+        let socket = gio::SocketClient::new();
+        socket.set_tls(true);
+        socket.set_timeout(10000);
+
+        let tls_error = Rc::new(RefCell::new(None));
+        let cert_provider = self.cert_provider.clone();
+        let tls_error_clone = tls_error.clone();
+        socket.connect_event(move |_this, event, _connectable, connection| {
+            use gio::SocketClientEvent;
+            if event == SocketClientEvent::TlsHandshaking {
+                let connection = connection
+                    .as_ref()
+                    .unwrap()
+                    .dynamic_cast_ref::<gio::TlsClientConnection>()
+                    .unwrap();
+
+                let host = host.clone();
+                let cert_provider = cert_provider.clone();
+                let tls_error_clone = tls_error_clone.clone();
+                connection.connect_accept_certificate(move |_this, cert, _cert_flags| {
+                    match cert_provider.is_valid(&host.to_string(), cert.clone()) {
+                        Ok(()) => true,
+                        Err(e) => {
+                            *tls_error_clone.borrow_mut() = Some(e);
+                            false
+                        }
+                    }
+                });
+            }
+        });
+
+        // Open the connection, without checking for errors
+        let iostream = socket.connect_future(&addr).await;
+
+        // Handle the custom tls errors, before handling the automatic iostream errors
+        if let Some(e) = tls_error.borrow().as_ref() {
+            return Err(Error::Tls(*e));
+        };
+
+        let iostream = iostream.map_err(|e| Error::Gio(e.to_string()))?;
 
         let url_request = url.to_string() + "\r\n";
-        tls_s.write_all(url_request.as_bytes()).await?;
+        iostream
+            .output_stream()
+            .write_all_future(url_request.into_bytes(), glib::PRIORITY_DEFAULT)
+            .await
+            .map_err(|(_, e)| Error::Gio(e.to_string()))?;
         debug!("Request sent at {}", url);
 
         // To save some allocations, the buffer size is pretty big. If the user has a fast internet
@@ -177,9 +255,15 @@ impl Client {
         let mut buffer = Vec::with_capacity(INIT_BUFFER_SIZE);
         buffer.extend_from_slice(&[0; INIT_BUFFER_SIZE]);
 
+        let mut async_readable = iostream
+            .input_stream()
+            .dynamic_cast::<gio::PollableInputStream>()
+            .unwrap()
+            .into_async_buf_read(1024);
+
         let mut n_read = 0;
         let meta_end = loop {
-            match tls_s.read(&mut buffer[n_read..]).await {
+            match async_readable.read(&mut buffer[n_read..]).await {
                 Ok(0) => return Err(Error::InvalidProtocolData(ProtoError::MetaNotFound)),
                 Ok(n) => {
                     n_read += n;
@@ -203,8 +287,7 @@ impl Client {
                         }
                     }
                 }
-                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(Error::Gio(e.to_string())),
             };
         };
 
@@ -227,7 +310,8 @@ impl Client {
             // meta_end + 2b offset of status and space + 2b offset (\r\n)
             cursor: Cursor::new(buffer.split_off(meta_end + 2)),
             meta,
-            tls_s,
+            connection: iostream,
+            async_read_stream: async_readable,
         })
     }
 }
