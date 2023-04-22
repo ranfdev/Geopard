@@ -15,7 +15,7 @@ pub enum CertificateError {
 }
 pub struct Certificate<'a>(&'a str);
 pub trait CertProvider: std::fmt::Debug {
-    fn is_valid(&self, host: &str, cert: gio::TlsCertificate) -> Result<(), CertificateError>;
+    fn validate(&self, host: &str, cert: &gio::TlsCertificate) -> Result<(), CertificateError>;
     fn override_temp_validity(&self, host: &str);
     fn remove_cert(&self, host: &str);
 }

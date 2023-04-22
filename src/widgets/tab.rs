@@ -101,7 +101,7 @@ impl Default for FileCertProvider {
 }
 
 impl gemini::CertProvider for FileCertProvider {
-    fn is_valid(&self, host: &str, cert: gio::TlsCertificate) -> Result<(), CertificateError> {
+    fn validate(&self, host: &str, cert: &gio::TlsCertificate) -> Result<(), CertificateError> {
         {
             if let Some(known_host) = { self.known_hosts.borrow().get(host) } {
                 if known_host.session_override {
@@ -131,7 +131,7 @@ impl gemini::CertProvider for FileCertProvider {
             }
         }
         self.add_server_cert(host, cert.clone());
-        self.is_valid(host, cert)
+        self.validate(host, cert)
     }
 
     fn override_temp_validity(&self, host: &str) {
