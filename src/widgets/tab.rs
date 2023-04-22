@@ -1,10 +1,6 @@
 use std::cell::{Cell, Ref, RefCell};
-use std::collections::HashMap;
-use std::io::Write;
-use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
-use std::{fs, path};
 
 use anyhow::{bail, Context, Result};
 use async_fs::File;
@@ -17,7 +13,7 @@ use glib::{clone, Properties};
 use gtk::gdk::prelude::*;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::{gio, glib, CompositeTemplate, TemplateChild};
+use gtk::{glib, CompositeTemplate, TemplateChild};
 use hypertext::HypertextEvent;
 use log::{debug, info};
 use once_cell::sync::Lazy;
@@ -30,133 +26,6 @@ use crate::lossy_text_read::*;
 
 const BYTES_BEFORE_YIELD: usize = 1024 * 10;
 
-#[derive(Debug, Clone)]
-struct KnownHostCert {
-    sha: String,
-    session_override: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct FileCertProvider {
-    known_hosts_path: path::PathBuf,
-    known_hosts: RefCell<HashMap<String, KnownHostCert>>,
-}
-impl FileCertProvider {
-    fn from_path(path: &std::path::Path) -> anyhow::Result<Self> {
-        let known_hosts = if !path.exists() {
-            HashMap::new()
-        } else {
-            fs::read_to_string(path)
-                .with_context(|| format!("parsing file at {:?}", path))?
-                .lines()
-                .map(|line| {
-                    let mut parts = line.split(' ');
-                    let host = parts.next().unwrap();
-                    let sha = parts.next().unwrap();
-                    (
-                        host.to_string(),
-                        KnownHostCert {
-                            sha: sha.to_string(),
-                            session_override: false,
-                        },
-                    )
-                })
-                .collect()
-        };
-
-        Ok(Self {
-            known_hosts: RefCell::new(known_hosts),
-            known_hosts_path: path.into(),
-        })
-    }
-    fn add_server_cert(&self, host: &str, cert: gio::TlsCertificate) {
-        let cert_sha = {
-            let mut ck = glib::Checksum::new(glib::ChecksumType::Sha256).unwrap();
-            ck.update(&cert.certificate().unwrap());
-            ck.string().unwrap()
-        };
-
-        let mut known_hosts_file = fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .append(true)
-            .open(&self.known_hosts_path)
-            .unwrap();
-
-        writeln!(known_hosts_file, "{} {}", &host, &cert_sha).unwrap();
-
-        self.known_hosts.borrow_mut().insert(
-            host.to_string(),
-            KnownHostCert {
-                sha: cert_sha,
-                session_override: false,
-            },
-        );
-    }
-}
-impl Default for FileCertProvider {
-    fn default() -> Self {
-        Self::from_path(&common::KNOWN_HOSTS_PATH).unwrap()
-    }
-}
-
-impl gemini::CertProvider for FileCertProvider {
-    fn validate(&self, host: &str, cert: &gio::TlsCertificate) -> Result<(), CertificateError> {
-        {
-            if let Some(known_host) = { self.known_hosts.borrow().get(host) } {
-                if known_host.session_override {
-                    return Ok(());
-                }
-                let cert_sha = {
-                    let mut ck = glib::Checksum::new(glib::ChecksumType::Sha256).unwrap();
-                    ck.update(&cert.certificate().unwrap());
-                    ck.string().unwrap()
-                };
-
-                if known_host.sha != cert_sha {
-                    return Err(CertificateError::BadIdentity);
-                }
-                if let Some(cert_end_date) = cert.not_valid_after() {
-                    if cert_end_date < glib::DateTime::now_utc().unwrap() {
-                        return Err(CertificateError::Expired);
-                    }
-                }
-                if let Some(cert_start_date) = cert.not_valid_before() {
-                    if cert_start_date > glib::DateTime::now_utc().unwrap() {
-                        return Err(CertificateError::NotActivated);
-                    }
-                }
-
-                return Ok(());
-            }
-        }
-        self.add_server_cert(host, cert.clone());
-        self.validate(host, cert)
-    }
-
-    fn override_temp_validity(&self, host: &str) {
-        if let Some(known_host) = self.known_hosts.borrow_mut().get_mut(host) {
-            known_host.session_override = true;
-        }
-    }
-
-    fn remove_cert(&self, host: &str) {
-        let mut known_hosts = self.known_hosts.borrow_mut();
-        known_hosts.remove(host);
-
-        let mut known_hosts_file = fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(&self.known_hosts_path)
-            .unwrap();
-
-        for (host, cert) in known_hosts.iter() {
-            writeln!(known_hosts_file, "{} {}", &host, &cert.sha).unwrap();
-        }
-    }
-}
-
 pub struct Client(gemini::Client);
 
 impl Default for Client {
@@ -164,7 +33,7 @@ impl Default for Client {
         Client(
             gemini::ClientBuilder::new()
                 .redirect(true)
-                .cert_provider(FileCertProvider::default())
+                .cert_provider(crate::known_hosts::KnownHosts::default())
                 .build(),
         )
     }
@@ -218,12 +87,14 @@ impl History {
             false
         }
     }
-    fn go_previous(&mut self) -> bool {
+    fn go_back(&mut self) -> bool {
         self.set_index(self.index.unwrap_or(0).saturating_sub(1))
     }
 }
 
 pub mod imp {
+
+    use std::marker::PhantomData;
 
     pub use super::*;
     #[derive(Default, Properties, CompositeTemplate)]
@@ -322,7 +193,7 @@ impl Tab {
             if let Some(req) = req {
                 // if the request isn't ready, it's still in flight
                 if req.now_or_never().is_none() {
-                    imp.history.borrow_mut().go_previous();
+                    imp.history.borrow_mut().go_back();
                 }
             }
         }
