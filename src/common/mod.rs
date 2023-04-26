@@ -17,6 +17,9 @@ pub static ABOUT_PAGE: &str = std::include_str!("../../README.gemini");
 pub static DATA_DIR_PATH: Lazy<std::path::PathBuf> =
     Lazy::new(|| glib::user_data_dir().join("geopard"));
 
+pub static KNOWN_HOSTS_PATH: Lazy<std::path::PathBuf> =
+    Lazy::new(|| DATA_DIR_PATH.join("known_hosts"));
+
 pub static CONFIG_DIR_PATH: Lazy<std::path::PathBuf> =
     Lazy::new(|| glib::user_config_dir().join("geopard"));
 

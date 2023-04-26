@@ -20,6 +20,7 @@
 , gobject-introspection
 , appstream-glib
 , clippy
+, rust-analyzer
 }:
 
 stdenv.mkDerivation rec {
@@ -39,7 +40,6 @@ stdenv.mkDerivation rec {
     meson
     ninja
     pkg-config
-    wrapGAppsHook4
     cmake
     blueprint-compiler
     desktop-file-utils
@@ -48,9 +48,11 @@ stdenv.mkDerivation rec {
     rustPlatform.rust.cargo
     rustPlatform.cargoSetupHook
     rustPlatform.rust.rustc
+    wrapGAppsHook4
   ];
 
   buildInputs = [
+    rust-analyzer
     meson
     ninja
     desktop-file-utils
