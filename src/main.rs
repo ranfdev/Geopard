@@ -4,6 +4,7 @@ mod common;
 mod config;
 mod lossy_text_read;
 mod macros;
+mod session_provider;
 mod widgets;
 
 use std::cell::RefCell;

@@ -1,5 +1,5 @@
 use std::cell::{Cell, Ref, RefCell};
-use std::collections::HashSet;
+use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
 
@@ -9,13 +9,12 @@ use futures::future::RemoteHandle;
 use futures::io::BufReader;
 use futures::prelude::*;
 use futures::task::LocalSpawnExt;
-use gemini::known_hosts::KnownHostsRepo;
-use gemini::{CertificateError, Client};
+use gemini::CertificateError;
 use glib::{clone, Properties};
 use gtk::gdk::prelude::*;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::{gio, glib, CompositeTemplate, TemplateChild};
+use gtk::{glib, CompositeTemplate, TemplateChild};
 use hypertext::HypertextEvent;
 use log::{debug, info};
 use once_cell::sync::Lazy;
@@ -25,35 +24,9 @@ use super::pages::{self, hypertext};
 use crate::common;
 use crate::common::glibctx;
 use crate::lossy_text_read::*;
+use crate::session_provider::SessionProvider;
 
 const BYTES_BEFORE_YIELD: usize = 1024 * 10;
-
-#[derive(Debug, Clone)]
-pub struct CertificateValidator {
-    overridden_hosts: Rc<RefCell<HashSet<String>>>,
-    known_hosts_file: Rc<RefCell<gemini::known_hosts::KnownHostsFile>>,
-}
-
-impl CertificateValidator {
-    fn new(file: std::fs::File) -> Self {
-        Self {
-            overridden_hosts: Default::default(),
-            known_hosts_file: Rc::new(RefCell::new(gemini::known_hosts::KnownHostsFile::new(file))),
-        }
-    }
-    fn validate(&self, host: &str, sha: &gio::TlsCertificate) -> Result<(), CertificateError> {
-        if self.overridden_hosts.borrow().contains(host) {
-            return Ok(());
-        }
-        gemini::known_hosts::validate(&mut *self.known_hosts_file.borrow_mut(), host, sha)
-    }
-    fn override_trust(&self, host: &str) {
-        self.overridden_hosts.borrow_mut().insert(host.to_owned());
-    }
-    fn remove_known(&self, host: &str) {
-        self.known_hosts_file.borrow_mut().remove(host);
-    }
-}
 
 #[derive(Clone)]
 pub struct HistoryItem {
@@ -110,17 +83,11 @@ impl History {
 
 pub mod imp {
 
-    use std::marker::PhantomData;
-
-    use gemini::ClientBuilder;
-
     pub use super::*;
     #[derive(Properties, CompositeTemplate)]
     #[template(resource = "/com/ranfdev/Geopard/ui/tab.ui")]
     #[properties(wrapper_type = super::Tab)]
     pub struct Tab {
-        pub(crate) gemini_client: Client,
-        pub(crate) certificate_validator: CertificateValidator,
         pub(crate) config: RefCell<crate::config::Config>,
         pub(crate) history: RefCell<History>,
         #[template_child]
@@ -144,24 +111,7 @@ pub mod imp {
 
     impl Default for Tab {
         fn default() -> Self {
-            let cr = CertificateValidator::new(
-                std::fs::OpenOptions::new()
-                    .read(true)
-                    .create(true)
-                    .append(true)
-                    .open(&*common::KNOWN_HOSTS_PATH)
-                    .unwrap(),
-            );
-            let cr_clone = cr.clone();
-            let client = ClientBuilder::new()
-                .redirect(true)
-                .validator(move |host: &str, sha: &gio::TlsCertificate| {
-                    cr_clone.validate(host, sha)
-                })
-                .build();
             Self {
-                gemini_client: client,
-                certificate_validator: cr,
                 config: Default::default(),
                 history: Default::default(),
                 scroll_win: Default::default(),
@@ -224,7 +174,7 @@ pub mod imp {
 }
 glib::wrapper! {
     pub struct Tab(ObjectSubclass<imp::Tab>)
-        @extends gtk::Widget;
+        @extends gtk::Widget, adw::Bin;
 }
 
 impl Tab {
@@ -235,6 +185,10 @@ impl Tab {
         imp.config.replace(config);
 
         this
+    }
+
+    fn session(&self) -> crate::session_provider::SessionProvider {
+        SessionProvider::from_tree(self).unwrap()
     }
 
     pub fn spawn_open_url(&self, url: Url) {
@@ -425,9 +379,7 @@ impl Tab {
         }
     }
     async fn open_gemini_url(&self, url: Url) -> anyhow::Result<Option<Vec<u8>>> {
-        let imp = self.imp();
-        let res = { imp.gemini_client.fetch(url.as_str()) }.await;
-
+        let res = self.session().client().fetch(url.as_str()).await;
         let res = match res {
             Ok(res) => res,
             Err(gemini::Error::Tls(CertificateError::BadIdentity)) => {
@@ -755,10 +707,9 @@ impl Tab {
 
         let override_btn = gtk::Button::with_label("Trust New Certificate");
         override_btn.connect_clicked(clone!(@weak self as this => move |_| {
-            let imp = this.imp();
             let url = Url::parse(&this.url()).unwrap();
 
-            imp.certificate_validator.remove_known(url.host_str().unwrap());
+            this.session().validator().remove_known(url.host_str().unwrap());
             this.reload();
         }));
         override_btn.set_halign(gtk::Align::Center);
@@ -784,10 +735,9 @@ impl Tab {
 
         let override_btn = gtk::Button::with_label("Continue");
         override_btn.connect_clicked(clone!(@weak self as this => move |_| {
-            let imp = this.imp();
             let url = Url::parse(&this.url()).unwrap();
 
-            imp.certificate_validator.override_trust(url.host_str().unwrap());
+            this.session().validator().override_trust(url.host_str().unwrap());
             this.reload();
         }));
         override_btn.set_halign(gtk::Align::Center);
