@@ -14,6 +14,7 @@ use log::{error, info, warn};
 use url::Url;
 
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
+use crate::session_provider::SessionProvider;
 use crate::widgets::tab::{HistoryItem, HistoryStatus, Tab};
 use crate::{build_config, config, self_action};
 
@@ -35,11 +36,14 @@ impl Default for AppSettings {
 }
 
 pub mod imp {
+
     use super::*;
     #[derive(Debug, Default, Properties, CompositeTemplate)]
     #[template(resource = "/com/ranfdev/Geopard/ui/window.ui")]
     #[properties(wrapper_type = super::Window)]
     pub struct Window {
+        #[template_child]
+        pub(crate) session_provider: TemplateChild<SessionProvider>,
         #[template_child]
         pub(crate) url_bar: TemplateChild<gtk::SearchEntry>,
         #[template_child]
