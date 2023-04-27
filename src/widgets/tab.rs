@@ -1,4 +1,5 @@
 use std::cell::{Cell, Ref, RefCell};
+use std::collections::HashSet;
 use std::pin::Pin;
 use std::rc::Rc;
 
@@ -8,12 +9,13 @@ use futures::future::RemoteHandle;
 use futures::io::BufReader;
 use futures::prelude::*;
 use futures::task::LocalSpawnExt;
-use gemini::CertificateError;
+use gemini::known_hosts::KnownHostsRepo;
+use gemini::{CertificateError, Client};
 use glib::{clone, Properties};
 use gtk::gdk::prelude::*;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::{glib, CompositeTemplate, TemplateChild};
+use gtk::{gio, glib, CompositeTemplate, TemplateChild};
 use hypertext::HypertextEvent;
 use log::{debug, info};
 use once_cell::sync::Lazy;
@@ -26,16 +28,30 @@ use crate::lossy_text_read::*;
 
 const BYTES_BEFORE_YIELD: usize = 1024 * 10;
 
-pub struct Client(gemini::Client);
+#[derive(Debug, Clone)]
+pub struct CertificateValidator {
+    overridden_hosts: Rc<RefCell<HashSet<String>>>,
+    known_hosts_file: Rc<RefCell<gemini::known_hosts::KnownHostsFile>>,
+}
 
-impl Default for Client {
-    fn default() -> Self {
-        Client(
-            gemini::ClientBuilder::new()
-                .redirect(true)
-                .cert_provider(crate::known_hosts::KnownHosts::default())
-                .build(),
-        )
+impl CertificateValidator {
+    fn new(file: std::fs::File) -> Self {
+        Self {
+            overridden_hosts: Default::default(),
+            known_hosts_file: Rc::new(RefCell::new(gemini::known_hosts::KnownHostsFile::new(file))),
+        }
+    }
+    fn validate(&self, host: &str, sha: &gio::TlsCertificate) -> Result<(), CertificateError> {
+        if self.overridden_hosts.borrow().contains(host) {
+            return Ok(());
+        }
+        gemini::known_hosts::validate(&mut *self.known_hosts_file.borrow_mut(), host, sha)
+    }
+    fn override_trust(&self, host: &str) {
+        self.overridden_hosts.borrow_mut().insert(host.to_owned());
+    }
+    fn remove_known(&self, host: &str) {
+        self.known_hosts_file.borrow_mut().remove(host);
     }
 }
 
@@ -96,12 +112,15 @@ pub mod imp {
 
     use std::marker::PhantomData;
 
+    use gemini::ClientBuilder;
+
     pub use super::*;
-    #[derive(Default, Properties, CompositeTemplate)]
+    #[derive(Properties, CompositeTemplate)]
     #[template(resource = "/com/ranfdev/Geopard/ui/tab.ui")]
     #[properties(wrapper_type = super::Tab)]
     pub struct Tab {
         pub(crate) gemini_client: Client,
+        pub(crate) certificate_validator: CertificateValidator,
         pub(crate) config: RefCell<crate::config::Config>,
         pub(crate) history: RefCell<History>,
         #[template_child]
@@ -121,6 +140,41 @@ pub mod imp {
         pub(crate) url: RefCell<String>,
         #[property(get, set)]
         pub(crate) hover_url: RefCell<String>,
+    }
+
+    impl Default for Tab {
+        fn default() -> Self {
+            let cr = CertificateValidator::new(
+                std::fs::OpenOptions::new()
+                    .read(true)
+                    .create(true)
+                    .append(true)
+                    .open(&*common::KNOWN_HOSTS_PATH)
+                    .unwrap(),
+            );
+            let cr_clone = cr.clone();
+            let client = ClientBuilder::new()
+                .redirect(true)
+                .validator(move |host: &str, sha: &gio::TlsCertificate| {
+                    cr_clone.validate(host, sha)
+                })
+                .build();
+            Self {
+                gemini_client: client,
+                certificate_validator: cr,
+                config: Default::default(),
+                history: Default::default(),
+                scroll_win: Default::default(),
+                stack: Default::default(),
+                clamp: Default::default(),
+                req_handle: Default::default(),
+                history_status: PhantomData,
+                progress: Default::default(),
+                title: Default::default(),
+                url: Default::default(),
+                hover_url: Default::default(),
+            }
+        }
     }
 
     #[glib::object_subclass]
@@ -372,7 +426,7 @@ impl Tab {
     }
     async fn open_gemini_url(&self, url: Url) -> anyhow::Result<Option<Vec<u8>>> {
         let imp = self.imp();
-        let res = { imp.gemini_client.0.fetch(url.as_str()) }.await;
+        let res = { imp.gemini_client.fetch(url.as_str()) }.await;
 
         let res = match res {
             Ok(res) => res,
@@ -704,7 +758,7 @@ impl Tab {
             let imp = this.imp();
             let url = Url::parse(&this.url()).unwrap();
 
-            imp.gemini_client.0.cert_provider().remove_cert(url.host_str().unwrap());
+            imp.certificate_validator.remove_known(url.host_str().unwrap());
             this.reload();
         }));
         override_btn.set_halign(gtk::Align::Center);
@@ -733,7 +787,7 @@ impl Tab {
             let imp = this.imp();
             let url = Url::parse(&this.url()).unwrap();
 
-            imp.gemini_client.0.cert_provider().override_temp_validity(url.host_str().unwrap());
+            imp.certificate_validator.override_trust(url.host_str().unwrap());
             this.reload();
         }));
         override_btn.set_halign(gtk::Align::Center);

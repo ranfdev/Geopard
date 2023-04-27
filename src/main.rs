@@ -2,7 +2,6 @@
 mod build_config;
 mod common;
 mod config;
-mod known_hosts;
 mod lossy_text_read;
 mod macros;
 mod widgets;

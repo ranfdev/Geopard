@@ -9,7 +9,7 @@ use gio::prelude::*;
 use log::debug;
 use url::Url;
 
-use crate::{CertProvider, CertificateError};
+use crate::{known_hosts, CertificateError};
 
 const MAX_REDIRECT: u8 = 5;
 const MAX_TIMEOUT: u32 = 10000;
@@ -69,6 +69,16 @@ impl TryFrom<u8> for Status {
             6 => Ok(Status::CertRequired(s)),
             _ => Err(InvalidStatus),
         }
+    }
+}
+
+pub trait Validator {
+    fn validate(&mut self, host: &str, cert: &gio::TlsCertificate) -> Result<(), CertificateError>;
+}
+
+impl<F: FnMut(&str, &gio::TlsCertificate) -> Result<(), CertificateError>> Validator for F {
+    fn validate(&mut self, host: &str, cert: &gio::TlsCertificate) -> Result<(), CertificateError> {
+        self(host, cert)
     }
 }
 
@@ -141,10 +151,11 @@ impl Response {
         // Split the part of the buffer containing the meta
         let meta = String::from_utf8_lossy(meta_buffer).to_string();
 
-        let cursor = Cursor::new(buffer.split_off(meta_end + 2));
+        // 2b offset for '\r\n'
+        let split_at = meta_end + 2;
+        let cursor = Cursor::new(buffer.split_off(split_at));
         Ok(Response {
             status,
-            // meta_end + 2b offset of status and space + 2b offset (\r\n)
             meta,
             body: Box::new(cursor.chain(async_readable)),
         })
@@ -155,10 +166,19 @@ pub struct ClientOptions {
     redirect: bool,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Clone)]
 pub struct ClientBuilder {
     options: ClientOptions,
-    cert_provider: Option<Rc<dyn CertProvider>>,
+    validator: Option<Rc<RefCell<dyn Validator>>>,
+}
+
+impl std::fmt::Debug for ClientBuilder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ClientBuilder")
+            .field("options", &self.options)
+            .field("validator", &self.validator.is_some())
+            .finish()
+    }
 }
 
 impl ClientBuilder {
@@ -169,34 +189,56 @@ impl ClientBuilder {
         self.options.redirect = redirect;
         self
     }
-    pub fn cert_provider(mut self, provider: impl CertProvider + 'static) -> Self {
-        self.cert_provider = Some(Rc::new(provider));
+    pub fn validator(mut self, f: impl Validator + 'static) -> Self {
+        self.validator = Some(Rc::new(RefCell::new(f)));
         self
     }
     pub fn build(self) -> Client {
         Client {
             options: self.options,
-            cert_provider: self.cert_provider.unwrap(),
+            validator: self
+                .validator
+                .unwrap_or_else(|| Client::default_validator()),
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Client {
     options: ClientOptions,
-    cert_provider: Rc<dyn CertProvider>,
+    validator: Rc<RefCell<dyn Validator>>,
 }
-impl Client {
-    pub fn new(cert_provider: Rc<dyn CertProvider>) -> Self {
+
+impl Default for Client {
+    fn default() -> Self {
         Self {
             options: Default::default(),
-            cert_provider,
+            validator: Self::default_validator(),
         }
     }
+}
 
-    pub fn cert_provider(&self) -> Rc<dyn CertProvider> {
-        self.cert_provider.clone()
+impl std::fmt::Debug for Client {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Client")
+            .field("options", &self.options)
+            .finish()
     }
+}
+
+impl Client {
+    pub fn default_validator() -> Rc<RefCell<dyn Validator>> {
+        let mut known_hosts = known_hosts::KnownHostsMap::new();
+        Rc::new(RefCell::new(
+            move |host: &str, cert: &gio::TlsCertificate| {
+                known_hosts::validate(&mut known_hosts, host, cert)
+            },
+        ))
+    }
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub async fn fetch(&self, url_str: &str) -> Result<Response, Error> {
         let mut url_str = url_str;
         let mut res;
@@ -233,7 +275,7 @@ impl Client {
         socket.set_timeout(MAX_TIMEOUT);
 
         let tls_error = Rc::new(RefCell::new(None));
-        let cert_provider = self.cert_provider.clone();
+        let validator = self.validator.clone();
         let tls_error_clone = tls_error.clone();
         socket.connect_event(move |_this, event, _connectable, connection| {
             use gio::SocketClientEvent;
@@ -245,10 +287,10 @@ impl Client {
                     .unwrap();
 
                 let host = host.clone();
-                let cert_provider = cert_provider.clone();
+                let validator = validator.clone();
                 let tls_error_clone = tls_error_clone.clone();
                 connection.connect_accept_certificate(move |_this, cert, _cert_flags| {
-                    match cert_provider.validate(&host, cert) {
+                    match validator.borrow_mut().validate(&host, cert) {
                         Ok(()) => true,
                         Err(e) => {
                             tls_error_clone.replace(Some(e));
@@ -296,7 +338,6 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use std::future::Future;
-    use std::rc::Rc;
 
     use crate::*;
 
@@ -311,29 +352,9 @@ mod tests {
         block_on(Response::from_async_read(async_read))
     }
 
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    struct TestCertProvider;
-    impl CertProvider for TestCertProvider {
-        fn validate(
-            &self,
-            _host: &str,
-            _cert: &gio::TlsCertificate,
-        ) -> Result<(), CertificateError> {
-            Ok(())
-        }
-
-        fn override_temp_validity(&self, _host: &str) {}
-
-        fn remove_cert(&self, _host: &str) {}
-    }
-
     #[test]
     fn client_builder() {
-        let client = ClientBuilder::new()
-            .cert_provider(TestCertProvider)
-            .redirect(true)
-            .build();
-
+        let client = ClientBuilder::new().redirect(true).build();
         assert_eq!(client.options, ClientOptions { redirect: true });
     }
 
@@ -394,10 +415,7 @@ mod tests {
     #[test]
     fn home_auto_redirect() -> Result<(), Error> {
         block_on(async {
-            let client = ClientBuilder::new()
-                .cert_provider(TestCertProvider)
-                .redirect(true)
-                .build();
+            let client = ClientBuilder::new().redirect(true).build();
 
             // The url doesn't have a final slash. It's going to be redirected to /
             let res = client.fetch("gemini://gemini.circumlunar.space").await?;
@@ -413,7 +431,7 @@ mod tests {
     #[test]
     fn invalid_scheme() -> Result<(), Error> {
         block_on(async {
-            let client = Client::new(Rc::new(TestCertProvider));
+            let client = Client::new();
             let res = client.fetch("http://gemini.circumlunar.space").await;
             assert!(res.is_err());
             Ok(())
