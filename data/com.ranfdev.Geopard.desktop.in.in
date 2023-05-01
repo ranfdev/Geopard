@@ -10,3 +10,4 @@ Keywords=Gnome;GTK;browser;gemini;rust;
 Icon=@icon@
 StartupNotify=true
 MimeType=x-scheme-handler/gemini;text/gemini;text/plain;
+X-Purism-FormFactor=Workstation;Mobile;
