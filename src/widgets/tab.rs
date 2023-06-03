@@ -1,10 +1,7 @@
 use std::cell::{Cell, Ref, RefCell};
-use std::collections::HashMap;
-use std::io::Write;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
-use std::{fs, path};
 
 use anyhow::{bail, Context, Result};
 use async_fs::File;
@@ -17,7 +14,7 @@ use glib::{clone, Properties};
 use gtk::gdk::prelude::*;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::{gio, glib, CompositeTemplate, TemplateChild};
+use gtk::{glib, CompositeTemplate, TemplateChild};
 use hypertext::HypertextEvent;
 use log::{debug, info};
 use once_cell::sync::Lazy;
@@ -27,148 +24,9 @@ use super::pages::{self, hypertext};
 use crate::common;
 use crate::common::glibctx;
 use crate::lossy_text_read::*;
+use crate::session_provider::SessionProvider;
 
 const BYTES_BEFORE_YIELD: usize = 1024 * 10;
-
-#[derive(Debug, Clone)]
-struct KnownHostCert {
-    sha: String,
-    session_override: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct FileCertProvider {
-    known_hosts_path: path::PathBuf,
-    known_hosts: RefCell<HashMap<String, KnownHostCert>>,
-}
-impl FileCertProvider {
-    fn from_path(path: &std::path::Path) -> anyhow::Result<Self> {
-        let known_hosts = if !path.exists() {
-            HashMap::new()
-        } else {
-            fs::read_to_string(path)
-                .with_context(|| format!("parsing file at {:?}", path))?
-                .lines()
-                .map(|line| {
-                    let mut parts = line.split(' ');
-                    let host = parts.next().unwrap();
-                    let sha = parts.next().unwrap();
-                    (
-                        host.to_string(),
-                        KnownHostCert {
-                            sha: sha.to_string(),
-                            session_override: false,
-                        },
-                    )
-                })
-                .collect()
-        };
-
-        Ok(Self {
-            known_hosts: RefCell::new(known_hosts),
-            known_hosts_path: path.into(),
-        })
-    }
-    fn add_server_cert(&self, host: &str, cert: gio::TlsCertificate) {
-        let cert_sha = {
-            let mut ck = glib::Checksum::new(glib::ChecksumType::Sha256).unwrap();
-            ck.update(&cert.certificate().unwrap());
-            ck.string().unwrap()
-        };
-
-        let mut known_hosts_file = fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .append(true)
-            .open(&self.known_hosts_path)
-            .unwrap();
-
-        writeln!(known_hosts_file, "{} {}", &host, &cert_sha).unwrap();
-
-        self.known_hosts.borrow_mut().insert(
-            host.to_string(),
-            KnownHostCert {
-                sha: cert_sha,
-                session_override: false,
-            },
-        );
-    }
-}
-impl Default for FileCertProvider {
-    fn default() -> Self {
-        Self::from_path(&common::KNOWN_HOSTS_PATH).unwrap()
-    }
-}
-
-impl gemini::CertProvider for FileCertProvider {
-    fn is_valid(&self, host: &str, cert: gio::TlsCertificate) -> Result<(), CertificateError> {
-        {
-            if let Some(known_host) = { self.known_hosts.borrow().get(host) } {
-                if known_host.session_override {
-                    return Ok(());
-                }
-                let cert_sha = {
-                    let mut ck = glib::Checksum::new(glib::ChecksumType::Sha256).unwrap();
-                    ck.update(&cert.certificate().unwrap());
-                    ck.string().unwrap()
-                };
-
-                if known_host.sha != cert_sha {
-                    return Err(CertificateError::BadIdentity);
-                }
-                if let Some(cert_end_date) = cert.not_valid_after() {
-                    if cert_end_date < glib::DateTime::now_utc().unwrap() {
-                        return Err(CertificateError::Expired);
-                    }
-                }
-                if let Some(cert_start_date) = cert.not_valid_before() {
-                    if cert_start_date > glib::DateTime::now_utc().unwrap() {
-                        return Err(CertificateError::NotActivated);
-                    }
-                }
-
-                return Ok(());
-            }
-        }
-        self.add_server_cert(host, cert.clone());
-        self.is_valid(host, cert)
-    }
-
-    fn override_temp_validity(&self, host: &str) {
-        if let Some(known_host) = self.known_hosts.borrow_mut().get_mut(host) {
-            known_host.session_override = true;
-        }
-    }
-
-    fn remove_cert(&self, host: &str) {
-        let mut known_hosts = self.known_hosts.borrow_mut();
-        known_hosts.remove(host);
-
-        let mut known_hosts_file = fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(&self.known_hosts_path)
-            .unwrap();
-
-        for (host, cert) in known_hosts.iter() {
-            writeln!(known_hosts_file, "{} {}", &host, &cert.sha).unwrap();
-        }
-    }
-}
-
-pub struct Client(gemini::Client);
-
-impl Default for Client {
-    fn default() -> Self {
-        Client(
-            gemini::ClientBuilder::new()
-                .redirect(true)
-                .cert_provider(FileCertProvider::default())
-                .build(),
-        )
-    }
-}
 
 #[derive(Clone)]
 pub struct HistoryItem {
@@ -218,7 +76,7 @@ impl History {
             false
         }
     }
-    fn go_previous(&mut self) -> bool {
+    fn go_back(&mut self) -> bool {
         self.set_index(self.index.unwrap_or(0).saturating_sub(1))
     }
 }
@@ -226,11 +84,10 @@ impl History {
 pub mod imp {
 
     pub use super::*;
-    #[derive(Default, Properties, CompositeTemplate)]
+    #[derive(Properties, CompositeTemplate)]
     #[template(resource = "/com/ranfdev/Geopard/ui/tab.ui")]
     #[properties(wrapper_type = super::Tab)]
     pub struct Tab {
-        pub(crate) gemini_client: Client,
         pub(crate) config: RefCell<crate::config::Config>,
         pub(crate) history: RefCell<History>,
         #[template_child]
@@ -250,6 +107,24 @@ pub mod imp {
         pub(crate) url: RefCell<String>,
         #[property(get, set)]
         pub(crate) hover_url: RefCell<String>,
+    }
+
+    impl Default for Tab {
+        fn default() -> Self {
+            Self {
+                config: Default::default(),
+                history: Default::default(),
+                scroll_win: Default::default(),
+                stack: Default::default(),
+                clamp: Default::default(),
+                req_handle: Default::default(),
+                history_status: PhantomData,
+                progress: Default::default(),
+                title: Default::default(),
+                url: Default::default(),
+                hover_url: Default::default(),
+            }
+        }
     }
 
     #[glib::object_subclass]
@@ -299,7 +174,7 @@ pub mod imp {
 }
 glib::wrapper! {
     pub struct Tab(ObjectSubclass<imp::Tab>)
-        @extends gtk::Widget;
+        @extends gtk::Widget, adw::Bin;
 }
 
 impl Tab {
@@ -312,6 +187,10 @@ impl Tab {
         this
     }
 
+    fn session(&self) -> crate::session_provider::SessionProvider {
+        SessionProvider::from_tree(self).unwrap()
+    }
+
     pub fn spawn_open_url(&self, url: Url) {
         let imp = self.imp();
 
@@ -322,7 +201,7 @@ impl Tab {
             if let Some(req) = req {
                 // if the request isn't ready, it's still in flight
                 if req.now_or_never().is_none() {
-                    imp.history.borrow_mut().go_previous();
+                    imp.history.borrow_mut().go_back();
                 }
             }
         }
@@ -500,9 +379,7 @@ impl Tab {
         }
     }
     async fn open_gemini_url(&self, url: Url) -> anyhow::Result<Option<Vec<u8>>> {
-        let imp = self.imp();
-        let res = { imp.gemini_client.0.fetch(url.as_str()) }.await;
-
+        let res = self.session().client().fetch(url.as_str()).await;
         let res = match res {
             Ok(res) => res,
             Err(gemini::Error::Tls(CertificateError::BadIdentity)) => {
@@ -830,10 +707,9 @@ impl Tab {
 
         let override_btn = gtk::Button::with_label("Trust New Certificate");
         override_btn.connect_clicked(clone!(@weak self as this => move |_| {
-            let imp = this.imp();
             let url = Url::parse(&this.url()).unwrap();
 
-            imp.gemini_client.0.cert_provider().remove_cert(url.host_str().unwrap());
+            this.session().validator().remove_known(url.host_str().unwrap());
             this.reload();
         }));
         override_btn.set_halign(gtk::Align::Center);
@@ -859,10 +735,9 @@ impl Tab {
 
         let override_btn = gtk::Button::with_label("Continue");
         override_btn.connect_clicked(clone!(@weak self as this => move |_| {
-            let imp = this.imp();
             let url = Url::parse(&this.url()).unwrap();
 
-            imp.gemini_client.0.cert_provider().override_temp_validity(url.host_str().unwrap());
+            this.session().validator().override_trust(url.host_str().unwrap());
             this.reload();
         }));
         override_btn.set_halign(gtk::Align::Center);
