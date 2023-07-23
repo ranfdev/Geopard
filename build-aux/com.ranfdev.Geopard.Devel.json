@@ -1,11 +1,11 @@
 {
     "app-id" : "com.ranfdev.Geopard.Devel",
     "runtime" : "org.gnome.Platform",
-    "runtime-version" : "44",
+    "runtime-version" : "master",
     "sdk" : "org.gnome.Sdk",
     "sdk-extensions" : [
         "org.freedesktop.Sdk.Extension.rust-stable",
-        "org.freedesktop.Sdk.Extension.llvm14"
+        "org.freedesktop.Sdk.Extension.llvm16"
     ],
     "command" : "geopard",
     "tags" : [
@@ -20,16 +20,17 @@
         "--filesystem=xdg-download"
     ],
     "build-options" : {
-        "append-path" : "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm14/bin",
+        "append-path" : "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm16/bin",
         "build-args" : [
-            "--share=network"
+            "--share=network",
         ],
         "env" : {
             "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER" : "clang",
             "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER" : "clang",
             "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS" : "-C link-arg=-fuse-ld=/usr/lib/sdk/rust-stable/bin/mold",
             "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS" : "-C link-arg=-fuse-ld=/usr/lib/sdk/rust-stable/bin/mold",
-            "RUST_LOG" : "debug"
+            "RUST_LOG" : "debug",
+            "RUST_BACKTRACE" : "1"
         }
     },
     "modules" : [
