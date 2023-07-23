@@ -47,17 +47,9 @@ pub mod imp {
         #[template_child]
         pub(crate) url_bar: TemplateChild<gtk::SearchEntry>,
         #[template_child]
-        pub(crate) small_url_bar: TemplateChild<gtk::SearchEntry>,
-        #[template_child]
-        pub(crate) bottom_bar_revealer: TemplateChild<gtk::Revealer>,
-        #[template_child]
         pub(crate) url_status: TemplateChild<gtk::Label>,
         #[template_child]
         pub(crate) url_status_box: TemplateChild<gtk::Box>,
-        #[template_child]
-        pub(crate) header_small: TemplateChild<gtk::WindowHandle>,
-        #[template_child]
-        pub(crate) squeezer: TemplateChild<adw::Squeezer>,
         #[template_child]
         pub(crate) previous: TemplateChild<gtk::Button>,
         #[template_child]
@@ -185,13 +177,7 @@ impl Window {
         imp.config.replace(config);
         imp.zoom.borrow_mut().value = 1.0;
 
-        imp.url_bar
-            .bind_property("text", &*imp.small_url_bar, "text")
-            .bidirectional()
-            .build();
-
         this.setup_css_providers();
-        this.squeezer_changed();
         this.setup_history_buttons();
         this.setup_settings();
         this.setup_zoom_popover_item();
@@ -206,13 +192,13 @@ impl Window {
     }
     fn setup_css_providers(&self) {
         let imp = self.imp();
-        gtk::StyleContext::add_provider_for_display(
+        gtk::style_context_add_provider_for_display(
             &gdk::Display::default().unwrap(),
             &*imp.style_provider.borrow(),
             gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
 
-        gtk::StyleContext::add_provider_for_display(
+        gtk::style_context_add_provider_for_display(
             &gdk::Display::default().unwrap(),
             &imp.zoom.borrow().provider,
             gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
@@ -279,7 +265,7 @@ impl Window {
         imp.scroll_ctrl.connect_scroll(
             clone!(@weak self as this => @default-panic, move |ctrl, _, y| {
                 let up = y < 0.0;
-                if let Some(true) = ctrl.current_event().map(|e| e.modifier_state()).map(|m| m == gdk::ModifierType::CONTROL_MASK) {
+                if let Some(gdk::ModifierType::CONTROL_MASK) = ctrl.current_event().map(|e| e.modifier_state()) {
                     if up {
                       this.zoom_in();
                     } else {
@@ -287,7 +273,6 @@ impl Window {
                     }
                     gtk::Inhibit(true)
                 } else {
-                    this.imp().bottom_bar_revealer.set_reveal_child(up && this.is_small_screen());
                     gtk::Inhibit(false)
                 }
             }),
@@ -312,7 +297,7 @@ impl Window {
             false,
             clone!(@weak self as this => @default-panic, move |_| {
                 this.update_domain_color();
-                let bar = this.active_url_bar();
+                let bar = &this.imp().url_bar;
                 if bar.focus_child().is_none() {
                     bar.set_text(&this.url());
                 }
@@ -331,20 +316,11 @@ impl Window {
               this.imp().tab_view.selected_page().unwrap()
             }),
         );
-        imp.squeezer.connect_visible_child_notify(
-            clone!(@weak self as this => @default-panic, move |_sq| {
-                this.squeezer_changed();
-            }),
-        );
+
         imp.url_bar
             .connect_activate(clone!(@weak self as this => @default-panic, move |_sq| {
                 this.open_omni(this.imp().url_bar.text().as_str());
             }));
-        imp.small_url_bar.connect_activate(
-            clone!(@weak self as this => @default-panic, move |_sq| {
-                this.open_omni(this.imp().small_url_bar.text().as_str());
-            }),
-        );
 
         adw::StyleManager::default().connect_dark_notify(
             clone!(@weak self as this => @default-panic, move |_| {
@@ -568,13 +544,13 @@ impl Window {
     }
     fn new_tab(&self) {
         self.show_bookmarks();
-        self.active_url_bar().grab_focus();
+        self.focus_url_bar();
     }
     fn new_empty_tab(&self) {
         let imp = self.imp();
         let p = self.add_tab();
         imp.tab_view.set_selected_page(&p);
-        self.active_url_bar().grab_focus();
+        this.focus_url_bar();
     }
     fn show_bookmarks(&self) {
         let imp = self.imp();
@@ -590,16 +566,9 @@ impl Window {
             std::process::exit(0); // TODO: maybe there's a better way for gtk apps...
         }
     }
-    fn active_url_bar(&self) -> &gtk::SearchEntry {
-        let imp = self.imp();
-        if self.is_small_screen() {
-            &imp.small_url_bar
-        } else {
-            &imp.url_bar
-        }
-    }
+
     fn focus_url_bar(&self) {
-        self.active_url_bar().grab_focus();
+        self.imp().url_bar.grab_focus();
     }
 
     async fn append_bookmark(url: &str) -> anyhow::Result<()> {
@@ -637,7 +606,7 @@ impl Window {
         self.current_tab().reload();
     }
     fn bookmark_current(&self) {
-        let url = self.active_url_bar().text().to_string();
+        let url = self.imp().url_bar.text().to_string();
         glibctx().spawn_local(async move {
             match Self::append_bookmark(&url).await {
                 Ok(_) => info!("{} saved to bookmarks", url),
@@ -727,21 +696,6 @@ impl Window {
         }
     }
 
-    fn is_small_screen(&self) -> bool {
-        let imp = self.imp();
-        imp.squeezer
-            .visible_child()
-            .and_then(|child| child.downcast().ok())
-            .map(|w: gtk::WindowHandle| w == self.imp().header_small.get())
-            .unwrap_or(false)
-    }
-    fn squeezer_changed(&self) {
-        let imp = self.imp();
-        let is_small = self.is_small_screen();
-        imp.bottom_bar_revealer.set_reveal_child(is_small);
-        imp.tab_bar_revealer.set_reveal_child(!is_small);
-        imp.tab_view.invalidate_thumbnails();
-    }
     fn present_shortcuts(&self) {
         gtk::Builder::from_resource("/com/ranfdev/Geopard/ui/shortcuts.ui");
     }
