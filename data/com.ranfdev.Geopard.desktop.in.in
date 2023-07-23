@@ -2,11 +2,12 @@
 Name=Geopard
 Comment=A GTK 4 Gemini browser written in Rust
 Type=Application
-Exec=geopard
+Exec=geopard %U
 Terminal=false
 Categories=GNOME;GTK;Network;
 Keywords=Gnome;GTK;browser;gemini;rust;
 # Translators: Do NOT translate or transliterate this text (this is an icon file name)!
 Icon=@icon@
 StartupNotify=true
-MimeType=x-scheme-handler/gemini;
+MimeType=x-scheme-handler/gemini;text/gemini;text/plain;
+X-Purism-FormFactor=Workstation;Mobile;

@@ -353,6 +353,27 @@ impl Window {
             }),
         );
         self.add_controller(ctrl);
+
+        let drop_target = gtk::DropTarget::builder()
+            .name("file-drop-target")
+            .actions(gdk::DragAction::COPY)
+            .formats(&gdk::ContentFormats::for_type(gdk::FileList::static_type()))
+            .propagation_phase(gtk::PropagationPhase::Capture)
+            .build();
+
+        drop_target.connect_drop(
+            clone!(@weak self as this => @default-return false, move |_, value, _, _| {
+                    if let Ok(files) = value.get::<gdk::FileList>() {
+                        for f in files.files() {
+                            this.open_in_new_tab(&format!("file://{}", f.path().unwrap().to_str().unwrap()));
+                        }
+                    }
+                    false
+                }
+            ),
+        );
+
+        self.add_controller(drop_target);
     }
     fn setup_zoom_popover_item(&self) {
         let imp = self.imp();
