@@ -550,7 +550,7 @@ impl Window {
         let imp = self.imp();
         let p = self.add_tab();
         imp.tab_view.set_selected_page(&p);
-        this.focus_url_bar();
+        self.focus_url_bar();
     }
     fn show_bookmarks(&self) {
         let imp = self.imp();
