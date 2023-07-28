@@ -8,7 +8,7 @@
 , openssl
 , pkg-config
 , lib
-, wrapGAppsHook
+, wrapGAppsHook4
 , meson
 , ninja
 , gdk-pixbuf
@@ -18,38 +18,7 @@
 , blueprint-compiler
 , appstream-glib
 , rust-analyzer
-, fetchFromGitLab
-, appstream
 }:
-
-let
-  gtk_4_11 = gtk4.overrideAttrs (old: rec {
-    version = "4.11.4";
-    src = fetchFromGitLab {
-      domain = "gitlab.gnome.org";
-      owner = "GNOME";
-      repo = "gtk";
-      rev = version;
-      hash = "sha256-YobWcLJm8owjrz6c6aPMCrVZqYDvNpjIt5Zea2CtAZY=";
-    };
-    postPatch = old.postPatch + ''
-      patchShebangs build-aux/meson/gen-visibility-macros.py
-    '';
-  });
-  wrapGAppsHook_4_11 = wrapGAppsHook.override { gtk3 = gtk_4_11; };
-
-  libadwaita_1_4 = (libadwaita.override { gtk4 = gtk_4_11; }).overrideAttrs (old: rec {
-    version = "1.4.alpha";
-    src = fetchFromGitLab {
-      domain = "gitlab.gnome.org";
-      owner = "GNOME";
-      repo = "libadwaita";
-      rev = version;
-      hash = "sha256-UUS5b6diRenpxxmGvVJoc6mVjEVGS9afLd8UKu+CJvI=";
-    };
-    buildInputs = old.buildInputs ++ [ appstream ];
-  });
-in
 
 stdenv.mkDerivation {
   pname = "geopard";
@@ -76,7 +45,7 @@ stdenv.mkDerivation {
     cargo
     rustPlatform.cargoSetupHook
     rustc
-    wrapGAppsHook_4_11
+    wrapGAppsHook4
   ];
 
   buildInputs = [
@@ -86,8 +55,8 @@ stdenv.mkDerivation {
     desktop-file-utils
     gdk-pixbuf
     glib
-    gtk_4_11
-    libadwaita_1_4
+    gtk4
+    libadwaita
     openssl
   ];
 
