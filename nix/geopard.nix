@@ -1,11 +1,10 @@
 { stdenv
 , cargo
+, rustc
 , glib
 , gtk4
 , libadwaita
-, pango
 , rustPlatform
-, rustfmt
 , openssl
 , pkg-config
 , lib
@@ -17,13 +16,11 @@
 , desktop-file-utils
 , gettext
 , blueprint-compiler
-, gobject-introspection
 , appstream-glib
-, clippy
 , rust-analyzer
 }:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation {
   pname = "geopard";
   version = "1.4.0";
 
@@ -45,9 +42,9 @@ stdenv.mkDerivation rec {
     desktop-file-utils
     appstream-glib
     blueprint-compiler
-    rustPlatform.rust.cargo
+    cargo
     rustPlatform.cargoSetupHook
-    rustPlatform.rust.rustc
+    rustc
     wrapGAppsHook4
   ];
 
@@ -62,6 +59,7 @@ stdenv.mkDerivation rec {
     libadwaita
     openssl
   ];
+
   meta = with lib; {
     homepage = "https://github.com/ranfdev/Geopard";
     description = "Colorful, adaptive gemini browser";
