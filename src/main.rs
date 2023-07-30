@@ -147,6 +147,9 @@ fn main() {
     application.set_accels_for_action("win.zoom-in", &["<Ctrl>plus"]);
     application.set_accels_for_action("win.zoom-out", &["<Ctrl>minus"]);
     application.set_accels_for_action("win.reset-zoom", &["<Ctrl>0"]);
+    // I can't directly use the action `overview.open` because the application cannot see that action.
+    // Only widgets inside a `TabOverview` see that.
+    application.set_accels_for_action("win.open-overview", &["<Shift><Ctrl>o"]);
     // FIXME: win.view-source
 
     let ret = application.run();
