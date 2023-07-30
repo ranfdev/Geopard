@@ -79,6 +79,13 @@ template $GeopardWindow: Adw.ApplicationWindow {
               menu-model: primary_menu;
               tooltip-text: _("Main menu");
             }
+
+            [end]
+            Gtk.Button desktop_tab_overview_btn {
+              icon-name: "view-grid-symbolic";
+              action-name: "overview.open";
+              tooltip-text: _("Open tab overview");
+            }
           }
           [top]
           Gtk.Revealer tab_bar_revealer {
@@ -184,6 +191,7 @@ template $GeopardWindow: Adw.ApplicationWindow {
       refresh_btn.visible: false;
       tab_new_btn.visible: false;
       primary_menu_btn.visible: false;
+      desktop_tab_overview_btn.visible: false;
       toolbar_view.reveal-bottom-bars: true;
       tab_bar_revealer.reveal-child: false;
     }

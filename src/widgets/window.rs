@@ -226,6 +226,7 @@ impl Window {
         self_action!(self, "zoom-in", zoom_in);
         self_action!(self, "zoom-out", zoom_out);
         self_action!(self, "reset-zoom", reset_zoom);
+        self_action!(self, "open-overview", open_overview);
 
         let act_open_page = gio::SimpleAction::new("open-omni", Some(glib::VariantTy::STRING));
         act_open_page.connect_activate(
@@ -733,5 +734,8 @@ impl Window {
     }
     fn reset_zoom(&self) {
         self.set_zoom(1.0);
+    }
+    fn open_overview(&self) {
+        self.imp().tab_overview.set_open(true);
     }
 }
