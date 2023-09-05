@@ -5,6 +5,10 @@ Geopard
 
 Geopard is a GTK 4 Gemini client written in Rust.
 
+<a href="https://flathub.org/apps/details/com.ranfdev.Geopard">
+    <img width="200" src="https://flathub.org/assets/badges/flathub-badge-en.png" alt="Download on Flathub">
+</a>
+
 <br>
 
 ![4-light](data/screenshots/4-light.png#gh-light-mode-only)
