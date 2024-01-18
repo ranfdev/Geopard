@@ -298,10 +298,13 @@ impl Window {
             false,
             clone!(@weak self as this => @default-panic, move |_| {
                 this.update_domain_color();
+
                 let bar = &this.imp().url_bar;
+
                 if bar.focus_child().is_none() {
                     bar.set_text(&this.url());
                 }
+
                 None
             }),
         );
@@ -651,6 +654,12 @@ impl Window {
     }
     fn try_update_domain_color(&self) -> anyhow::Result<()> {
         let imp = self.imp();
+        let config = imp.config.borrow().clone();
+
+        if config.colors == false {
+            return Ok(());
+        }
+
         let color_source = {
             let url = imp.url.borrow();
             let parsed_url = Url::parse(&url);
