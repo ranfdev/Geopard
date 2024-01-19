@@ -656,7 +656,7 @@ impl Window {
         let imp = self.imp();
         let config = imp.config.borrow().clone();
 
-        if config.colors == false {
+        if !config.colors {
             return Ok(());
         }
 
