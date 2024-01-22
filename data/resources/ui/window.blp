@@ -15,167 +15,172 @@ template $GeopardWindow: Adw.ApplicationWindow {
         view: tab_view;
         enable-new-tab: true;
 
-        Adw.ToolbarView toolbar_view {
-          reveal-bottom-bars: false;
+        Adw.ToastOverlay toast_overlay {
+          Adw.ToolbarView toolbar_view {
+            reveal-bottom-bars: false;
 
-          [top]
-          Adw.HeaderBar {
-            [start]
-            Gtk.Box previous_box {
-              Gtk.Button previous {
+            [top]
+            Adw.HeaderBar {
+              [start]
+              Gtk.Box previous_box {
+                Gtk.Button previous {
+                  icon-name: "go-previous-symbolic";
+                  action-name: "win.previous";
+                  tooltip-text: _("Go back one page\nRight-click to show history");
+                }
+
+                Gtk.Popover previous_popover {
+                  autohide: true;
+                  has-arrow: false;
+                }
+              }
+
+              [start]
+              Gtk.Box next_box {
+                Gtk.Button next {
+                  icon-name: "go-next-symbolic";
+                  action-name: "win.next";
+                  tooltip-text: _("Go forward one page\nRight-click to show history");
+                }
+
+                Gtk.Popover next_popover {
+                  autohide: true;
+                  has-arrow: false;
+                }
+              }
+
+              [start]
+              Gtk.Button refresh_btn {
+                icon-name: "view-refresh-symbolic";
+                action-name: "win.reload";
+                tooltip-text: _("Reload current page");
+              }
+
+              [start]
+              Gtk.Button tab_new_btn {
+                icon-name: "tab-new-symbolic";
+                action-name: "win.new-tab";
+                tooltip-text: _("Open a new tab");
+              }
+
+              [title]
+              Adw.Clamp {
+                maximum-size: 768;
+                tightening-threshold: 720;
+
+                Gtk.SearchEntry url_bar {
+                  hexpand: true;
+                  placeholder-text: _("Enter Gemini address or search with Geminispace");
+                }
+              }
+
+              [end]
+              Gtk.MenuButton primary_menu_btn {
+                icon-name: "open-menu";
+                menu-model: primary_menu;
+                tooltip-text: _("Main menu");
+              }
+
+              [end]
+              Gtk.Button desktop_tab_overview_btn {
+                icon-name: "view-grid-symbolic";
+                action-name: "overview.open";
+                tooltip-text: _("Open tab overview");
+              }
+            }
+
+            [top]
+            Gtk.Revealer tab_bar_revealer {
+              reveal-child: true;
+              Adw.TabBar tab_bar {
+                view: tab_view;
+              }
+            }
+
+            content: Gtk.Box {
+              orientation: vertical;
+
+              Gtk.Overlay {
+                Adw.TabView tab_view {
+                  vexpand: true;
+                  hexpand: true;
+                }
+
+                [overlay]
+                Gtk.ProgressBar progress_bar {
+                  styles ["osd"]
+                  valign: start;
+                  text: bind template.progress;
+                }
+
+                [overlay]
+                Gtk.Box {
+                  orientation: vertical;
+                  valign: end;
+
+                  Gtk.Box url_status_box {
+                    visible: false;
+                    styles ["background"]
+
+                    Gtk.Label url_status {
+                      xalign: 0.0;
+                      ellipsize: end;
+                      margin-top: 6;
+                      margin-bottom: 6;
+                      margin-start: 6;
+                      margin-end: 6;
+                    }
+                  }
+                }
+              }
+            };
+
+            [bottom]
+            Adw.HeaderBar bottom_bar {
+              show-end-title-buttons: false;
+              show-start-title-buttons: false;
+
+              [start]
+              Gtk.Button {
                 icon-name: "go-previous-symbolic";
                 action-name: "win.previous";
                 tooltip-text: _("Go back one page\nRight-click to show history");
               }
 
-              Gtk.Popover previous_popover {
-                autohide: true;
-                has-arrow: false;
-              }
-            }
-
-            [start]
-            Gtk.Box next_box {
-              Gtk.Button next {
+              [start]
+              Gtk.Button {
                 icon-name: "go-next-symbolic";
                 action-name: "win.next";
                 tooltip-text: _("Go forward one page\nRight-click to show history");
               }
 
-              Gtk.Popover next_popover {
-                autohide: true;
-                has-arrow: false;
-              }
-            }
-
-            [start]
-            Gtk.Button refresh_btn {
-              icon-name: "view-refresh-symbolic";
-              action-name: "win.reload";
-              tooltip-text: _("Reload current page");
-            }
-
-            [start]
-            Gtk.Button tab_new_btn {
-              icon-name: "tab-new-symbolic";
-              action-name: "win.new-tab";
-              tooltip-text: _("Open a new tab");
-            }
-
-            [title]
-            Adw.Clamp {
-              maximum-size: 768;
-              tightening-threshold: 720;
-
-              Gtk.SearchEntry url_bar {
-                hexpand: true;
-                placeholder-text: _("Enter Gemini address or search with Geminispace");
-              }
-            }
-
-            [end]
-            Gtk.MenuButton primary_menu_btn {
-              icon-name: "open-menu";
-              menu-model: primary_menu;
-              tooltip-text: _("Main menu");
-            }
-
-            [end]
-            Gtk.Button desktop_tab_overview_btn {
-              icon-name: "view-grid-symbolic";
-              action-name: "overview.open";
-              tooltip-text: _("Open tab overview");
-            }
-          }
-          [top]
-          Gtk.Revealer tab_bar_revealer {
-            reveal-child: true;
-            Adw.TabBar tab_bar {
-              view: tab_view;
-            }
-          }
-
-          content: Gtk.Box {
-            orientation: vertical;
-            Gtk.Overlay {
-              Adw.TabView tab_view {
-                vexpand: true;
-                hexpand: true;
+              [start]
+              Gtk.Button {
+                icon-name: "view-refresh-symbolic";
+                action-name: "win.reload";
+                tooltip-text: _("Reload current page");
               }
 
-              [overlay]
-              Gtk.ProgressBar progress_bar {
-                styles ["osd"]
-                valign: start;
-                text: bind template.progress;
+              [title]
+              Gtk.Button {
+                icon-name: "system-search-symbolic";
+                action-name: "win.focus-url-bar";
+                tooltip-text: _("Start searching");
               }
 
-              [overlay]
-              Gtk.Box {
-                orientation: vertical;
-                valign: end;
-
-                Gtk.Box url_status_box {
-                  visible: false;
-                  styles ["background"]
-
-                  Gtk.Label url_status {
-                    xalign: 0.0;
-                    ellipsize: end;
-                    margin-top: 6;
-                    margin-bottom: 6;
-                    margin-start: 6;
-                    margin-end: 6;
-                  }
-                }
+              [end]
+              Gtk.MenuButton {
+                icon-name: "open-menu";
+                menu-model: primary_menu;
+                tooltip-text: _("Main menu");
               }
-            }
-          };
-          [bottom]
-          Adw.HeaderBar bottom_bar {
-            show-end-title-buttons: false;
-            show-start-title-buttons: false;
 
-            [start]
-            Gtk.Button {
-              icon-name: "go-previous-symbolic";
-              action-name: "win.previous";
-              tooltip-text: _("Go back one page\nRight-click to show history");
-            }
-
-            [start]
-            Gtk.Button {
-              icon-name: "go-next-symbolic";
-              action-name: "win.next";
-              tooltip-text: _("Go forward one page\nRight-click to show history");
-            }
-
-            [start]
-            Gtk.Button {
-              icon-name: "view-refresh-symbolic";
-              action-name: "win.reload";
-              tooltip-text: _("Reload current page");
-            }
-
-            [title]
-            Gtk.Button {
-              icon-name: "system-search-symbolic";
-              action-name: "win.focus-url-bar";
-              tooltip-text: _("Start searching");
-            }
-
-            [end]
-            Gtk.MenuButton {
-              icon-name: "open-menu";
-              menu-model: primary_menu;
-              tooltip-text: _("Main menu");
-            }
-
-            [end]
-            Gtk.Button {
-              icon-name: "view-grid-symbolic";
-              action-name: "overview.open";
-              tooltip-text: _("Open tab overview");
+              [end]
+              Gtk.Button {
+                icon-name: "view-grid-symbolic";
+                action-name: "overview.open";
+                tooltip-text: _("Open tab overview");
+              }
             }
           }
         }
