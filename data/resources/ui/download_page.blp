@@ -2,49 +2,66 @@ using Gtk 4.0;
 using Adw 1;
 
 template $Download: Gtk.Box {
-  margin-top: 8;
-  margin-bottom: 8;
-  margin-start: 8;
-  margin-end: 8;
+  margin-top: 24;
+  margin-bottom: 24;
+  margin-start: 24;
+  margin-end: 24;
   orientation: vertical;
   valign: center;
-  Gtk.Box {
-    orientation: horizontal;
-    spacing: 16;
-    Gtk.Image {
-      icon-name: "folder-download-symbolic";
-      pixel-size: 48;
-      valign: center;
-    }
-    Gtk.Box {
+  hexpand: true;
+  vexpand: true;
+
+  Adw.Clamp {
+    maximum-size: 800;
+
+    child: Gtk.Box {
       orientation: vertical;
-      valign: center;
-      margin-top: 8;
-      margin-bottom: 8;
-      Gtk.Label label {
-        styles ["heading"]
-        label: "Text";
-        xalign: 0.0;
-        wrap: true;
+
+      Gtk.Box {
+        orientation: horizontal;
+        spacing: 16;
+
+        Gtk.Image {
+          icon-name: "folder-download-symbolic";
+          pixel-size: 48;
+          valign: center;
+        }
+
+        Gtk.Box {
+          orientation: vertical;
+          valign: center;
+          margin-top: 8;
+          margin-bottom: 8;
+
+          Gtk.Label label {
+            styles ["heading"]
+            label: "Text";
+            xalign: 0.0;
+            wrap: true;
+          }
+
+          Gtk.Label label_downloaded {
+            styles ["numeric"]
+            label: "0KB";
+            xalign: 0.0;
+          }
+
+          Gtk.ProgressBar progress_bar {
+            margin-top: 8;
+            pulse-step: 0.1;
+            hexpand: true;
+          }
+        }
       }
-      Gtk.Label label_downloaded {
-        styles ["numeric"]
-        label: "0KB";
-        xalign: 0.0;
-      }
-      Gtk.ProgressBar progress_bar {
+
+      Gtk.Button open_btn {
+        styles ["pill"]
+        label: "Stream (alpha)";
         margin-top: 8;
-        pulse-step: 0.1;
-        hexpand: true;
+        margin-bottom: 8;
+        opacity: 0;
+        halign: center;
       }
-    }
-  }
-  Gtk.Button open_btn {
-    styles ["pill"]
-    label: "Stream (alpha)";
-    margin-top: 8;
-    margin-bottom: 8;
-    opacity: 0;
-    halign: center;
+    };
   }
 }
