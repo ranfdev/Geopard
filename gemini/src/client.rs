@@ -12,7 +12,8 @@ use url::Url;
 use crate::{known_hosts, CertificateError};
 
 const MAX_REDIRECT: u8 = 5;
-const MAX_TIMEOUT: u32 = 10000;
+// Timeout measured in seconds
+const MAX_TIMEOUT_SECONDS: u32 = 10;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProtoError {
@@ -272,7 +273,7 @@ impl Client {
             gio::NetworkAddress::parse_uri(url.as_str(), 1965).map_err(|_| Error::InvalidHost)?;
         let socket = gio::SocketClient::new();
         socket.set_tls(true);
-        socket.set_timeout(MAX_TIMEOUT);
+        socket.set_timeout(MAX_TIMEOUT_SECONDS);
 
         let tls_error = Rc::new(RefCell::new(None));
         let validator = self.validator.clone();
