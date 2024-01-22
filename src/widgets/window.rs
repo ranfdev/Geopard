@@ -45,6 +45,8 @@ pub mod imp {
         #[template_child]
         pub(crate) session_provider: TemplateChild<SessionProvider>,
         #[template_child]
+        pub(crate) toast_overlay: TemplateChild<adw::ToastOverlay>,
+        #[template_child]
         pub(crate) url_bar: TemplateChild<gtk::SearchEntry>,
         #[template_child]
         pub(crate) url_status: TemplateChild<gtk::Label>,
@@ -249,9 +251,10 @@ impl Window {
 
         let act_set_clipboard =
             gio::SimpleAction::new("set-clipboard", Some(glib::VariantTy::STRING));
-        act_set_clipboard.connect_activate(
-            clone!(@weak self as this => move |_,v| this.set_clipboard(v.unwrap().get::<String>().unwrap().as_str())),
-        );
+        act_set_clipboard.connect_activate(clone!(@weak self as this => move |_,v| {
+            this.set_clipboard(v.unwrap().get::<String>().unwrap().as_str());
+            this.imp().toast_overlay.add_toast(adw::Toast::new("Copied to clipboard"));
+        }));
         self.add_action(&act_set_clipboard);
     }
     fn setup_signals(&self) {
@@ -607,13 +610,21 @@ impl Window {
         self.current_tab().reload();
     }
     fn bookmark_current(&self) {
-        let url = self.imp().url_bar.text().to_string();
-        glibctx().spawn_local(async move {
+        let imp = self.imp();
+        let url = imp.url_bar.text().to_string();
+
+        glibctx().spawn_local(clone!(@weak imp => async move {
             match Self::append_bookmark(&url).await {
-                Ok(_) => info!("{} saved to bookmarks", url),
-                Err(e) => error!("{}", e),
+                Ok(_) => {
+                    info!("{} saved to bookmarks", url);
+                    imp.toast_overlay.add_toast(adw::Toast::new("Page added to bookmarks"));
+                },
+                Err(e) => {
+                    error!("{}", e);
+                    imp.toast_overlay.add_toast(adw::Toast::new("Failed to bookmark this page"));
+                },
             }
-        });
+        }));
     }
     fn open_omni(&self, v: &str) {
         let url = Url::parse(v).or_else(|_| {
