@@ -71,7 +71,7 @@ pub mod imp {
         #[template_child]
         pub(crate) tab_bar_revealer: TemplateChild<gtk::Revealer>,
         #[template_child]
-        pub(crate) primary_menu_btn: TemplateChild<gtk::MenuButton>,
+        pub(crate) main_menu_button: TemplateChild<gtk::MenuButton>,
         pub(crate) config: RefCell<config::Config>,
         pub(crate) progress_animation: RefCell<Option<adw::SpringAnimation>>,
         pub(crate) binded_tab_properties: RefCell<Vec<glib::Binding>>,
@@ -382,7 +382,9 @@ impl Window {
     fn setup_zoom_popover_item(&self) {
         let imp = self.imp();
 
-        let popover: gtk::PopoverMenu = imp.primary_menu_btn.popover().unwrap().downcast().unwrap();
+        let menu_popover: gtk::PopoverMenu =
+            imp.main_menu_button.popover().unwrap().downcast().unwrap();
+
         let zoom_box = gtk::Box::builder()
             .spacing(12)
             .margin_start(18)
@@ -419,7 +421,7 @@ impl Window {
                 .action_name("win.zoom-in")
                 .build(),
         );
-        popover.add_child(&zoom_box, "zoom");
+        menu_popover.add_child(&zoom_box.clone(), "zoom");
     }
     fn setup_history_button<
         F: for<'a> Fn(
