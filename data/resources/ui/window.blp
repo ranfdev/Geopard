@@ -75,7 +75,7 @@ template $GeopardWindow: Adw.ApplicationWindow {
               }
 
               [end]
-              Gtk.MenuButton primary_menu_btn {
+              Gtk.MenuButton main_menu_button {
                 icon-name: "open-menu";
                 menu-model: primary_menu;
                 tooltip-text: _("Main menu");
@@ -169,13 +169,6 @@ template $GeopardWindow: Adw.ApplicationWindow {
               }
 
               [end]
-              Gtk.MenuButton {
-                icon-name: "open-menu";
-                menu-model: primary_menu;
-                tooltip-text: _("Main menu");
-              }
-
-              [end]
               Gtk.Button {
                 icon-name: "view-grid-symbolic";
                 action-name: "overview.open";
@@ -195,14 +188,12 @@ template $GeopardWindow: Adw.ApplicationWindow {
       next_box.visible: false;
       refresh_btn.visible: false;
       tab_new_btn.visible: false;
-      primary_menu_btn.visible: false;
       desktop_tab_overview_btn.visible: false;
       toolbar_view.reveal-bottom-bars: true;
       tab_bar_revealer.reveal-child: false;
     }
   }
 }
-
 
 menu primary_menu {
   section {
