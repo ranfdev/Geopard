@@ -102,7 +102,7 @@ fn main() {
         .resource_base_path("/com/ranfdev/Geopard/")
         .build();
 
-    println!("{}", config::APP_ID);
+    //println!("{}", config::APP_ID);
 
     let config = futures::executor::block_on(async {
         create_base_files().await.unwrap();
@@ -130,14 +130,8 @@ fn main() {
         }
     });
 
-    application.set_accels_for_action(
-        "win.previous",
-        &["<Alt>Left", "<Alt>KP_Left", "Pointer_DfltBtnPrev"],
-    );
-    application.set_accels_for_action(
-        "win.next",
-        &["<Alt>Right", "<Alt>KP_Right", "Pointer_DfltBtnNext"],
-    );
+    application.set_accels_for_action("win.previous", &["<Alt>Left", "<Alt>KP_Left"]);
+    application.set_accels_for_action("win.next", &["<Alt>Right", "<Alt>KP_Right"]);
     application.set_accels_for_action("win.reload", &["<Ctrl>r", "F5"]);
     application.set_accels_for_action("win.show-bookmarks", &["<Ctrl>b"]);
     application.set_accels_for_action("win.bookmark-current", &["<Ctrl>d"]);
