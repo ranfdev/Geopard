@@ -241,7 +241,7 @@ impl Client {
     }
 
     pub async fn fetch(&self, url_str: &str) -> Result<Response, Error> {
-        let mut url_str = url_str;
+        let mut url_str = url_str.to_string();
         let mut res;
         let mut i = 0;
         let max_redirect = if self.options.redirect {
@@ -250,13 +250,20 @@ impl Client {
             1
         };
         while {
-            let url = Url::parse(url_str)?;
+            let url = Url::parse(&url_str)?;
             res = self.fetch_internal(url).await?;
             i < max_redirect
         } {
             match res.status() {
                 Status::Redirect(_) => {
-                    url_str = res.meta();
+                    if let Err(url::ParseError::RelativeUrlWithoutBase) = Url::parse(res.meta()) {
+                        let base_url = Url::parse(&url_str)?;
+                        let new_url = base_url.join(res.meta())?;
+
+                        url_str = new_url.to_string();
+                    } else {
+                        url_str = res.meta().to_string();
+                    }
                     i += 1;
                 }
                 _ => break,
