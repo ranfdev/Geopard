@@ -727,10 +727,13 @@ impl Window {
             .application_icon(build_config::APP_ID)
             .application_name("Geopard")
             .developer_name("ranfdev")
+            .developers(vec![
+                "ranfdev https://github.com/ranfdev",
+                "tfuxu https://github.com/tfuxu",
+            ])
             .license_type(gtk::License::Gpl30)
             .version(build_config::VERSION)
-            .developers(vec!["ranfdev"])
-            .copyright("Copyright © 2022-2023 ranfdev")
+            .copyright("Copyright © 2022-2024 ranfdev")
             .issue_url("https://github.com/ranfdev/Geopard/issues")
             .website("https://github.com/ranfdev/Geopard")
             .transient_for(self)
