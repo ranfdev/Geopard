@@ -421,7 +421,7 @@ impl Window {
                 .action_name("win.zoom-in")
                 .build(),
         );
-        menu_popover.add_child(&zoom_box.clone(), "zoom");
+        menu_popover.add_child(&zoom_box, "zoom");
     }
     fn setup_history_button<
         F: for<'a> Fn(
