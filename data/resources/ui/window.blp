@@ -26,7 +26,7 @@ template $GeopardWindow: Adw.ApplicationWindow {
                 Gtk.Button previous {
                   icon-name: "go-previous-symbolic";
                   action-name: "win.previous";
-                  tooltip-text: _("Go back one page\nRight-click to show history");
+                  tooltip-text: _("Go Back\nRight-click to show history");
                 }
 
                 Gtk.Popover previous_popover {
@@ -40,7 +40,7 @@ template $GeopardWindow: Adw.ApplicationWindow {
                 Gtk.Button next {
                   icon-name: "go-next-symbolic";
                   action-name: "win.next";
-                  tooltip-text: _("Go forward one page\nRight-click to show history");
+                  tooltip-text: _("Go Forward\nRight-click to show history");
                 }
 
                 Gtk.Popover next_popover {
@@ -53,14 +53,14 @@ template $GeopardWindow: Adw.ApplicationWindow {
               Gtk.Button refresh_btn {
                 icon-name: "view-refresh-symbolic";
                 action-name: "win.reload";
-                tooltip-text: _("Reload current page");
+                tooltip-text: _("Reload");
               }
 
               [start]
               Gtk.Button tab_new_btn {
                 icon-name: "tab-new-symbolic";
                 action-name: "win.new-tab";
-                tooltip-text: _("Open a new tab");
+                tooltip-text: _("New Tab");
               }
 
               [title]
@@ -78,7 +78,7 @@ template $GeopardWindow: Adw.ApplicationWindow {
               Gtk.MenuButton main_menu_button {
                 icon-name: "open-menu";
                 menu-model: primary_menu;
-                tooltip-text: _("Main menu");
+                tooltip-text: _("Main Menu");
                 primary: true;
               }
 
@@ -86,7 +86,7 @@ template $GeopardWindow: Adw.ApplicationWindow {
               Gtk.Button desktop_tab_overview_btn {
                 icon-name: "view-grid-symbolic";
                 action-name: "overview.open";
-                tooltip-text: _("Open tab overview");
+                tooltip-text: _("View Open Tabs");
               }
             }
 
@@ -145,35 +145,35 @@ template $GeopardWindow: Adw.ApplicationWindow {
               Gtk.Button {
                 icon-name: "go-previous-symbolic";
                 action-name: "win.previous";
-                tooltip-text: _("Go back one page\nRight-click to show history");
+                tooltip-text: _("Go Back\nRight-click to show history");
               }
 
               [start]
               Gtk.Button {
                 icon-name: "go-next-symbolic";
                 action-name: "win.next";
-                tooltip-text: _("Go forward one page\nRight-click to show history");
+                tooltip-text: _("Go Forward\nRight-click to show history");
               }
 
               [start]
               Gtk.Button {
                 icon-name: "view-refresh-symbolic";
                 action-name: "win.reload";
-                tooltip-text: _("Reload current page");
+                tooltip-text: _("Reload");
               }
 
               [title]
               Gtk.Button {
                 icon-name: "system-search-symbolic";
                 action-name: "win.focus-url-bar";
-                tooltip-text: _("Start searching");
+                tooltip-text: _("Start Searching");
               }
 
               [end]
               Gtk.Button {
                 icon-name: "view-grid-symbolic";
                 action-name: "overview.open";
-                tooltip-text: _("Open tab overview");
+                tooltip-text: _("View Open Tabs");
               }
             }
           }
@@ -218,7 +218,7 @@ menu primary_menu {
       action: "win.show-help-overlay";
     }
     item {
-      label: "About";
+      label: "About Geopard";
       action: "win.about";
     }
   }
