@@ -3,5 +3,4 @@ mod pages;
 mod tab;
 mod window;
 
-pub use tab::Tab;
 pub use window::Window;

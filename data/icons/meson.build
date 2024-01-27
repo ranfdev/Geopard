@@ -6,7 +6,7 @@ install_data(
 
 symbolic_dir = join_paths('hicolor', 'symbolic', 'apps')
 install_data(
-  join_paths(symbolic_dir, 'com.ranfdev.Geopard-symbolic.svg'.format(application_id)),
+  join_paths(symbolic_dir, 'com.ranfdev.Geopard-symbolic.svg'),
   install_dir: join_paths(get_option('datadir'), 'icons', symbolic_dir),
   rename: '@0@-symbolic.svg'.format(application_id)
 )
