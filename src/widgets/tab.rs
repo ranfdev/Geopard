@@ -220,8 +220,7 @@ impl Tab {
             let data = this.open_url(url).await;
             *body_weak.upgrade().unwrap().borrow_mut() = data;
         };
-        imp.req_handle
-            .replace(Some(glibctx().spawn_local_with_handle(fut).unwrap()));
+        self.spawn_request(fut);
     }
     fn add_to_history(&self, mut item: HistoryItem) -> usize {
         let imp = self.imp();
