@@ -40,7 +40,7 @@ should remove bookmarks.
 
 ## Default bookmarks
 
-=> gemini://gemini.circumlunar.space/ Gemini project
+=> gemini://geminiprotocol.net Gemini project
 => gemini://rawtext.club:1965/~sloum/spacewalk.gmi Spacewalk aggregator
 => about:help About geopard + help
 
