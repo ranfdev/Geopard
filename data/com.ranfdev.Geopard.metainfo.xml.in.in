@@ -32,13 +32,13 @@
   </description>
 
   <screenshots>
-    <screenshot type="default" height="752" width="442">
+    <screenshot type="default" height="722" width="1022">
       <image>https://raw.githubusercontent.com/ranfdev/Geopard/master/data/screenshots/1.png</image>
     </screenshot>
     <screenshot height="752" width="442">
       <image>https://raw.githubusercontent.com/ranfdev/Geopard/master/data/screenshots/2.png</image>
     </screenshot>
-    <screenshot height="844" width="835">
+    <screenshot height="752" width="442">
       <image>https://raw.githubusercontent.com/ranfdev/Geopard/master/data/screenshots/3.png</image>
     </screenshot>
   </screenshots>
