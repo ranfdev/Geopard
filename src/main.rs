@@ -102,7 +102,7 @@ fn main() {
         .resource_base_path("/com/ranfdev/Geopard/")
         .build();
 
-    //println!("{}", config::APP_ID);
+    println!("{}", config::APP_ID);
 
     let config = futures::executor::block_on(async {
         create_base_files().await.unwrap();

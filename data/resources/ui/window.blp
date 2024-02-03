@@ -140,6 +140,7 @@ template $GeopardWindow: Adw.ApplicationWindow {
             Adw.HeaderBar bottom_bar {
               show-end-title-buttons: false;
               show-start-title-buttons: false;
+              show-title: false;
 
               [start]
               Gtk.Button {
@@ -162,18 +163,18 @@ template $GeopardWindow: Adw.ApplicationWindow {
                 tooltip-text: _("Reload");
               }
 
-              [title]
-              Gtk.Button {
-                icon-name: "system-search-symbolic";
-                action-name: "win.focus-url-bar";
-                tooltip-text: _("Start Searching");
-              }
-
               [end]
               Gtk.Button {
                 icon-name: "view-grid-symbolic";
                 action-name: "overview.open";
                 tooltip-text: _("View Open Tabs");
+              }
+
+              [end]
+              Gtk.Button {
+                icon-name: "system-search-symbolic";
+                action-name: "win.focus-url-bar";
+                tooltip-text: _("Start Searching");
               }
             }
           }
