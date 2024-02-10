@@ -83,6 +83,13 @@ template $GeopardWindow: Adw.ApplicationWindow {
               }
 
               [end]
+              Gtk.Button bookmarks_button {
+                icon-name: "library-symbolic";
+                action-name: "win.bookmarks";
+                tooltip-text: _("Bookmarks");
+              }
+
+              [end]
               Gtk.Button desktop_tab_overview_btn {
                 icon-name: "view-grid-symbolic";
                 action-name: "overview.open";
@@ -172,6 +179,13 @@ template $GeopardWindow: Adw.ApplicationWindow {
 
               [end]
               Gtk.Button {
+                icon-name: "library-symbolic";
+                action-name: "win.bookmarks";
+                tooltip-text: _("Bookmarks");
+              }
+
+              [end]
+              Gtk.Button {
                 icon-name: "system-search-symbolic";
                 action-name: "win.focus-url-bar";
                 tooltip-text: _("Start Searching");
@@ -190,6 +204,7 @@ template $GeopardWindow: Adw.ApplicationWindow {
       next_box.visible: false;
       refresh_btn.visible: false;
       tab_new_btn.visible: false;
+      bookmarks_button.visible: false;
       desktop_tab_overview_btn.visible: false;
       toolbar_view.reveal-bottom-bars: true;
       tab_bar_revealer.reveal-child: false;
