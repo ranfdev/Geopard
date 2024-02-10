@@ -3,9 +3,14 @@
   <gresource prefix="/com/ranfdev/Geopard/">
     <!-- see https://gtk-rs.org/gtk4-rs/git/docs/gtk4/struct.Application.html#automatic-resources -->
     <file compressed="true" preprocess="xml-stripblanks" alias="gtk/help-overlay.ui">ui/shortcuts.ui</file>
+    <file compressed="true" preprocess="xml-stripblanks">ui/bookmarks.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/window.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/input_page.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/download_page.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/tab.ui</file>
+  </gresource>
+
+  <gresource prefix="/com/ranfdev/Geopard/icons/scalable/actions/">
+    <file preprocess="xml-stripblanks" alias="library-symbolic.svg">icons/library-symbolic.svg</file>
   </gresource>
 </gresources>
