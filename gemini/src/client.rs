@@ -324,7 +324,7 @@ impl Client {
         let url_request = url.to_string() + "\r\n";
         connection
             .output_stream()
-            .write_all_future(url_request.into_bytes(), glib::PRIORITY_DEFAULT)
+            .write_all_future(url_request.into_bytes(), glib::Priority::default())
             .await
             .map_err(|(_, e)| Error::Gio(e.to_string()))?;
         debug!("Request sent at {}", url);
