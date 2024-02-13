@@ -278,9 +278,9 @@ impl Window {
                     } else {
                       this.zoom_out();
                     }
-                    gtk::Inhibit(true)
+                    glib::signal::Propagation::Stop
                 } else {
-                    gtk::Inhibit(false)
+                    glib::signal::Propagation::Proceed
                 }
             }),
         );
@@ -358,8 +358,8 @@ impl Window {
               };
               action
                   .map(|a| WidgetExt::activate_action(&this, a, None))
-                  .map(|_| gtk::Inhibit(true))
-                  .unwrap_or(gtk::Inhibit(false))
+                  .map(|_| glib::signal::Propagation::Stop)
+                  .unwrap_or(glib::signal::Propagation::Proceed)
             }),
         );
         self.add_controller(ctrl);
@@ -748,7 +748,7 @@ impl Window {
     }
 
     fn present_about(&self) {
-        let about = adw::AboutWindow::builder()
+        let about = adw::AboutDialog::builder()
             .application_icon(build_config::APP_ID)
             .application_name("Geopard")
             .developer_name("ranfdev")
@@ -761,10 +761,9 @@ impl Window {
             .copyright("Copyright © 2022-2024 ranfdev")
             .issue_url("https://github.com/ranfdev/Geopard/issues")
             .website("https://github.com/ranfdev/Geopard")
-            .transient_for(self)
             .build();
         about.add_link("Donate 💝", "https://github.com/sponsors/ranfdev");
-        about.present();
+        about.present(self);
     }
 
     fn focus_next_tab(&self) {

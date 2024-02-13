@@ -10,7 +10,7 @@ edition = "2021"
 
 [dependencies.gtk]
 package = "gtk4"
-version = "0.6"
+version = "0.8"
 features = ["v4_8"]
 
 [dependencies]
@@ -26,4 +26,4 @@ toml = "0.5.6"
 serde = { version = "1.0.116", features = ["derive"] }
 env_logger = "0.8.1"
 log = "0.4.0"
-adw = { package = "libadwaita", version = "0.4", features = ["v1_4"]}
+adw = { package = "libadwaita", version = "0.6", features = ["v1_5"]}
