@@ -1,5 +1,6 @@
 #[rustfmt::skip]
 mod build_config;
+mod bookmarks;
 mod common;
 mod config;
 mod lossy_text_read;
