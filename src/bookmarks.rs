@@ -1,8 +1,41 @@
+use std::collections::BTreeMap;
 use std::path::Path;
 
 use anyhow::{Context, Ok};
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use toml;
+
+// todo!(bookmarks): replace bookmarks.bookmarks.insert() with bookmarks.insert_bookmark()
+pub static DEFAULT_BOOKMARKS: Lazy<Bookmarks> = Lazy::new(|| {
+    let mut bookmarks = Bookmarks::default();
+
+    bookmarks.bookmarks.insert(
+        1.to_string(),
+        BookmarkBuilder::new()
+            .title("Gemini Project")
+            .url("gemini://geminiprotocol.net")
+            .build(),
+    );
+
+    bookmarks.bookmarks.insert(
+        2.to_string(),
+        BookmarkBuilder::new()
+            .title("Spacewalk aggregator")
+            .url("gemini://rawtext.club:1965/~sloum/spacewalk.gmi")
+            .build(),
+    );
+
+    bookmarks.bookmarks.insert(
+        3.to_string(),
+        BookmarkBuilder::new()
+            .title("About geopard + help")
+            .url("about:help")
+            .build(),
+    );
+
+    bookmarks
+});
 
 #[derive(Clone, Default, Serialize, Deserialize, Debug)]
 pub struct Bookmark {
@@ -20,7 +53,8 @@ pub struct BookmarkBuilder {
 
 #[derive(Clone, Default, Serialize, Deserialize, Debug)]
 pub struct Bookmarks {
-    pub bookmarks: Vec<Bookmark>,
+    #[serde(rename = "bookmark")]
+    pub bookmarks: BTreeMap<String, Bookmark>,
 }
 
 impl BookmarkBuilder {
@@ -81,6 +115,7 @@ impl Bookmark {
     }
 }
 
+//todo!(bookmarks): Add from_gmi() method for migrations
 impl Bookmarks {
     pub async fn from_file(&self, path: &Path) -> anyhow::Result<Self> {
         let file_str = async_fs::read_to_string(path)
@@ -102,15 +137,20 @@ impl Bookmarks {
         Ok(())
     }
 
+    //todo!(bookmarks): key must be the biggest current key + 1
     pub fn insert_bookmark(&mut self, bookmark: Bookmark) {
-        self.bookmarks.push(bookmark);
+        self.bookmarks.insert(1.to_string(), bookmark);
     }
 
-    pub fn remove_bookmark(&mut self, index: usize) {
+    pub fn update_bookmark(&mut self, key: u32, new_bookmark: Bookmark) {
+        self.bookmarks.insert(key.to_string(), new_bookmark);
+    }
+
+    pub fn remove_bookmark(&mut self, key: u32) {
         if self.bookmarks.is_empty() {
             return;
         }
 
-        self.bookmarks.remove(index);
+        self.bookmarks.remove(&key.to_string());
     }
 }
