@@ -17,7 +17,7 @@ use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
 use crate::session_provider::SessionProvider;
 use crate::widgets::bookmarks::BookmarksWindow;
 use crate::widgets::tab::{HistoryItem, HistoryStatus, Tab};
-use crate::{build_config, config, self_action};
+use crate::{bookmarks, build_config, config, self_action};
 
 const ZOOM_CHANGE_FACTOR: f64 = 1.15;
 const ZOOM_MAX_FACTOR: f64 = 5.0;
@@ -74,6 +74,7 @@ pub mod imp {
         #[template_child]
         pub(crate) main_menu_button: TemplateChild<gtk::MenuButton>,
         pub(crate) config: RefCell<config::Config>,
+        pub(crate) bookmarks: RefCell<bookmarks::Bookmarks>,
         pub(crate) progress_animation: RefCell<Option<adw::SpringAnimation>>,
         pub(crate) binded_tab_properties: RefCell<Vec<glib::Binding>>,
         #[property(get, set)]
@@ -172,12 +173,17 @@ glib::wrapper! {
 }
 
 impl Window {
-    pub fn new(app: &adw::Application, config: config::Config) -> Self {
+    pub fn new(
+        app: &adw::Application,
+        config: config::Config,
+        bookmarks: bookmarks::Bookmarks,
+    ) -> Self {
         let this: Self = glib::Object::builder::<Self>()
             .property("application", app)
             .build();
         let imp = this.imp();
         imp.config.replace(config);
+        imp.bookmarks.replace(bookmarks);
         imp.zoom.borrow_mut().value = 1.0;
 
         this.setup_css_providers();
@@ -733,7 +739,9 @@ impl Window {
     }
 
     fn present_bookmarks(&self) {
-        let bookmarks = BookmarksWindow::new(&self.application().unwrap());
+        let imp = self.imp();
+        let bookmarks =
+            BookmarksWindow::new(&self.application().unwrap(), imp.bookmarks.borrow().clone());
         bookmarks.set_transient_for(Some(self));
 
         bookmarks.connect_closure(
