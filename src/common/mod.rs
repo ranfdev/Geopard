@@ -23,8 +23,13 @@ pub static KNOWN_HOSTS_PATH: Lazy<std::path::PathBuf> =
 pub static CONFIG_DIR_PATH: Lazy<std::path::PathBuf> =
     Lazy::new(|| glib::user_config_dir().join("geopard"));
 
+//todo!(common): Rename this to OLD_BOOKMARK_FILE_PATH
 pub static BOOKMARK_FILE_PATH: Lazy<std::path::PathBuf> =
     Lazy::new(|| DATA_DIR_PATH.join("bookmarks.gemini"));
+
+//todo!(common): Rename this to BOOKMARK_FILE_PATH
+pub static NEW_BOOKMARK_FILE_PATH: Lazy<std::path::PathBuf> =
+    Lazy::new(|| DATA_DIR_PATH.join("bookmarks.toml"));
 
 pub static SETTINGS_FILE_PATH: Lazy<std::path::PathBuf> =
     Lazy::new(|| CONFIG_DIR_PATH.join("config.toml"));
@@ -32,6 +37,7 @@ pub static SETTINGS_FILE_PATH: Lazy<std::path::PathBuf> =
 pub static HISTORY_FILE_PATH: Lazy<std::path::PathBuf> =
     Lazy::new(|| DATA_DIR_PATH.join("history.gemini"));
 
+//todo!(common): Remove this after implementing new format
 pub static DEFAULT_BOOKMARKS: &str = r"# Bookmarks
 
 This is a gemini file where you can put all your bookmarks.
@@ -50,6 +56,7 @@ should remove bookmarks.
 
 pub const STREAMABLE_EXTS: [&str; 8] = ["mp3", "mp4", "webm", "opus", "wav", "ogg", "mkv", "flac"];
 
+//todo!(common): Remove this
 pub fn bookmarks_url() -> Url {
     Url::parse(&format!("file://{}", BOOKMARK_FILE_PATH.to_str().unwrap())).unwrap()
 }
