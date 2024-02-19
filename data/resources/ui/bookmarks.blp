@@ -13,9 +13,18 @@ template $GeopardBookmarksWindow : Adw.Window {
     Adw.ToolbarView {
       [top]
       Adw.HeaderBar {
+        centering-policy: strict;
 
         [end]
-        Gtk.Button {
+        Gtk.ToggleButton search_button {
+          visible: false; // TODO: Remove
+          icon-name: "edit-find-symbolic";
+          tooltip-text: _("Search");
+        }
+
+        [end]
+        Gtk.Button select_items_button {
+          visible: false; // TODO: Remove
           icon-name: "selection-mode-symbolic";
           tooltip-text: _("Select Items");
         }

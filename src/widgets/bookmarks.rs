@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::sync::OnceLock;
 
 use adw::prelude::*;
@@ -8,6 +9,8 @@ use gtk::{
     glib::{self, clone, Object},
     CompositeTemplate,
 };
+
+use crate::bookmarks;
 
 pub mod imp {
     use super::*;
@@ -21,6 +24,7 @@ pub mod imp {
         pub stack: TemplateChild<gtk::Stack>,
         #[template_child]
         pub bookmarks_list: TemplateChild<gtk::ListBox>,
+        pub(crate) bookmarks: RefCell<bookmarks::Bookmarks>,
     }
 
     #[glib::object_subclass]
@@ -62,10 +66,12 @@ glib::wrapper! {
 }
 
 impl BookmarksWindow {
-    pub fn new(app: &gtk::Application) -> Self {
+    pub fn new(app: &gtk::Application, bookmarks: bookmarks::Bookmarks) -> Self {
         let this = Object::builder::<Self>()
             .property("application", app)
             .build();
+        let imp = this.imp();
+        imp.bookmarks.replace(bookmarks);
 
         this.setup();
 
@@ -77,11 +83,10 @@ impl BookmarksWindow {
         // TODO: Set to bookmarks_page if there's at least one bookmark
         imp.stack.set_visible_child_name("bookmarks_page");
 
-        for i in 0..10 {
-            self.add_row(
-                &format!("Bookmark {i}"),
-                &format!("gemini://geminispace.info/search?geopard"),
-            );
+        let bookmarks_map = imp.bookmarks.borrow().clone().bookmarks;
+
+        for (_, bookmark) in bookmarks_map.iter() {
+            self.add_row(&bookmark.title(), &bookmark.url());
         }
     }
 
@@ -99,6 +104,7 @@ impl BookmarksWindow {
 
         let copy_button = gtk::Button::builder()
             .icon_name("edit-copy-symbolic")
+            .tooltip_text("Copy URL")
             .css_classes(vec!["flat"])
             .valign(gtk::Align::Center)
             .build();
