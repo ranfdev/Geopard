@@ -14,15 +14,13 @@ use std::{env, process};
 
 use anyhow::Context;
 use async_fs::File;
-use common::bookmarks_url;
 use futures::prelude::*;
 use gtk::gio;
 use gtk::prelude::*;
 use log::error;
 
 use crate::common::{
-    BOOKMARK_FILE_PATH, CONFIG_DIR_PATH, DATA_DIR_PATH, DEFAULT_BOOKMARKS, HISTORY_FILE_PATH,
-    NEW_BOOKMARK_FILE_PATH, SETTINGS_FILE_PATH,
+    BOOKMARK_FILE_PATH, CONFIG_DIR_PATH, DATA_DIR_PATH, HISTORY_FILE_PATH, SETTINGS_FILE_PATH,
 };
 
 async fn read_config() -> anyhow::Result<config::Config> {
@@ -32,8 +30,7 @@ async fn read_config() -> anyhow::Result<config::Config> {
 
 async fn read_bookmarks() -> anyhow::Result<bookmarks::Bookmarks> {
     let bookmarks = bookmarks::Bookmarks::default();
-
-    Ok(bookmarks.from_file(&NEW_BOOKMARK_FILE_PATH).await?)
+    Ok(bookmarks.from_file(&BOOKMARK_FILE_PATH).await?)
 }
 
 async fn create_dir_if_not_exists(path: &std::path::Path) -> anyhow::Result<()> {
@@ -71,8 +68,7 @@ async fn create_base_files() -> anyhow::Result<()> {
 
     create_dir_if_not_exists(&DATA_DIR_PATH).await?;
     create_dir_if_not_exists(&CONFIG_DIR_PATH).await?;
-    init_file_if_not_exists(&NEW_BOOKMARK_FILE_PATH, Some(default_bookmarks.as_bytes())).await?;
-    init_file_if_not_exists(&BOOKMARK_FILE_PATH, Some(DEFAULT_BOOKMARKS.as_bytes())).await?;
+    init_file_if_not_exists(&BOOKMARK_FILE_PATH, Some(default_bookmarks.as_bytes())).await?;
     init_file_if_not_exists(&HISTORY_FILE_PATH, None).await?;
     init_file_if_not_exists(&SETTINGS_FILE_PATH, Some(default_config.as_bytes())).await?;
 
@@ -122,15 +118,19 @@ fn main() {
 
     let windows = Rc::new(RefCell::new(vec![]));
 
-    application
+    //todo!(main): Modify to open URLs instead of files (issue #50)
+    /*application
         .connect_activate(move |app| app.open(&[gio::File::for_uri(bookmarks_url().as_str())], ""));
+    */
 
-    application.connect_open(move |app, files, _| {
+    application.connect_activate(move |app| {
         let window = widgets::Window::new(app, config.clone(), bookmarks.clone());
         window.present();
         windows.borrow_mut().push(window.clone());
 
-        for f in files {
+        gtk::prelude::WidgetExt::activate_action(&window, "win.new-tab", None).unwrap();
+
+        /*for f in files {
             gtk::prelude::WidgetExt::activate_action(&window, "win.new-empty-tab", None).unwrap();
             gtk::prelude::WidgetExt::activate_action(
                 &window,
@@ -138,7 +138,7 @@ fn main() {
                 Some(&f.uri().to_variant()),
             )
             .unwrap();
-        }
+        }*/
     });
 
     application.set_accels_for_action("win.previous", &["<Alt>Left", "<Alt>KP_Left"]);
