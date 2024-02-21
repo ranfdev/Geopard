@@ -29,7 +29,7 @@ pub static DEFAULT_BOOKMARKS: Lazy<Bookmarks> = Lazy::new(|| {
     bookmarks.bookmarks.insert(
         3.to_string(),
         BookmarkBuilder::new()
-            .title("About geopard + help")
+            .title("About Geopard + help")
             .url("about:help")
             .build(),
     );
