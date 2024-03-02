@@ -12,7 +12,7 @@ use log::{error, info, warn};
 use url::Url;
 
 use crate::session_provider::SessionProvider;
-use crate::widgets::bookmarks::BookmarksWindow;
+use crate::widgets::bookmarks_window::BookmarksWindow;
 use crate::widgets::tab::{HistoryItem, HistoryStatus, Tab};
 use crate::{bookmarks, build_config, config, self_action};
 

@@ -16,7 +16,7 @@ pub mod imp {
     use super::*;
 
     #[derive(CompositeTemplate, Default)]
-    #[template(resource = "/com/ranfdev/Geopard/ui/bookmarks.ui")]
+    #[template(resource = "/com/ranfdev/Geopard/ui/bookmarks_window.ui")]
     pub struct BookmarksWindow {
         #[template_child]
         pub toast_overlay: TemplateChild<adw::ToastOverlay>,
