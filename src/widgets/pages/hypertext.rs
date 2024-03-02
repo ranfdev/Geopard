@@ -195,7 +195,10 @@ pub mod imp {
                         .param_types([SignalType::from(glib::types::Type::STRING)])
                         .build(),
                     Signal::builder("open-in-new-tab")
-                        .param_types([SignalType::from(glib::types::Type::STRING)])
+                        .param_types([
+                            SignalType::from(glib::types::Type::STRING),
+                            SignalType::from(glib::types::Type::BOOL),
+                        ])
                         .build(),
                     Signal::builder("open-background-tab")
                         .param_types([SignalType::from(glib::types::Type::STRING)])

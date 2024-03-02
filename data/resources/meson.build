@@ -1,5 +1,6 @@
 blueprints = custom_target('blueprints',
   input: files(
+    'ui/bookmarks.blp',
     'ui/window.blp',
     'ui/shortcuts.blp',
     'ui/input_page.blp',

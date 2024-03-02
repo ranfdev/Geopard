@@ -1,3 +1,4 @@
+mod bookmarks_window;
 mod pages;
 #[allow(clippy::await_holding_refcell_ref)]
 mod tab;
