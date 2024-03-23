@@ -164,10 +164,9 @@ template $GeopardWindow: Adw.ApplicationWindow {
               }
 
               [end]
-              Gtk.Button {
-                icon-name: "view-grid-symbolic";
+              Adw.TabButton {
+                view: tab_view;
                 action-name: "overview.open";
-                tooltip-text: _("View Open Tabs");
               }
 
               [end]
