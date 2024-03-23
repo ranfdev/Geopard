@@ -317,6 +317,17 @@ impl Window {
               this.page_switched(tab_view);
             }),
         );
+        imp.tab_view.connect_close_page(
+            clone!(@weak self as this => @default-panic, move |tab_view, page| {
+                tab_view.close_page_finish(page, !page.is_pinned());
+
+                if tab_view.n_pages() == 0 {
+                    this.close();
+                };
+
+                true
+            }),
+        );
         imp.tab_overview.connect_create_tab(
             clone!(@weak self as this => @default-panic, move |_| {
               this.new_tab();
@@ -571,9 +582,6 @@ impl Window {
         let imp = self.imp();
         imp.tab_view
             .close_page(&imp.tab_view.page(&self.current_tab()));
-        if imp.tab_view.n_pages() == 0 {
-            std::process::exit(0); // TODO: maybe there's a better way for gtk apps...
-        }
     }
 
     fn focus_url_bar(&self) {
