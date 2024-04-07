@@ -26,15 +26,15 @@ if desktop_file_validate.found()
   )
 endif
 
-# Appdata
-appdata_conf = configuration_data()
-appdata_conf.set('app-id', application_id)
-appdata_conf.set('gettext-package', gettext_package)
-appdata_file = i18n.merge_file(
+# Translate and install Metainfo file
+metainfo_file = i18n.merge_file(
   input: configure_file(
     input: '@0@.metainfo.xml.in.in'.format(base_id),
     output: '@BASENAME@',
-    configuration: appdata_conf
+    configuration: configuration_data({
+      'app-id': application_id,
+      'gettext-package': gettext_package
+    })
   ),
   output: '@0@.metainfo.xml'.format(application_id),
   po_dir: podir,
@@ -42,14 +42,12 @@ appdata_file = i18n.merge_file(
   install_dir: join_paths(get_option('datadir'), 'metainfo')
 )
 
-# Validate Appdata
-if appstream_util.found()
-  test(
-    'validate-appdata', appstream_util,
-    args: [
-      'validate', '--nonet', appdata_file.full_path()
-    ],
-    depends: appdata_file,
+# Validate Metainfo file
+appstream_cli = find_program('appstreamcli', required: false)
+if appstream_cli.found()
+  test('Validate metainfo file', appstream_cli,
+    args: ['validate', '--no-net', '--explain', metainfo_file.full_path()],
+    depends: metainfo_file
   )
 endif
 

@@ -16,7 +16,7 @@
 , desktop-file-utils
 , gettext
 , blueprint-compiler
-, appstream-glib
+, appstream
 , rust-analyzer
 }:
 
@@ -40,8 +40,7 @@ stdenv.mkDerivation {
     cmake
     blueprint-compiler
     desktop-file-utils
-    appstream-glib
-    blueprint-compiler
+    appstream
     cargo
     rustPlatform.cargoSetupHook
     rustc
