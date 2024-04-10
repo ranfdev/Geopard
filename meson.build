@@ -1,7 +1,7 @@
 project(
   'geopard',
   'rust',
-  version: '1.4.0',
+  version: '1.5.0',
   meson_version: '>= 0.59',
   # license: MIT,
 )

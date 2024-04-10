@@ -22,7 +22,7 @@
 
 stdenv.mkDerivation {
   pname = "geopard";
-  version = "1.4.0";
+  version = "1.5.0";
 
   cargoDeps = rustPlatform.importCargoLock {
     lockFile = ../Cargo.lock;

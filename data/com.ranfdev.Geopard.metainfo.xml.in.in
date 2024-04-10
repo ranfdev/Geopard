@@ -84,6 +84,18 @@
   </custom>
 
   <releases>
+    <release version="1.5.0" date="2024-04-10">
+      <description>
+          <p>Updated to latest libadwaita and GTK to improve performance and compatibility,
+            including the use of the new Adw.Dialog and Adw.Breakpoint widgets.
+          </p>
+          <p>Improved security by adding TOFU (Trust On First Use) website verification</p>
+          <p>Some native pages ("input" page and "open link in external browser" page) were persisting as overlay after
+            opening a new link. Now the page navigation is fixed.
+          </p>
+          <p>Many other small fixes and improvements.</p>
+      </description>
+    </release>
     <release version="1.4.0" date="2023-03-23">
       <description>
           <p>Updated to latest libadwaita and GTK to improve performance and compatibility,
