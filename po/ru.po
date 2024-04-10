@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: geopard\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-10 18:35+0200\n"
+"POT-Creation-Date: 2024-04-10 18:52+0200\n"
 "PO-Revision-Date: 2023-03-25 01:57+0300\n"
 "Last-Translator: David Lapshin\n"
 "Language-Team: Russian\n"
@@ -397,7 +397,7 @@ msgstr "Улучшена обработка хода загрузки"
 msgid "Show close button on small window sizes"
 msgstr "Отображение кнопки закрытия окна небольшого размера"
 
-#: data/com.ranfdev.Geopard.metainfo.xml.in.in:155
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:156
 msgid ""
 "This is the first working flatpak release. Some features (colors, caching) "
 "are missing."

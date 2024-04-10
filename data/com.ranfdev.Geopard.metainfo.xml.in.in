@@ -141,8 +141,8 @@
     </release>
     <release version="1.0.0-alpha" date="2021-04-01">
       <description>
-        This is the first working flatpak release. Some features (colors, caching)
-        are missing.
+        <p>This is the first working flatpak release. Some features (colors, caching)
+        are missing.</p>
       </description>
     </release>
     <release version="1.0.0" date="2022-04-29">

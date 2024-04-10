@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: geopard\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-10 18:35+0200\n"
+"POT-Creation-Date: 2024-04-10 18:52+0200\n"
 "PO-Revision-Date: 2023-03-24 19:57+0100\n"
 "Last-Translator: Irénée Thirion <irenee.thirion@e.email>\n"
 "Language-Team: \n"
@@ -402,7 +402,7 @@ msgstr "Amélioration de la gestion de la progression des téléchargements"
 msgid "Show close button on small window sizes"
 msgstr "Affichage d’un bouton Fermer sur les écrans de petite taille"
 
-#: data/com.ranfdev.Geopard.metainfo.xml.in.in:155
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:156
 msgid ""
 "This is the first working flatpak release. Some features (colors, caching) "
 "are missing."
