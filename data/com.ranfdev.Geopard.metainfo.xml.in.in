@@ -55,6 +55,11 @@
   <url type="bugtracker">https://github.com/ranfdev/Geopard/issues/</url>
   <url type="donation">https://github.com/sponsors/ranfdev</url>
 
+  <branding>
+    <color type="primary" scheme_preference="light">#fafafa</color>
+    <color type="primary" scheme_preference="dark">#222222</color>
+  </branding>
+
   <kudos>
      <!--
        GNOME Software kudos:
