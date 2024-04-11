@@ -89,7 +89,30 @@ pub struct ConnectionAsyncRead<T: AsyncRead> {
     pub connection: gio::SocketConnection,
     pub readable: T,
 }
-
+fn suppress_tls_connection_closed_error(
+    res: Result<usize, std::io::Error>,
+) -> Result<usize, std::io::Error> {
+    res.or_else(|e| {
+        if e.kind() == std::io::ErrorKind::Other {
+            let inner = e.into_inner().map(|e| e.downcast()).unwrap();
+            inner
+                .and_then(|gio_err: Box<glib::error::Error>| {
+                    match gio_err.kind::<gio::TlsError>() {
+                        // map the error to an equivalent read of 0 bytes, which will signal the end of the
+                        // connection
+                        Some(gio::TlsError::Eof) => {
+                            debug!("suppressed gio tls eof error");
+                            Ok(0)
+                        }
+                        _ => Err(gio_err.into()),
+                    }
+                })
+                .or_else(|e| Err(std::io::Error::other(e)))
+        } else {
+            Err(e)
+        }
+    })
+}
 impl<T: AsyncRead + std::marker::Unpin> AsyncRead for ConnectionAsyncRead<T> {
     // Required method
     fn poll_read(
@@ -100,7 +123,8 @@ impl<T: AsyncRead + std::marker::Unpin> AsyncRead for ConnectionAsyncRead<T> {
         let readable = &mut self.as_mut().readable;
         futures::pin_mut!(readable);
         let readable: std::pin::Pin<_> = readable.as_mut();
-        AsyncRead::poll_read(readable, cx, buf)
+        let res = AsyncRead::poll_read(readable, cx, buf);
+        res.map(|ready| suppress_tls_connection_closed_error(ready))
     }
 }
 

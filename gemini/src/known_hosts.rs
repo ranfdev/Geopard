@@ -17,7 +17,7 @@ pub enum CertificateError {
     #[error("Generic certificate error")]
     GenericError,
 }
-pub struct Certificate<'a>(&'a str);
+
 pub trait KnownHostsRepo: std::fmt::Debug {
     fn get(&self, host: &str) -> Option<&str>;
     fn insert(&mut self, host: &str, sha: &str) -> bool;

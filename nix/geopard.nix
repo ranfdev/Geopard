@@ -16,13 +16,13 @@
 , desktop-file-utils
 , gettext
 , blueprint-compiler
-, appstream-glib
+, appstream
 , rust-analyzer
 }:
 
 stdenv.mkDerivation {
   pname = "geopard";
-  version = "1.4.0";
+  version = "1.5.0";
 
   cargoDeps = rustPlatform.importCargoLock {
     lockFile = ../Cargo.lock;
@@ -40,8 +40,7 @@ stdenv.mkDerivation {
     cmake
     blueprint-compiler
     desktop-file-utils
-    appstream-glib
-    blueprint-compiler
+    appstream
     cargo
     rustPlatform.cargoSetupHook
     rustc

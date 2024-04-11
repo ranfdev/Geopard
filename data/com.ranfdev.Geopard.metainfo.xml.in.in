@@ -1,56 +1,101 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Lorenzo Miglietta 2022 <ranfdev@gmail.com> -->
 <component type="desktop-application">
   <id>@app-id@</id>
+  <name translate="no">Geopard</name>
+  <summary>Browse Gemini pages</summary>
+  <developer id="com.ranfdev">
+    <name translate="no">Lorenzo Miglietta</name>
+  </developer>
+
+  <launchable type="desktop-id">@app-id@.desktop</launchable>
+  <translation type="gettext">@gettext-package@</translation>
   <metadata_license>CC0</metadata_license>
-  <project_license>GPL-3.0+</project_license>
-  <name>Geopard</name>
-  <summary>Browse gemini pages</summary>
+  <project_license>GPL-3.0-or-later</project_license>
+  <update_contact>ranfdev@gmail.com</update_contact>
+  <content_rating type="oars-1.1"/>
+
   <description>
-    <p>Geopard is a browser for the gemini protocol, that is, a lighter alternative to the web.
-       Use Geopard to browse the space and reach hundreds of gemini capsules! Read stories, download files, play games...</p>
-    <p>Features</p>
+    <p>Geopard is a browser for the Gemini protocol, that is, a lighter alternative to the web.
+       Use Geopard to browse the space and reach hundreds of Gemini capsules! Read stories, download files, play games...</p>
+
+    <p>Features:</p>
+
     <ul>
       <li>
         Colors!
         The browser will have a different color for each domain you visit.
       </li>
       <li>
-        Fast (async core + caching).
+        Fast (async core + caching):
         Streams content by default. That means you can open pages even when you have
         connection speeds of Kb/s.
-        It also caches pages in the history, so you can go back in an instant
+        It also caches pages in the history, so you can go back/forward in an instant
       </li>
       <li>
-        Can download binary files.
+        Can download binary files:
         The download will start as soon as you open the corresponding link.
         You can always cancel it by opening another page.
       </li>
-      <li>Bookmarks</li>
-      <li>Search</li>
     </ul>
   </description>
 
   <screenshots>
-    <screenshot type="default" height="722" width="1022">
-      <image>https://raw.githubusercontent.com/ranfdev/Geopard/master/data/screenshots/1.png</image>
+    <screenshot type="default">
+      <image type="source">https://raw.githubusercontent.com/ranfdev/Geopard/master/data/screenshots/1.png</image>
     </screenshot>
-    <screenshot height="752" width="442">
-      <image>https://raw.githubusercontent.com/ranfdev/Geopard/master/data/screenshots/2.png</image>
+    <screenshot>
+      <image type="source">https://raw.githubusercontent.com/ranfdev/Geopard/master/data/screenshots/2.png</image>
     </screenshot>
-    <screenshot height="752" width="442">
-      <image>https://raw.githubusercontent.com/ranfdev/Geopard/master/data/screenshots/3.png</image>
+    <screenshot>
+      <image type="source">https://raw.githubusercontent.com/ranfdev/Geopard/master/data/screenshots/3.png</image>
     </screenshot>
   </screenshots>
-
-
 
   <url type="homepage">https://ranfdev.com/projects/Geopard</url>
   <url type="bugtracker">https://github.com/ranfdev/Geopard/issues/</url>
   <url type="donation">https://github.com/sponsors/ranfdev</url>
-  <content_rating type="oars-1.0" />
+
+  <branding>
+    <color type="primary" scheme_preference="light">#fafafa</color>
+    <color type="primary" scheme_preference="dark">#222222</color>
+  </branding>
+
+  <kudos>
+     <!--
+       GNOME Software kudos:
+       https://gitlab.gnome.org/GNOME/gnome-software/blob/master/doc/kudos.md
+     -->
+     <kudo>ModernToolkit</kudo>
+     <kudo>HiDpiIcon</kudo>
+  </kudos>
+
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <control>touch</control>
+  </supports>
+
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+
+  <custom>
+    <value key="Purism::form_factor">mobile</value>
+  </custom>
 
   <releases>
+    <release version="1.5.0" date="2024-04-10">
+      <description>
+          <p>Updated to latest libadwaita and GTK to improve performance and compatibility,
+            including the use of the new Adw.Dialog and Adw.Breakpoint widgets.
+          </p>
+          <p>Improved security by adding TOFU (Trust On First Use) website verification</p>
+          <p>Some native pages ("input" page and "open link in external browser" page) were persisting as overlay after
+            opening a new link. Now the page navigation is fixed.
+          </p>
+          <p>Many other small fixes and improvements.</p>
+      </description>
+    </release>
     <release version="1.4.0" date="2023-03-23">
       <description>
           <p>Updated to latest libadwaita and GTK to improve performance and compatibility,
@@ -108,8 +153,8 @@
     </release>
     <release version="1.0.0-alpha" date="2021-04-01">
       <description>
-        This is the first working flatpak release. Some features (colors, caching)
-        are missing.
+        <p>This is the first working flatpak release. Some features (colors, caching)
+        are missing.</p>
       </description>
     </release>
     <release version="1.0.0" date="2022-04-29">
@@ -123,34 +168,4 @@
       </description>
     </release>
   </releases>
-
-  <kudos>
-     <!--
-       GNOME Software kudos:
-       https://gitlab.gnome.org/GNOME/gnome-software/blob/master/doc/kudos.md
-     -->
-     <kudo>ModernToolkit</kudo>
-     <kudo>HiDpiIcon</kudo>
-  </kudos>
-
-  <recommends>
-    <control>keyboard</control>
-    <control>pointing</control>
-    <control>touch</control>
-  </recommends>
-
-  <requires>
-    <display_length compare="ge">small</display_length>
-  </requires>
-
-  <custom>
-    <value key="Purism::form_factor">workstation</value>
-    <value key="Purism::form_factor">mobile</value>
-  </custom>
-
-
-  <developer_name>Lorenzo Miglietta</developer_name>
-  <update_contact>ranfdev@gmail.com</update_contact>
-  <translation type="gettext">@gettext-package@</translation>
-  <launchable type="desktop-id">@app-id@.desktop</launchable>
 </component>

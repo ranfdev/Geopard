@@ -1,7 +1,7 @@
 project(
   'geopard',
   'rust',
-  version: '1.4.0',
+  version: '1.5.0',
   meson_version: '>= 0.59',
   # license: MIT,
 )
@@ -18,7 +18,6 @@ dependency('gtk4', version: '>= 4.0.0')
 glib_compile_resources = find_program('glib-compile-resources', required: true)
 glib_compile_schemas = find_program('glib-compile-schemas', required: true)
 desktop_file_validate = find_program('desktop-file-validate', required: false)
-appstream_util = find_program('appstream-util', required: false)
 
 cargo = find_program('cargo', required: true)
 
@@ -57,8 +56,8 @@ meson.add_dist_script(
 if get_option('profile') == 'development'
   # Setup pre-commit hook for ensuring coding style is always consistent
   message('Setting up git pre-commit hook..')
-  run_command('cp', '-f', 'hooks/pre-commit.hook', '.git/hooks/pre-commit', check: true)
-  run_command('chmod', '+x', '.git/hooks/pre-commit', check: true)
+  run_command('cp', '-f', 'hooks/pre-commit.hook', '.git/hooks/pre-commit', check: false)
+  run_command('chmod', '+x', '.git/hooks/pre-commit', check: false)
 endif
 
 subdir('data')
