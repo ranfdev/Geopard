@@ -56,8 +56,8 @@
   <url type="donation">https://github.com/sponsors/ranfdev</url>
 
   <branding>
-    <color type="primary" scheme_preference="light">#fafafa</color>
-    <color type="primary" scheme_preference="dark">#222222</color>
+    <color type="primary" scheme_preference="light">#deddda</color>
+    <color type="primary" scheme_preference="dark">#5e5c64</color>
   </branding>
 
   <kudos>
