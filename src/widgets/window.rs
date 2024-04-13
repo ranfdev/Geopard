@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use adw::prelude::*;
 use adw::subclass::application_window::AdwApplicationWindowImpl;
 use anyhow::Context;
-use config::APP_ID;
+use config::{APP_ID, BUGTRACKER_URL, DONATIONS_URL, PROJECT_URL, REPO_URL};
 use futures::prelude::*;
 use glib::{clone, Properties};
 use gtk::subclass::prelude::*;
@@ -742,10 +742,11 @@ impl Window {
             .license_type(gtk::License::Gpl30)
             .version(build_config::VERSION)
             .copyright("Copyright © 2022-2024 ranfdev")
-            .issue_url("https://github.com/ranfdev/Geopard/issues")
-            .website("https://github.com/ranfdev/Geopard")
+            .issue_url(BUGTRACKER_URL)
+            .website(PROJECT_URL)
             .build();
-        about.add_link("Donate 💝", "https://github.com/sponsors/ranfdev");
+        about.add_link("Source Code", REPO_URL);
+        about.add_link("Donate 💝", DONATIONS_URL);
         about.present(self);
     }
 
