@@ -4,19 +4,17 @@ use std::marker::PhantomData;
 
 use adw::prelude::*;
 use adw::subclass::application_window::AdwApplicationWindowImpl;
-use anyhow::Context;
 use config::APP_ID;
-use futures::prelude::*;
-use glib::{clone, Properties};
+use glib::{clone, closure_local, Properties};
 use gtk::subclass::prelude::*;
 use gtk::{gdk, gio, glib, CompositeTemplate, TemplateChild};
 use log::{error, info, warn};
 use url::Url;
 
-use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
 use crate::session_provider::SessionProvider;
+use crate::widgets::bookmarks_window::BookmarksWindow;
 use crate::widgets::tab::{HistoryItem, HistoryStatus, Tab};
-use crate::{build_config, config, self_action};
+use crate::{bookmarks, build_config, config, self_action};
 
 const ZOOM_CHANGE_FACTOR: f64 = 1.15;
 const ZOOM_MAX_FACTOR: f64 = 5.0;
@@ -73,6 +71,7 @@ pub mod imp {
         #[template_child]
         pub(crate) main_menu_button: TemplateChild<gtk::MenuButton>,
         pub(crate) config: RefCell<config::Config>,
+        pub(crate) bookmarks: RefCell<bookmarks::Bookmarks>,
         pub(crate) progress_animation: RefCell<Option<adw::SpringAnimation>>,
         pub(crate) binded_tab_properties: RefCell<Vec<glib::Binding>>,
         #[property(get, set)]
@@ -171,12 +170,17 @@ glib::wrapper! {
 }
 
 impl Window {
-    pub fn new(app: &adw::Application, config: config::Config) -> Self {
+    pub fn new(
+        app: &adw::Application,
+        config: config::Config,
+        bookmarks: bookmarks::Bookmarks,
+    ) -> Self {
         let this: Self = glib::Object::builder::<Self>()
             .property("application", app)
             .build();
         let imp = this.imp();
         imp.config.replace(config);
+        imp.bookmarks.replace(bookmarks);
         imp.zoom.borrow_mut().value = 1.0;
 
         this.setup_css_providers();
@@ -217,7 +221,8 @@ impl Window {
         self_action!(self, "reload", reload);
         self_action!(self, "new-tab", new_tab);
         self_action!(self, "new-empty-tab", new_empty_tab);
-        self_action!(self, "show-bookmarks", show_bookmarks);
+        self_action!(self, "show-bookmarks", present_bookmarks);
+        //todo!(window): Make it show "New Bookmark" popover
         self_action!(self, "bookmark-current", bookmark_current);
         self_action!(self, "close-tab", close_tab);
         self_action!(self, "focus-url-bar", focus_url_bar);
@@ -245,7 +250,7 @@ impl Window {
         let act_open_in_new_tab =
             gio::SimpleAction::new("open-in-new-tab", Some(glib::VariantTy::STRING));
         act_open_in_new_tab.connect_activate(
-            clone!(@weak self as this => move |_,v| this.open_in_new_tab(v.unwrap().get::<String>().unwrap().as_str())),
+            clone!(@weak self as this => move |_,v| this.open_in_new_tab(v.unwrap().get::<String>().unwrap().as_str(), false)),
         );
         self.add_action(&act_open_in_new_tab);
 
@@ -383,7 +388,7 @@ impl Window {
             clone!(@weak self as this => @default-return false, move |_, value, _, _| {
                     if let Ok(files) = value.get::<gdk::FileList>() {
                         for f in files.files() {
-                            this.open_in_new_tab(&format!("file://{}", f.path().unwrap().to_str().unwrap()));
+                            this.open_in_new_tab(&format!("file://{}", f.path().unwrap().to_str().unwrap()), false);
                         }
                     }
                     false
@@ -563,21 +568,21 @@ impl Window {
         };
     }
     fn new_tab(&self) {
-        self.show_bookmarks();
+        //todo!(window): Use user preference to determine what to show in new tab
+        self.new_empty_tab();
         self.focus_url_bar();
     }
+
     fn new_empty_tab(&self) {
         let imp = self.imp();
         let p = self.add_tab();
+
+        p.set_title("Blank Tab");
         imp.tab_view.set_selected_page(&p);
+
         self.focus_url_bar();
     }
-    fn show_bookmarks(&self) {
-        let imp = self.imp();
-        let p = self.add_tab();
-        imp.tab_view.set_selected_page(&p);
-        self.inner_tab(&p).spawn_open_url(bookmarks_url());
-    }
+
     fn close_tab(&self) {
         let imp = self.imp();
         imp.tab_view
@@ -588,22 +593,6 @@ impl Window {
         self.imp().url_bar.grab_focus();
     }
 
-    async fn append_bookmark(url: &str) -> anyhow::Result<()> {
-        let mut file = async_fs::OpenOptions::new()
-            .write(true)
-            .append(true)
-            .open(&*BOOKMARK_FILE_PATH)
-            .await
-            .context("Opening bookmark.gemini")?;
-
-        let line_to_write = format!("=> {}\n", url);
-        file.write_all(line_to_write.as_bytes())
-            .await
-            .context("Writing url to favourite.gemini")?;
-
-        file.flush().await?;
-        Ok(())
-    }
     fn current_tab(&self) -> Tab {
         let imp = self.imp();
         imp.tab_view
@@ -626,7 +615,13 @@ impl Window {
         let imp = self.imp();
         let url = imp.url_bar.text().to_string();
 
-        glibctx().spawn_local(clone!(@weak imp => async move {
+        //todo!(window): Remove later
+        info!("{} saved to bookmarks", url);
+        imp.toast_overlay
+            .add_toast(adw::Toast::new("Page added to bookmarks"));
+
+        //todo!(window): Replace with new bookmarks logic
+        /*glibctx().spawn_local(clone!(@weak imp => async move {
             match Self::append_bookmark(&url).await {
                 Ok(_) => {
                     info!("{} saved to bookmarks", url);
@@ -637,7 +632,7 @@ impl Window {
                     imp.toast_overlay.add_toast(adw::Toast::new("Failed to bookmark this page"));
                 },
             }
-        }));
+        }));*/
     }
     fn open_omni(&self, v: &str) {
         let url = Url::parse(v).or_else(|_| {
@@ -659,9 +654,15 @@ impl Window {
             Err(e) => error!("Failed to parse url: {:?}", e),
         }
     }
-    fn open_in_new_tab(&self, v: &str) {
+    fn open_in_new_tab(&self, v: &str, select_page: bool) {
+        let imp = self.imp();
         let w = self.add_tab();
         let url = Url::parse(v);
+
+        if select_page {
+            imp.tab_view.set_selected_page(&w);
+        }
+
         match url {
             Ok(url) => self.inner_tab(&w).spawn_open_url(url),
             Err(e) => error!("Failed to parse url: {:?}", e),
@@ -730,6 +731,24 @@ impl Window {
     fn present_shortcuts(&self) {
         gtk::Builder::from_resource("/com/ranfdev/Geopard/ui/shortcuts.ui");
     }
+
+    fn present_bookmarks(&self) {
+        let imp = self.imp();
+        let bookmarks =
+            BookmarksWindow::new(&self.application().unwrap(), imp.bookmarks.borrow().clone());
+        bookmarks.set_transient_for(Some(self));
+
+        bookmarks.connect_closure(
+            "open-bookmark-url",
+            false,
+            closure_local!(@watch self as this => move |_: BookmarksWindow, url: &str| {
+                this.open_in_new_tab(url, true);
+            }),
+        );
+
+        bookmarks.present();
+    }
+
     fn present_about(&self) {
         let about = adw::AboutDialog::builder()
             .application_icon(build_config::APP_ID)

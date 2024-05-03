@@ -1,0 +1,77 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $GeopardBookmarksWindow : Adw.Window {
+  title: _("Bookmarks");
+  default-height: 400;
+  default-width: 500;
+  height-request: 290;
+  width-request: 360;
+  modal: true;
+
+  Adw.ToastOverlay toast_overlay {
+    Adw.ToolbarView {
+      [top]
+      Adw.HeaderBar {
+        centering-policy: strict;
+
+        [end]
+        Gtk.ToggleButton search_button {
+          visible: false; // TODO: Remove
+          icon-name: "edit-find-symbolic";
+          tooltip-text: _("Search");
+        }
+
+        [end]
+        Gtk.Button select_items_button {
+          visible: false; // TODO: Remove
+          icon-name: "selection-mode-symbolic";
+          tooltip-text: _("Select Items");
+        }
+      }
+
+      content: Gtk.Stack stack {
+        transition-type: crossfade;
+
+        Gtk.StackPage {
+          name: "no_bookmarks_page";
+
+          child: Adw.StatusPage {
+            icon-name: "starred-symbolic";
+            title: _("No Bookmarks");
+            description: _("Bookmarked sites will appear here");
+          };
+        }
+
+        Gtk.StackPage {
+          name: "bookmarks_page";
+
+          child: Gtk.ScrolledWindow {
+            child: Gtk.Box {
+              orientation: vertical;
+              margin-top: 6;
+              margin-bottom: 6;
+              margin-start: 6;
+              margin-end: 6;
+              hexpand: true;
+              vexpand: true;
+
+              Adw.Clamp {
+                maximum-size: 1024;
+
+                child: Gtk.ListBox bookmarks_list {
+                  activate-on-single-click: true;
+                  selection-mode: none;
+
+                  styles [
+                    "boxed-list"
+                  ]
+                };
+              }
+            };
+          };
+        }
+      };
+    }
+  }
+}
