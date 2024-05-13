@@ -1,0 +1,407 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the geopard package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# Scrambled777 <weblate.scrambled777@simplelogin.com>, 2024.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: geopard\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-04-10 18:52+0200\n"
+"PO-Revision-Date: 2024-05-13 23:34+0530\n"
+"Last-Translator: Scrambled777 <weblate.scrambled777@simplelogin.com>\n"
+"Language-Team: Hindi <indlinux-hindi@lists.sourceforge.net>\n"
+"Language: hi\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"X-Generator: Gtranslator 46.1\n"
+
+#: data/resources/ui/shortcuts.blp:7
+msgctxt "shortcut window"
+msgid "General"
+msgstr "सामान्य"
+
+#: data/resources/ui/shortcuts.blp:10
+msgctxt "shortcut window"
+msgid "Shortcuts"
+msgstr "शॉर्टकट"
+
+#: data/resources/ui/shortcuts.blp:20
+msgctxt "shortcut window"
+msgid "Tabs"
+msgstr "टैब"
+
+#: data/resources/ui/shortcuts.blp:23
+msgctxt "shortcut window"
+msgid "Open New Tab"
+msgstr "नई टैब खोलें"
+
+#: data/resources/ui/shortcuts.blp:28
+msgctxt "shortcut window"
+msgid "Close Current Tab"
+msgstr "मौजूदा टैब बंद करें"
+
+#: data/resources/ui/shortcuts.blp:33
+msgctxt "shortcut window"
+msgid "Go to Nth Tab"
+msgstr "Nवें टैब पर जाएं"
+
+#: data/resources/ui/shortcuts.blp:38
+msgctxt "shortcut window"
+msgid "View Open Tabs"
+msgstr "खुले टैब देखें"
+
+#: data/resources/ui/shortcuts.blp:48
+msgctxt "shortcut window"
+msgid "Navigation"
+msgstr "पथ-प्रदर्शन"
+
+#: data/resources/ui/shortcuts.blp:51
+msgctxt "shortcut window"
+msgid "Previous Page"
+msgstr "पिछला पृष्ठ"
+
+#: data/resources/ui/shortcuts.blp:56
+msgctxt "shortcut window"
+msgid "Next Page"
+msgstr "अगला पृष्ठ"
+
+#: data/resources/ui/shortcuts.blp:60
+msgctxt "shortcut window"
+msgid "Reload Page"
+msgstr "पृष्ठ पुनः लोड करें"
+
+#: data/resources/ui/shortcuts.blp:65
+msgctxt "shortcut window"
+msgid "Focus Url Bar"
+msgstr "URL पट्टी केंद्रित करें"
+
+#: data/resources/ui/shortcuts.blp:71
+msgctxt "shortcut window"
+msgid "Bookmarks"
+msgstr "बुकमार्क"
+
+#: data/resources/ui/shortcuts.blp:74
+msgctxt "shortcut window"
+msgid "Bookmark Current Page"
+msgstr "वर्तमान पृष्ठ को बुकमार्क करें"
+
+#: data/resources/ui/shortcuts.blp:79
+msgctxt "shortcut window"
+msgid "Show All Bookmarks"
+msgstr "सभी बुकमार्क दिखाएं"
+
+#: data/resources/ui/shortcuts.blp:84
+msgctxt "shortcut window"
+msgid "Zoom"
+msgstr "जूम"
+
+#: data/resources/ui/shortcuts.blp:87
+msgctxt "shortcut window"
+msgid "Zoom In"
+msgstr "जूम इन"
+
+#: data/resources/ui/shortcuts.blp:91
+msgctxt "shortcut window"
+msgid "Zoom Out"
+msgstr "जूम आउट"
+
+#: data/resources/ui/shortcuts.blp:95
+msgctxt "shortcut window"
+msgid "Reset Zoom"
+msgstr "जूम रीसेट करें"
+
+#: data/resources/ui/window.blp:5 data/com.ranfdev.Geopard.desktop.in.in:3
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:4
+msgid "Geopard"
+msgstr "Geopard"
+
+#: data/resources/ui/window.blp:31 data/resources/ui/window.blp:151
+msgid ""
+"Go Back\n"
+"Right-click to show history"
+msgstr ""
+"पीछे जाएं\n"
+"इतिहास दिखाने के लिए दायां-क्लिक करें"
+
+#: data/resources/ui/window.blp:45 data/resources/ui/window.blp:158
+msgid ""
+"Go Forward\n"
+"Right-click to show history"
+msgstr ""
+"आगे जाएं\n"
+"इतिहास दिखाने के लिए दायां-क्लिक करें"
+
+#: data/resources/ui/window.blp:58 data/resources/ui/window.blp:165
+msgid "Reload"
+msgstr "पुनः लोड करें"
+
+#: data/resources/ui/window.blp:65
+msgid "New Tab"
+msgstr "नई टैब"
+
+#: data/resources/ui/window.blp:75
+msgid "Enter Gemini address or search with Geminispace"
+msgstr "Gemini पता दर्ज करें या Geminispace से खोजें"
+
+#: data/resources/ui/window.blp:83
+msgid "Main Menu"
+msgstr "मुख्य मेनू"
+
+#: data/resources/ui/window.blp:91
+msgid "View Open Tabs"
+msgstr "खुले टैब देखें"
+
+#: data/resources/ui/window.blp:178
+msgid "Start Searching"
+msgstr "खोजना प्रारंभ करें"
+
+#: data/com.ranfdev.Geopard.desktop.in.in:4
+msgid "A GTK 4 Gemini browser written in Rust"
+msgstr "एक GTK 4 Gemini ब्राउज़र Rust में लिखा गया है"
+
+#: data/com.ranfdev.Geopard.desktop.in.in:9
+msgid "Gnome;GTK;browser;gemini;rust;"
+msgstr "Gnome;GTK;ब्राउज़र;gemini;rust;"
+
+#: data/com.ranfdev.Geopard.gschema.xml.in:6
+msgid "Window width"
+msgstr "खिड़की चौड़ाई"
+
+#: data/com.ranfdev.Geopard.gschema.xml.in:10
+msgid "Window height"
+msgstr "खिड़की ऊंचाई"
+
+#: data/com.ranfdev.Geopard.gschema.xml.in:14
+msgid "Window maximized state"
+msgstr "खिड़की अधिकतमीकृत अवस्था"
+
+#: data/com.ranfdev.Geopard.gschema.xml.in:18
+msgid "Zoom"
+msgstr "जूम"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:5
+msgid "Browse Gemini pages"
+msgstr "Gemini पृष्ठ ब्राउज़ करें"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:18
+msgid ""
+"Geopard is a browser for the Gemini protocol, that is, a lighter alternative "
+"to the web. Use Geopard to browse the space and reach hundreds of Gemini "
+"capsules! Read stories, download files, play games..."
+msgstr ""
+"Geopard Gemini प्रोटोकॉल के लिए एक ब्राउज़र है, यानी वेब का एक हल्का विकल्प है। "
+"अंतरिक्ष को ब्राउज़ करने और सैकड़ों Gemini कैप्सूल तक पहुंचने के लिए Geopard का उपयोग करें! "
+"कहानियां पढ़ें, फाइलें डाउनलोड करें, गेम खेलें..."
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:21
+msgid "Features:"
+msgstr "विशेषताएं:"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:24
+msgid ""
+"Colors! The browser will have a different color for each domain you visit."
+msgstr "रंग! आपके द्वारा देखे जाने वाले प्रत्येक डोमेन के लिए ब्राउज़र का रंग अलग होगा।"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:28
+msgid ""
+"Fast (async core + caching): Streams content by default. That means you can "
+"open pages even when you have connection speeds of Kb/s. It also caches "
+"pages in the history, so you can go back/forward in an instant"
+msgstr ""
+"तेज (अतुल्यकालिक कोर + कैशिंग): तयशुदा रूप से सामग्री स्ट्रीम करता है। इसका मतलब है कि आप "
+"Kb/s की कनेक्शन गति होने पर भी पृष्ठ खोल सकते हैं। यह इतिहास के पृष्ठों को भी कैशे करता है, "
+"जिससे आप तुरंत पीछे/आगे जा सकते हैं"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:34
+msgid ""
+"Can download binary files: The download will start as soon as you open the "
+"corresponding link. You can always cancel it by opening another page."
+msgstr ""
+"बाइनरी फाइलें डाउनलोड कर सकते हैं: जैसे ही आप संबंधित लिंक खोलेंगे, डाउनलोड शुरू हो जाएगा। "
+"आप दूसरा पृष्ठ खोलकर इसे कभी भी रद्द कर सकते हैं।"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:89
+msgid ""
+"Updated to latest libadwaita and GTK to improve performance and "
+"compatibility, including the use of the new Adw.Dialog and Adw.Breakpoint "
+"widgets."
+msgstr ""
+"नए Adw.Dialog और Adw.Breakpoint विजेट के उपयोग सहित प्रदर्शन और अनुकूलता को बेहतर "
+"बनाने के लिए नवीनतम libadwaita और GTK में अद्यतित किया गया।"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:92
+msgid ""
+"Improved security by adding TOFU (Trust On First Use) website verification"
+msgstr "TOFU (ट्रस्ट ऑन फर्स्ट यूज़) वेबसाइट सत्यापन को जोड़कर सुरक्षा में सुधार हुआ"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:93
+msgid ""
+"Some native pages (\"input\" page and \"open link in external browser\" "
+"page) were persisting as overlay after opening a new link. Now the page "
+"navigation is fixed."
+msgstr ""
+"कुछ मूल पृष्ठ (\"आगत\" पृष्ठ और \"बाहरी ब्राउज़र में लिंक खोलें\" पृष्ठ) एक नया लिंक खोलने के "
+"बाद उपरिशायी के रूप में बने हुए थे। अब पृष्ठ पथ-प्रदर्शन ठीक हो गया है।"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:96
+msgid "Many other small fixes and improvements."
+msgstr "कई अन्य छोटे सुधार और उन्नति।"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:101
+msgid ""
+"Updated to latest libadwaita and GTK to improve performance and "
+"compatibility, including the use of the new Adw.TabOverview widget for "
+"improved tab management on small screens."
+msgstr ""
+"छोटे स्क्रीन पर बेहतर टैब प्रबंधन के लिए नए Adw.TabOverview विजेट के उपयोग सहित प्रदर्शन "
+"और अनुकूलता में सुधार के लिए नवीनतम libadwaita और GTK में अद्यतित किया गया।"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:103
+msgid ""
+"Added support for opening files and gemini mime types from the command line."
+msgstr "कमांड लाइन से फाइलें और जेमिनी माइम प्रकार खोलने के लिए समर्थन जोड़ा गया।"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:104
+msgid ""
+"Added tab history menu on right click over arrows for easier navigation."
+msgstr "आसान पथ-प्रदर्शन के लिए तीरों पर दायें क्लिक पर टैब इतिहास मेनू जोड़ा गया।"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:105
+msgid "Fixed issue with links without whitespace not working properly."
+msgstr "रिक्त स्थान के बिना लिंक के ठीक से काम न करने की समस्या का समाधान किया गया।"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:106
+msgid "Moved scrollbar to the edge of the window for a cleaner UI."
+msgstr "साफ UI के लिए स्क्रॉलपट्टी को खिड़की के किनारे पर ले जाया गया।"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:107
+msgid ""
+"Added tooltips for items in header bar to provide more information to users."
+msgstr ""
+"उपयोक्ताओं को अधिक जानकारी प्रदान करने के लिए शीर्षलेख-पट्टी में वस्तुओं के लिए टूलटिप्स जोड़े "
+"गए।"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:108
+msgid ""
+"Added more information to the About window to give users a better idea of "
+"the project's."
+msgstr ""
+"उपयोक्ताओं को परियोजना के बारे में बेहतर जानकारी देने के लिए \"बारे में\" खिड़की में अधिक "
+"जानकारी जोड़ी गई।"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:109
+msgid "Various fixes and refactorings."
+msgstr "विभिन्न सुधार और पुनर्रचना।"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:114
+msgid "Added ability to reload the current page"
+msgstr "वर्तमान पृष्ठ को पुनः लोड करने की क्षमता जोड़ी गई"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:115
+msgid "Nicer list items formatting"
+msgstr "बेहतर सूची वस्तुएं स्वरूपण"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:116
+msgid ""
+"Fixed annoying bug where selecting the text would sometimes transform a "
+"paragraph into a title, temporarily"
+msgstr ""
+"कष्टप्रद बग को ठीक किया गया जहां पाठ का चयन कभी-कभी अस्थायी रूप से एक अनुच्छेद को "
+"शीर्षक में बदल देता था"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:117
+msgid "Fixed crash when the app theme is overridden"
+msgstr "ऐप थीम अध्यारोहण होने पर क्रैश को ठीक किया गया"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:118
+msgid "Fixed unresponsiveness when a big page is loading"
+msgstr "जब कोई बड़ा पृष्ठ लोड हो रहा हो तो अनुत्तरदायीता को ठीक किया गया"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:119
+msgid ""
+"Complete rewrite of the gemini parser to make it more robust and improve "
+"handling of edge cases"
+msgstr ""
+"जेमिनी विश्लेषक को अधिक मजबूत बनाने और किनारे के मामलों की संचालन में सुधार करने के लिए इसे "
+"फिर से लिखा गया"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:124
+msgid "Added more shortcuts"
+msgstr "अधिक शॉर्टकट जोड़े गए"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:125
+msgid "There's now a status bar showing the URL of hovered links"
+msgstr "अब यहां एक स्थिति पट्टी है जो मंडराए गए लिंक का URL दिखाता है"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:126
+msgid "Various code refactorings"
+msgstr "विभिन्न कोड पुनर्रचना"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:131
+msgid "Relax download folder permissions to fix downloads not starting"
+msgstr "प्रारंभ न होने वाले डाउनलोड को ठीक करने के लिए डाउनलोड फोल्डर अनुमतियों में ढील दें"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:137
+msgid ""
+"Improved design, with completely new pages for downloads, input requests, "
+"external links, errors"
+msgstr ""
+"डाउनलोड, आगत अनुरोध, बाहरी लिंक, त्रुटियों के लिए पूरी तरह से नए पृष्ठों के साथ बेहतर "
+"अभिकल्प"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:138
+msgid ""
+"Added more spacing between links to make them easier to click on small "
+"screens"
+msgstr "छोटी स्क्रीन पर क्लिक करना आसान बनाने के लिए लिंकों के बीच अधिक रिक्ति जोड़ी गई"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:139
+msgid ""
+"Added zoom functionality, via shortcuts or directly from the popover menu"
+msgstr "शॉर्टकट के माध्यम से या सीधे पॉपओवर मेनू से जूम कार्यक्षमता जोड़ी गई"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:140
+msgid "Streaming button (alpha) for some audio/video file types"
+msgstr "कुछ ऑडियो/वीडियो फाइल प्रकारों के लिए स्ट्रीमिंग बटन (अल्फा)।"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:146
+msgid "Changes"
+msgstr "बदलाव"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:148
+msgid "Fix downloads by granting access to download folder"
+msgstr "डाउनलोड फोल्डर तक अभिगम प्रदान करके डाउनलोड को ठीक किया गया"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:149
+msgid "Improve download progress handling"
+msgstr "बेहतर डाउनलोड प्रगति प्रबंधन"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:150
+msgid "Show close button on small window sizes"
+msgstr "छोटे आकार की खिड़की पर बंद करने का बटन दिखाता है"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:156
+msgid ""
+"This is the first working flatpak release. Some features (colors, caching) "
+"are missing."
+msgstr "यह पहली कार्यशील flatpak रिलीज़ है। कुछ सुविधाएं (रंग, कैशिंग) गायब हैं।"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:162
+msgid "First release on flathub! You get all the most important features"
+msgstr "Flathub पर पहली रिलीज़! आपको सभी सबसे महत्वपूर्ण सुविधाएं मिलती हैं"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:164
+msgid "colors"
+msgstr "रंग"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:165
+msgid "caching"
+msgstr "कैशिंग"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:166
+msgid "search"
+msgstr "खोजें"
