@@ -41,7 +41,7 @@ should remove bookmarks.
 ## Default bookmarks
 
 => gemini://geminiprotocol.net Gemini project
-=> gemini://rawtext.club:1965/~sloum/spacewalk.gmi Spacewalk aggregator
+=> gemini://warmedal.se/~antenna/ Antenna aggregator
 => about:help About geopard + help
 
 ## Custom bookmarks
