@@ -84,6 +84,11 @@
   </custom>
 
   <releases>
+    <release version="1.6.0" date="2024-07-03">
+      <description>
+          <p>Various small fixes</p>
+      </description>
+    </release>
     <release version="1.5.0" date="2024-04-10">
       <description>
           <p>Updated to latest libadwaita and GTK to improve performance and compatibility,
