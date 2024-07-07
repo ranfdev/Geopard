@@ -644,7 +644,7 @@ impl Window {
             if v.contains('.') && v.split('.').all(|s| s.chars().all(char::is_alphanumeric)) {
                 Url::parse(&format!("gemini://{}", v))
             } else {
-                Url::parse(&format!("gemini://geminispace.info/search?{}", v))
+                Url::parse(&format!("gemini://tlgs.one/search?{}", v))
             }
         });
         match url {
