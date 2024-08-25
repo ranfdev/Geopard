@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: geopard\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-04-10 18:52+0200\n"
-"PO-Revision-Date: 2024-08-25 22:20+0200\n"
+"PO-Revision-Date: 2024-08-26 00:23+0200\n"
 "Last-Translator: twlvnn kraftwerk <kraft_werk@tutanota.com>\n"
 "Language-Team: Bulgarian <dict-notifications@fsa-bg.org>\n"
 "Language: bg\n"
@@ -194,7 +194,7 @@ msgid ""
 "capsules! Read stories, download files, play games..."
 msgstr ""
 "„Гепард“ е браузър за протокола Gemini, т.е. по-лека алтернатива на "
-"Интернет. Използвайте Geopard, за да сърфирате пространството и да "
+"Интернет. Използвайте „Гепард“, за да сърфирате пространството и да "
 "достигнете до стотици Gemini капсули! Четете истории, теглете файлове, "
 "играйте игри…"
 
@@ -287,7 +287,7 @@ msgstr ""
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:105
 msgid "Fixed issue with links without whitespace not working properly."
 msgstr ""
-"Поправен е проблемЪТ С връзките без празни знаци, които не работят правилно."
+"Поправен е проблемът С връзките без празни знаци, които не работят правилно."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:106
 msgid "Moved scrollbar to the edge of the window for a cleaner UI."
@@ -327,8 +327,8 @@ msgid ""
 "Fixed annoying bug where selecting the text would sometimes transform a "
 "paragraph into a title, temporarily"
 msgstr ""
-"Поправена е досадна грешка, при която избирането на текс понякога "
-"преобразуванеше даден абзац в заглавие, временно."
+"Поправена е досадна грешка, при която избирането на текст понякога "
+"преобразува даден абзац в заглавие, временно."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:117
 msgid "Fixed crash when the app theme is overridden"
@@ -400,7 +400,7 @@ msgstr "Промени"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:148
 msgid "Fix downloads by granting access to download folder"
-msgstr "Поправени са изтеглянията чрез предоставяне на достъп до папката "
+msgstr "Поправени са изтеглянията чрез предоставяне на достъп до папката"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:149
 msgid "Improve download progress handling"
@@ -415,7 +415,7 @@ msgid ""
 "This is the first working flatpak release. Some features (colors, caching) "
 "are missing."
 msgstr ""
-"Това е първото работещо Flatpak издание. Липсват някои функции (цветове, "
+"Това е първото работещо flatpak издание. Липсват някои функции (цветове, "
 "кеширане)."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:162
