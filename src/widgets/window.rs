@@ -325,7 +325,7 @@ impl Window {
                     this.close();
                 };
 
-                true
+                glib::Propagation::Proceed
             }),
         );
         imp.tab_overview.connect_create_tab(
@@ -717,7 +717,7 @@ impl Window {
             )
         };
 
-        imp.style_provider.borrow().load_from_data(&stylesheet);
+        imp.style_provider.borrow().load_from_string(&stylesheet);
 
         Ok(())
     }
@@ -746,7 +746,7 @@ impl Window {
             .website("https://github.com/ranfdev/Geopard")
             .build();
         about.add_link("Donate 💝", "https://github.com/sponsors/ranfdev");
-        about.present(self);
+        about.present(Some(self));
     }
 
     fn focus_next_tab(&self) {
