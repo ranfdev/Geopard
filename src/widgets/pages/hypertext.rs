@@ -237,7 +237,7 @@ impl Hypertext {
         let motion_ctrl = gtk::EventControllerMotion::new();
 
         left_click_ctrl.connect_released(
-            clone!(@strong this => @default-panic, move |ctrl, _n_press, x, y| {
+            clone!(#[strong] this, move |ctrl, _n_press, x, y| {
                 if let Err(e) = this.handle_click(ctrl, x, y) {
                     log::info!("{}", e);
                 };
@@ -245,14 +245,14 @@ impl Hypertext {
         );
 
         right_click_ctrl.connect_pressed(
-            clone!(@strong this => @default-panic, move |_ctrl, _n_press, x, y| {
+            clone!(#[strong] this, move |_ctrl, _n_press, x, y| {
                 if let Err(e) = this.handle_right_click(x, y) {
                     log::info!("{}", e);
                 };
             }),
         );
 
-        motion_ctrl.connect_motion(clone!(@strong this => @default-panic,move |_ctrl, x, y|  {
+        motion_ctrl.connect_motion(clone!(#[strong] this, move |_ctrl, x, y|  {
             let _ = this.handle_motion(x, y);
         }));
 

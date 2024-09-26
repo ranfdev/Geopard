@@ -22,7 +22,7 @@ use url::Url;
 
 use super::pages::{self, hypertext};
 use crate::common;
-use crate::common::glibctx;
+use crate::common::{glibctx, open_uri_externally, open_file_externally};
 use crate::lossy_text_read::*;
 use crate::session_provider::SessionProvider;
 
@@ -470,7 +470,7 @@ impl Tab {
         let downloaded_file_url = format!("file://{}", d_path.as_os_str().to_str().unwrap());
         info!("Downloading to {}", downloaded_file_url);
         page.imp().open_btn.connect_clicked(move |_| {
-            gtk::show_uri(None::<&gtk::Window>, &downloaded_file_url, 0);
+            open_file_externally(&std::path::Path::new(&downloaded_file_url));
         });
 
         let ext = file_name.split('.').last();
@@ -594,7 +594,7 @@ impl Tab {
         button.set_halign(gtk::Align::Center);
         let url_clone = url.clone();
         button.connect_clicked(move |_| {
-            gtk::show_uri(None::<&gtk::Window>, url_clone.as_str(), 0);
+            open_uri_externally(url_clone.as_str());
         });
         child.append(&button);
 
@@ -615,7 +615,7 @@ impl Tab {
         p.connect_local(
             "open",
             false,
-            clone!(@weak self as this => @default-panic, move |s| {
+            clone!(#[weak(rename_to = this)] self, #[upgrade_or_panic] move |s| {
                 let s: String = s[1].get().unwrap();
                 let url = Url::parse(&s);
                 if let Ok(url) = url {
@@ -705,7 +705,7 @@ impl Tab {
         p.set_icon_name(Some("dialog-error-symbolic"));
 
         let override_btn = gtk::Button::with_label("Trust New Certificate");
-        override_btn.connect_clicked(clone!(@weak self as this => move |_| {
+        override_btn.connect_clicked(clone!(#[weak(rename_to = this)] self, move |_| {
             let url = Url::parse(&this.url()).unwrap();
 
             this.session().validator().remove_known(url.host_str().unwrap());
@@ -733,7 +733,7 @@ impl Tab {
         p.set_icon_name(Some("dialog-error-symbolic"));
 
         let override_btn = gtk::Button::with_label("Continue");
-        override_btn.connect_clicked(clone!(@weak self as this => move |_| {
+        override_btn.connect_clicked(clone!(#[weak(rename_to = this)] self, move |_| {
             let url = Url::parse(&this.url()).unwrap();
 
             this.session().validator().override_trust(url.host_str().unwrap());
