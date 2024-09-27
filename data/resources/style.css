@@ -1,0 +1,125 @@
+.h1 {
+    font-size: 2rem;
+    margin: 0.67rem 0;
+    font-weight: 800;
+}
+
+.h2 {
+    font-size: 1.5rem;
+    margin: 0.67rem 0;
+    font-weight: 800;
+}
+
+.h3 {
+    font-size: 1.17rem;
+    margin: 0.67rem 0;
+    font-weight: 800;
+}
+
+.h4 {
+    font-size: 1rem;
+    margin: 0.67rem 0;
+    font-weight: 800;
+}
+
+.h5 {
+    font-size: 0.83rem;
+    margin: 0.67rem 0;
+    font-weight: 800;
+}
+
+.h6 {
+    font-size: 0.67rem;
+    margin: 0.67rem 0;
+    font-weight: 800;
+}
+
+.blocks-page {
+    padding: 16px;
+}
+
+.block-quote {
+    background-color: #f9f9f911;
+    border-left: 4px solid #f9f9f911;
+    padding: 16px;
+    border-radius: 4px;
+}
+
+.delay-10 {
+    animation-delay: 0.02s;
+}
+
+.delay-20 {
+    animation-delay: 0.04s;
+}
+
+.delay-30 {
+    animation-delay: 0.06s;
+}
+
+.delay-40 {
+    animation-delay: 0.08s;
+}
+
+.delay-50 {
+    animation-delay: 0.10s;
+}
+
+.delay-60 {
+    animation-delay: 0.12s;
+}
+
+.delay-70 {
+    animation-delay: 0.14s;
+}
+
+.delay-80 {
+    animation-delay: 0.16s;
+}
+
+.delay-90 {
+    animation-delay: 0.18s;
+}
+
+.delay-100 {
+    animation-delay: 0.20s;
+}
+
+.delay-110 {
+    animation-delay: 0.22s;
+}
+
+.delay-120 {
+    animation-delay: 0.24s;
+}
+
+.delay-130 {
+    animation-delay: 0.26s;
+}
+
+.delay-140 {
+    animation-delay: 0.28s;
+}
+
+.delay-150 {
+    animation-delay: 0.3s;
+}
+
+
+.animate-slide-left-right {
+    animation-duration: .5s;
+    animation-fill-mode: both;
+    animation-name: animate-slide-left-right;
+}
+
+@keyframes animate-slide-left-right {
+    0% {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
