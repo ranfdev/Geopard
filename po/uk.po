@@ -1,392 +1,397 @@
-# SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# Ukrainian translation of Geopard.
+# Copyright (C) 2024 Lorenzo Miglietta
 # This file is distributed under the same license as the geopard package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# Denys Nykula <nykula@ukr.net>, 2024.
 #
-#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: geopard\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-07-06 19:23+0300\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
+"POT-Creation-Date: 2024-04-10 18:52+0200\n"
+"PO-Revision-Date: 2024-07-06 19:44+0300\n"
+"Last-Translator: Denys Nykula <nykula@ukr.net>\n"
+"Language-Team: Ukrainian <uk@li.org>\n"
+"Language: uk\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
 
 #: data/resources/ui/shortcuts.blp:7
 msgctxt "shortcut window"
 msgid "General"
-msgstr ""
+msgstr "Загальне"
 
 #: data/resources/ui/shortcuts.blp:10
 msgctxt "shortcut window"
 msgid "Shortcuts"
-msgstr ""
+msgstr "Скорочення"
 
 #: data/resources/ui/shortcuts.blp:20
 msgctxt "shortcut window"
 msgid "Tabs"
-msgstr ""
+msgstr "Вкладки"
 
 #: data/resources/ui/shortcuts.blp:23
 msgctxt "shortcut window"
 msgid "Open New Tab"
-msgstr ""
+msgstr "Відкрити нову вкладку"
 
 #: data/resources/ui/shortcuts.blp:28
 msgctxt "shortcut window"
 msgid "Close Current Tab"
-msgstr ""
+msgstr "Закрити поточну вкладку"
 
 #: data/resources/ui/shortcuts.blp:33
 msgctxt "shortcut window"
 msgid "Go to Nth Tab"
-msgstr ""
+msgstr "Перейти до вкладки за номером"
 
 #: data/resources/ui/shortcuts.blp:38
 msgctxt "shortcut window"
 msgid "View Open Tabs"
-msgstr ""
+msgstr "Переглянути відкриті вкладки"
 
 #: data/resources/ui/shortcuts.blp:48
 msgctxt "shortcut window"
 msgid "Navigation"
-msgstr ""
+msgstr "Навігація"
 
 #: data/resources/ui/shortcuts.blp:51
 msgctxt "shortcut window"
 msgid "Previous Page"
-msgstr ""
+msgstr "Попередня сторінка"
 
 #: data/resources/ui/shortcuts.blp:56
 msgctxt "shortcut window"
 msgid "Next Page"
-msgstr ""
+msgstr "Наступна сторінка"
 
 #: data/resources/ui/shortcuts.blp:60
 msgctxt "shortcut window"
 msgid "Reload Page"
-msgstr ""
+msgstr "Перезавантажити сторінку"
 
 #: data/resources/ui/shortcuts.blp:65
 msgctxt "shortcut window"
 msgid "Focus Url Bar"
-msgstr ""
+msgstr "Перейти до рядка адреси"
 
 #: data/resources/ui/shortcuts.blp:71
 msgctxt "shortcut window"
 msgid "Bookmarks"
-msgstr ""
+msgstr "Закладки"
 
 #: data/resources/ui/shortcuts.blp:74
 msgctxt "shortcut window"
 msgid "Bookmark Current Page"
-msgstr ""
+msgstr "Додати поточну сторінку в закладки"
 
 #: data/resources/ui/shortcuts.blp:79
 msgctxt "shortcut window"
 msgid "Show All Bookmarks"
-msgstr ""
+msgstr "Показати всі закладки"
 
 #: data/resources/ui/shortcuts.blp:84
 msgctxt "shortcut window"
 msgid "Zoom"
-msgstr ""
+msgstr "Масштаб"
 
 #: data/resources/ui/shortcuts.blp:87
 msgctxt "shortcut window"
 msgid "Zoom In"
-msgstr ""
+msgstr "Наблизити"
 
 #: data/resources/ui/shortcuts.blp:91
 msgctxt "shortcut window"
 msgid "Zoom Out"
-msgstr ""
+msgstr "Віддалити"
 
 #: data/resources/ui/shortcuts.blp:95
 msgctxt "shortcut window"
 msgid "Reset Zoom"
-msgstr ""
+msgstr "Скасувати масштаб"
 
 #: data/resources/ui/window.blp:5 data/com.ranfdev.Geopard.desktop.in.in:3
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:4
 msgid "Geopard"
-msgstr ""
+msgstr "Geopard"
 
 #: data/resources/ui/window.blp:31 data/resources/ui/window.blp:151
 msgid ""
 "Go Back\n"
 "Right-click to show history"
 msgstr ""
+"Перейти назад\n"
+"Щоб переглянути історію, натисніть правою"
 
 #: data/resources/ui/window.blp:45 data/resources/ui/window.blp:158
 msgid ""
 "Go Forward\n"
 "Right-click to show history"
 msgstr ""
+"Перейти вперед\n"
+"Щоб переглянути історію, натисніть правою"
 
 #: data/resources/ui/window.blp:58 data/resources/ui/window.blp:165
 msgid "Reload"
-msgstr ""
+msgstr "Перезавантажити"
 
 #: data/resources/ui/window.blp:65
 msgid "New Tab"
-msgstr ""
+msgstr "Нова вкладка"
 
 #: data/resources/ui/window.blp:75
 msgid "Enter Gemini address or search with Geminispace"
-msgstr ""
+msgstr "Введіть адресу Gemini чи пошуковий запит Geminispace"
 
 #: data/resources/ui/window.blp:83
 msgid "Main Menu"
-msgstr ""
+msgstr "Головне меню"
 
 #: data/resources/ui/window.blp:91
 msgid "View Open Tabs"
-msgstr ""
+msgstr "Переглянути відкриті вкладки"
 
 #: data/resources/ui/window.blp:178
 msgid "Start Searching"
-msgstr ""
+msgstr "Почати пошук"
 
 #: data/resources/ui/window.blp:209
 msgid "All Bookmarks"
-msgstr ""
+msgstr "Усі закладки"
 
 #: data/resources/ui/window.blp:213
 msgid "Add Bookmark"
-msgstr ""
+msgstr "Додати закладку"
 
 #: data/resources/ui/window.blp:219
 msgid "Keyboard Shortcuts"
-msgstr ""
+msgstr "Клавіатурні скорочення"
 
 #: data/resources/ui/window.blp:223
 msgid "About Geopard"
-msgstr ""
+msgstr "Про Geopard"
 
 #: data/com.ranfdev.Geopard.desktop.in.in:4
 msgid "A GTK 4 Gemini browser written in Rust"
-msgstr ""
+msgstr "Переглядач Gemini на основі GTK 4, написаний на Rust"
 
 #: data/com.ranfdev.Geopard.desktop.in.in:9
 msgid "Gnome;GTK;browser;gemini;rust;"
-msgstr ""
+msgstr "Gnome;GTK;браузер;переглядач;gemini;rust;"
 
 #: data/com.ranfdev.Geopard.gschema.xml.in:6
 msgid "Window width"
-msgstr ""
+msgstr "Ширина вікна"
 
 #: data/com.ranfdev.Geopard.gschema.xml.in:10
 msgid "Window height"
-msgstr ""
+msgstr "Висота вікна"
 
 #: data/com.ranfdev.Geopard.gschema.xml.in:14
 msgid "Window maximized state"
-msgstr ""
+msgstr "Розгорнутість вікна"
 
 #: data/com.ranfdev.Geopard.gschema.xml.in:18
 msgid "Zoom"
-msgstr ""
+msgstr "Масштаб"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:5
 msgid "Browse Gemini pages"
-msgstr ""
+msgstr "Переглядайте сторінки Gemini"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:18
 msgid ""
 "Geopard is a browser for the Gemini protocol, that is, a lighter alternative "
 "to the web. Use Geopard to browse the space and reach hundreds of Gemini "
 "capsules! Read stories, download files, play games..."
-msgstr ""
+msgstr "Geopard — переглядач для протоколу Gemini, легшої альтернативи вебу. За допомогою Geopard ви можете переглядати простір і досягати сотень Gemini-капсул! Читайте історії, завантажуйте файли, грайте в ігри…"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:21
 msgid "Features:"
-msgstr ""
+msgstr "Можливості:"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:24
 msgid ""
 "Colors! The browser will have a different color for each domain you visit."
-msgstr ""
+msgstr "Кольори! Переглядач позначатиме кожен відвіданий домен інакшим кольором."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:28
 msgid ""
 "Fast (async core + caching): Streams content by default. That means you can "
 "open pages even when you have connection speeds of Kb/s. It also caches "
 "pages in the history, so you can go back/forward in an instant"
-msgstr ""
+msgstr "Швидкість (асинхронне ядро й кешування). Типово показує вміст по мірі завантаження. Тобто ви можете відкривати сторінки, навіть коли швидкість з'єднання — лічені кілобайти. Він також кешує сторінки в історії, тож ви можете миттєво переходити вперед і назад."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:34
 msgid ""
 "Can download binary files: The download will start as soon as you open the "
 "corresponding link. You can always cancel it by opening another page."
-msgstr ""
+msgstr "Може завантажувати двійкові файли. Завантаження почнеться, щойно ви перейдете за відповідним посиланням. Ви завжди можете скасувати його, відкривши іншу сторінку."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:89
 msgid ""
 "Updated to latest libadwaita and GTK to improve performance and "
 "compatibility, including the use of the new Adw.Dialog and Adw.Breakpoint "
 "widgets."
-msgstr ""
+msgstr "Оновлено до найновіших версій libadwaita й GTK, щоб поліпшити швидкодію й сумісність. Зокрема використано нові віджети Adw.Dialog і Adw.Breakpoint."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:92
 msgid ""
 "Improved security by adding TOFU (Trust On First Use) website verification"
-msgstr ""
+msgstr "Поліпшено безпеку шляхом додання TOFU-перевірки вебсайтів — довіри при першому використанні."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:93
 msgid ""
 "Some native pages (\"input\" page and \"open link in external browser\" "
 "page) were persisting as overlay after opening a new link. Now the page "
 "navigation is fixed."
-msgstr ""
+msgstr "Деякі «рідні» сторінки (введення й відкриття в зовнішньому переглядачі) залишалися накладеними після відкриття нового посилання. Тепер перехід між сторінками виправлено."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:96
 msgid "Many other small fixes and improvements."
-msgstr ""
+msgstr "Багато інших дрібних виправлень і вдосконалень."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:101
 msgid ""
 "Updated to latest libadwaita and GTK to improve performance and "
 "compatibility, including the use of the new Adw.TabOverview widget for "
 "improved tab management on small screens."
-msgstr ""
+msgstr "Оновлено до найновіших версій libadwaita й GTK, щоб поліпшити швидкодію й сумісність. Зокрема використано новий віджет Adw.TabOverview, щоб зручніше керувати вкладками на малих екранах."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:103
 msgid ""
 "Added support for opening files and gemini mime types from the command line."
-msgstr ""
+msgstr "Додано підтримку відкриття файлів і mime-типів gemini з командного рядка."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:104
 msgid ""
 "Added tab history menu on right click over arrows for easier navigation."
-msgstr ""
+msgstr "Додано історію вкладок при натиску правою по стрілці, щоб було зручніше пересуватися."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:105
 msgid "Fixed issue with links without whitespace not working properly."
-msgstr ""
+msgstr "Виправлено проблему з некоректною роботою посилань без пробілів."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:106
 msgid "Moved scrollbar to the edge of the window for a cleaner UI."
-msgstr ""
+msgstr "Посунуто смугу прокручування до краю вікна, щоб інтерфейс виглядав чистіше."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:107
 msgid ""
 "Added tooltips for items in header bar to provide more information to users."
-msgstr ""
+msgstr "Додано спливні підказки для елементів шапки, щоб надавати більше інформації про використання."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:108
 msgid ""
 "Added more information to the About window to give users a better idea of "
 "the project's."
-msgstr ""
+msgstr "Додано більше інформації у вікно «Про Geopard», щоб докладніше описати ідею проєкту."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:109
 msgid "Various fixes and refactorings."
-msgstr ""
+msgstr "Різні виправлення й рефакторинг."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:114
 msgid "Added ability to reload the current page"
-msgstr ""
+msgstr "Додано можливість перезавантажити поточну сторінку"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:115
 msgid "Nicer list items formatting"
-msgstr ""
+msgstr "Охайніше форматування елементів переліку"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:116
 msgid ""
 "Fixed annoying bug where selecting the text would sometimes transform a "
 "paragraph into a title, temporarily"
-msgstr ""
+msgstr "Виправлено дратівливу ваду, коли виділення тексту часом тимчасово перетворювало абзац на заголовок"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:117
 msgid "Fixed crash when the app theme is overridden"
-msgstr ""
+msgstr "Виправлено збій при заміщенні теми програми"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:118
 msgid "Fixed unresponsiveness when a big page is loading"
-msgstr ""
+msgstr "Виправлено зависання при завантаженні великої сторінки"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:119
 msgid ""
 "Complete rewrite of the gemini parser to make it more robust and improve "
 "handling of edge cases"
-msgstr ""
+msgstr "Повністю переписано gemini-парсер, щоб він працював точніше й обробляв крайні випадки"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:124
 msgid "Added more shortcuts"
-msgstr ""
+msgstr "Додано більше скорочень"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:125
 msgid "There's now a status bar showing the URL of hovered links"
-msgstr ""
+msgstr "Тепер є рядок стану, який показує URL-адресу посилання, на яке ви навели"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:126
 msgid "Various code refactorings"
-msgstr ""
+msgstr "Різний рефакторинг коду"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:131
 msgid "Relax download folder permissions to fix downloads not starting"
-msgstr ""
+msgstr "Послаблено вимоги до каталогу завантажень, щоб виправити помилку початку завантаження"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:137
 msgid ""
 "Improved design, with completely new pages for downloads, input requests, "
 "external links, errors"
-msgstr ""
+msgstr "Поліпшено дизайн, зокрема додано повністю нові сторінки завантажень, запитів на введення, зовнішніх посилань і помилок"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:138
 msgid ""
 "Added more spacing between links to make them easier to click on small "
 "screens"
-msgstr ""
+msgstr "Додано більше простору між посиланнями, щоб на них було легше натискати на маленьких екранах"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:139
 msgid ""
 "Added zoom functionality, via shortcuts or directly from the popover menu"
-msgstr ""
+msgstr "Додано функцію масштабу скороченнями чи прямо зі спливного меню"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:140
 msgid "Streaming button (alpha) for some audio/video file types"
-msgstr ""
+msgstr "Кнопка потокового перегляду (альфа) для деяких типів аудіо- та відеофайлів"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:146
 msgid "Changes"
-msgstr ""
+msgstr "Зміни"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:148
 msgid "Fix downloads by granting access to download folder"
-msgstr ""
+msgstr "Виправити завантаження, надавши доступ до каталогу завантажень"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:149
 msgid "Improve download progress handling"
-msgstr ""
+msgstr "Поліпшити обробку прогресу завантаження"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:150
 msgid "Show close button on small window sizes"
-msgstr ""
+msgstr "Показувати кнопку закриття при малому розмірі вікна"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:156
 msgid ""
 "This is the first working flatpak release. Some features (colors, caching) "
 "are missing."
-msgstr ""
+msgstr "Це перший працездатний flatpak-випуск. Деяких функцій (кольори, кешування) ще не вистачає."
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:162
 msgid "First release on flathub! You get all the most important features"
-msgstr ""
+msgstr "Перший випуск на flathub! Ви отримаєте всі найважливіші функції"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:164
 msgid "colors"
-msgstr ""
+msgstr "кольори"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:165
 msgid "caching"
-msgstr ""
+msgstr "кешування"
 
 #: data/com.ranfdev.Geopard.metainfo.xml.in.in:166
 msgid "search"
-msgstr ""
+msgstr "пошук"
