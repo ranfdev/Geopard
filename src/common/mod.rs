@@ -1,4 +1,4 @@
-use gtk::glib;
+use gtk::{glib, gio};
 use once_cell::sync::Lazy;
 use url::Url;
 
@@ -56,4 +56,21 @@ pub fn bookmarks_url() -> Url {
 
 pub fn glibctx() -> glib::MainContext {
     glib::MainContext::default()
+}
+
+pub fn open_uri_externally(uri: &str) {
+    gtk::UriLauncher::new(&uri).launch(None::<&gtk::Window>, None::<&gio::Cancellable>, |res| {
+        if let Err(e) = res {
+            log::error!("error opening external uri {:?}", e);
+        }
+    });
+}
+
+pub fn open_file_externally(path: &std::path::Path) {
+    let file = gio::File::for_path(path);
+    gtk::FileLauncher::new(Some(&file)).launch(None::<&gtk::Window>, None::<&gio::Cancellable>, |res| {
+        if let Err(e) = res {
+            log::error!("error opening external file {:?}", e);
+        }
+    });
 }

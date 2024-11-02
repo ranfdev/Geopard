@@ -122,7 +122,7 @@ pub mod imp {
         fn set_zoom(&self, v: f64) {
             let Zoom { value, provider } = &mut *self.zoom.borrow_mut();
             *value = v.clamp(1.0 / ZOOM_MAX_FACTOR, ZOOM_MAX_FACTOR);
-            provider.load_from_data(&format!(
+            provider.load_from_string(&format!(
                 "textview {{
                         font-size: {}rem;
                     }}",
@@ -232,26 +232,26 @@ impl Window {
 
         let act_open_page = gio::SimpleAction::new("open-omni", Some(glib::VariantTy::STRING));
         act_open_page.connect_activate(
-            clone!(@weak self as this => move |_,v| this.open_omni(v.unwrap().get::<String>().unwrap().as_str())),
+            clone!(#[weak(rename_to = this)] self, move |_,v| this.open_omni(v.unwrap().get::<String>().unwrap().as_str())),
         );
         self.add_action(&act_open_page);
 
         let act_open_url = gio::SimpleAction::new("open-url", Some(glib::VariantTy::STRING));
         act_open_url.connect_activate(
-            clone!(@weak self as this => move |_,v| this.open_url_str(v.unwrap().get::<String>().unwrap().as_str())),
+            clone!(#[weak(rename_to = this)] self, move |_,v| this.open_url_str(v.unwrap().get::<String>().unwrap().as_str())),
         );
         self.add_action(&act_open_url);
 
         let act_open_in_new_tab =
             gio::SimpleAction::new("open-in-new-tab", Some(glib::VariantTy::STRING));
         act_open_in_new_tab.connect_activate(
-            clone!(@weak self as this => move |_,v| this.open_in_new_tab(v.unwrap().get::<String>().unwrap().as_str())),
+            clone!(#[weak(rename_to = this)] self, move |_,v| this.open_in_new_tab(v.unwrap().get::<String>().unwrap().as_str())),
         );
         self.add_action(&act_open_in_new_tab);
 
         let act_set_clipboard =
             gio::SimpleAction::new("set-clipboard", Some(glib::VariantTy::STRING));
-        act_set_clipboard.connect_activate(clone!(@weak self as this => move |_,v| {
+        act_set_clipboard.connect_activate(clone!(#[weak(rename_to = this)] self, move |_,v| {
             this.set_clipboard(v.unwrap().get::<String>().unwrap().as_str());
             this.imp().toast_overlay.add_toast(adw::Toast::new("Copied to clipboard"));
         }));
@@ -267,7 +267,8 @@ impl Window {
         imp.scroll_ctrl
             .set_flags(gtk::EventControllerScrollFlags::VERTICAL);
         imp.scroll_ctrl.connect_scroll(
-            clone!(@weak self as this => @default-panic, move |ctrl, _, y| {
+            clone!(#[weak(rename_to = this)] self, #[upgrade_or_panic]
+            move |ctrl, _, y| {
                 let up = y < 0.0;
                 if let Some(gdk::ModifierType::CONTROL_MASK) = ctrl.current_event().map(|e| e.modifier_state()) {
                     if up {
@@ -283,7 +284,7 @@ impl Window {
         );
         imp.mouse_prev_next_ctrl.set_button(0);
         imp.mouse_prev_next_ctrl.connect_pressed(
-            clone!(@weak self as this => @default-panic, move |ctrl, _, _, _| {
+            clone!(#[weak(rename_to = this)] self, move |ctrl, _, _, _| {
                 match ctrl.current_button() {
                     8 => {
                         this.previous();
@@ -299,7 +300,8 @@ impl Window {
         self.connect_local(
             "notify::url",
             false,
-            clone!(@weak self as this => @default-panic, move |_| {
+            clone!(#[weak(rename_to = this)] self, #[upgrade_or_default]
+            move |_| {
                 this.update_domain_color();
 
                 let bar = &this.imp().url_bar;
@@ -313,35 +315,39 @@ impl Window {
         );
 
         imp.tab_view.connect_selected_page_notify(
-            clone!(@weak self as this => @default-panic, move |tab_view| {
+            clone!(#[weak(rename_to = this)] self, move |tab_view| {
               this.page_switched(tab_view);
             }),
         );
         imp.tab_view.connect_close_page(
-            clone!(@weak self as this => @default-panic, move |tab_view, page| {
+            clone!(#[weak(rename_to = this)] self,
+            #[upgrade_or_panic]
+            move |tab_view, page| {
                 tab_view.close_page_finish(page, !page.is_pinned());
 
                 if tab_view.n_pages() == 0 {
                     this.close();
                 };
 
-                true
+                glib::Propagation::Proceed
             }),
         );
         imp.tab_overview.connect_create_tab(
-            clone!(@weak self as this => @default-panic, move |_| {
+            clone!(#[weak(rename_to = this)] self,
+            #[upgrade_or_panic]
+            move |_| {
               this.new_tab();
               this.imp().tab_view.selected_page().unwrap()
             }),
         );
 
         imp.url_bar
-            .connect_activate(clone!(@weak self as this => @default-panic, move |_sq| {
+            .connect_activate(clone!(#[weak(rename_to = this)] self, move |_sq| {
                 this.open_omni(this.imp().url_bar.text().as_str());
             }));
 
         adw::StyleManager::default().connect_dark_notify(
-            clone!(@weak self as this => @default-panic, move |_| {
+            clone!(#[weak(rename_to = this)] self, move |_| {
                 this.update_domain_color()
             }),
         );
@@ -358,7 +364,8 @@ impl Window {
         ctrl.set_propagation_phase(gtk::PropagationPhase::Capture);
 
         ctrl.connect_key_pressed(
-            clone!(@weak self as this => @default-panic, move |_, key, _, modif| {
+            clone!(#[weak(rename_to = this)] self, #[upgrade_or_panic]
+            move |_, key, _, modif| {
               let action = match (modif.contains(gdk::ModifierType::CONTROL_MASK), key) {
                 (true, gdk::Key::ISO_Left_Tab) => Some("win.focus-previous-tab"),
                 (true, gdk::Key::Tab) => Some("win.focus-next-tab"),
@@ -380,7 +387,8 @@ impl Window {
             .build();
 
         drop_target.connect_drop(
-            clone!(@weak self as this => @default-return false, move |_, value, _, _| {
+            clone!(#[weak(rename_to = this)] self, #[upgrade_or_panic]
+            move |_, value, _, _| {
                     if let Ok(files) = value.get::<gdk::FileList>() {
                         for f in files.files() {
                             this.open_in_new_tab(&format!("file://{}", f.path().unwrap().to_str().unwrap()));
@@ -626,7 +634,7 @@ impl Window {
         let imp = self.imp();
         let url = imp.url_bar.text().to_string();
 
-        glibctx().spawn_local(clone!(@weak imp => async move {
+        glibctx().spawn_local(clone!(#[weak] imp, async move {
             match Self::append_bookmark(&url).await {
                 Ok(_) => {
                     info!("{} saved to bookmarks", url);
@@ -717,7 +725,7 @@ impl Window {
             )
         };
 
-        imp.style_provider.borrow().load_from_data(&stylesheet);
+        imp.style_provider.borrow().load_from_string(&stylesheet);
 
         Ok(())
     }
@@ -746,7 +754,7 @@ impl Window {
             .website("https://github.com/ranfdev/Geopard")
             .build();
         about.add_link("Donate 💝", "https://github.com/sponsors/ranfdev");
-        about.present(self);
+        about.present(Some(self));
     }
 
     fn focus_next_tab(&self) {
