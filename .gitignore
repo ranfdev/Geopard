@@ -6,3 +6,5 @@ _build/
 _builddir/
 src/build_config.rs
 subprojects/blueprint-compiler
+.flatpak
+.vscode
