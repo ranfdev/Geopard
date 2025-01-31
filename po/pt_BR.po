@@ -1,0 +1,427 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the geopard package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: geopard\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-04-10 18:52+0200\n"
+"PO-Revision-Date: 2025-01-31 02:49-0300\n"
+"Last-Translator: john peter <johnppetersa@gmail.com>\n"
+"Language-Team: \n"
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.5\n"
+
+#: data/resources/ui/shortcuts.blp:7
+msgctxt "shortcut window"
+msgid "General"
+msgstr "Em geral"
+
+#: data/resources/ui/shortcuts.blp:10
+msgctxt "shortcut window"
+msgid "Shortcuts"
+msgstr "Atalhos"
+
+#: data/resources/ui/shortcuts.blp:20
+msgctxt "shortcut window"
+msgid "Tabs"
+msgstr "Guias"
+
+#: data/resources/ui/shortcuts.blp:23
+msgctxt "shortcut window"
+msgid "Open New Tab"
+msgstr "Abra a nova guia"
+
+#: data/resources/ui/shortcuts.blp:28
+msgctxt "shortcut window"
+msgid "Close Current Tab"
+msgstr "Fechar a guia atual"
+
+#: data/resources/ui/shortcuts.blp:33
+msgctxt "shortcut window"
+msgid "Go to Nth Tab"
+msgstr "Vá para a enésima guia"
+
+#: data/resources/ui/shortcuts.blp:38
+msgctxt "shortcut window"
+msgid "View Open Tabs"
+msgstr "Visualize as guias Abrir"
+
+#: data/resources/ui/shortcuts.blp:48
+msgctxt "shortcut window"
+msgid "Navigation"
+msgstr "Navegação"
+
+#: data/resources/ui/shortcuts.blp:51
+msgctxt "shortcut window"
+msgid "Previous Page"
+msgstr "Página anterior"
+
+#: data/resources/ui/shortcuts.blp:56
+msgctxt "shortcut window"
+msgid "Next Page"
+msgstr "Próxima página"
+
+#: data/resources/ui/shortcuts.blp:60
+msgctxt "shortcut window"
+msgid "Reload Page"
+msgstr "Recarregar a página"
+
+#: data/resources/ui/shortcuts.blp:65
+msgctxt "shortcut window"
+msgid "Focus Url Bar"
+msgstr "Foco URL Bar"
+
+#: data/resources/ui/shortcuts.blp:71
+msgctxt "shortcut window"
+msgid "Bookmarks"
+msgstr "Marcadores"
+
+#: data/resources/ui/shortcuts.blp:74
+msgctxt "shortcut window"
+msgid "Bookmark Current Page"
+msgstr "Página atual de favoritos"
+
+#: data/resources/ui/shortcuts.blp:79
+msgctxt "shortcut window"
+msgid "Show All Bookmarks"
+msgstr "Mostre todos os favoritos"
+
+#: data/resources/ui/shortcuts.blp:84
+msgctxt "shortcut window"
+msgid "Zoom"
+msgstr "Zoom"
+
+#: data/resources/ui/shortcuts.blp:87
+msgctxt "shortcut window"
+msgid "Zoom In"
+msgstr "Zoom entre"
+
+#: data/resources/ui/shortcuts.blp:91
+msgctxt "shortcut window"
+msgid "Zoom Out"
+msgstr "Amplie o zoom"
+
+#: data/resources/ui/shortcuts.blp:95
+msgctxt "shortcut window"
+msgid "Reset Zoom"
+msgstr "Redefina o zoom"
+
+#: data/resources/ui/window.blp:5 data/com.ranfdev.Geopard.desktop.in.in:3
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:4
+msgid "Geopard"
+msgstr "Geopardo"
+
+#: data/resources/ui/window.blp:31 data/resources/ui/window.blp:151
+msgid ""
+"Go Back\n"
+"Right-click to show history"
+msgstr ""
+"Volte\n"
+" Clique com o botão direito do mouse para mostrar a história"
+
+#: data/resources/ui/window.blp:45 data/resources/ui/window.blp:158
+msgid ""
+"Go Forward\n"
+"Right-click to show history"
+msgstr ""
+"Vá em frente\n"
+" Clique com o botão direito do mouse para mostrar a história"
+
+#: data/resources/ui/window.blp:58 data/resources/ui/window.blp:165
+msgid "Reload"
+msgstr "Recarregar"
+
+#: data/resources/ui/window.blp:65
+msgid "New Tab"
+msgstr "Nova guia"
+
+#: data/resources/ui/window.blp:75
+msgid "Enter Gemini address or search with Geminispace"
+msgstr "Digite o endereço de Gemini ou pesquise com o GEMINISPACE"
+
+#: data/resources/ui/window.blp:83
+msgid "Main Menu"
+msgstr "Jogar o menu"
+
+#: data/resources/ui/window.blp:91
+msgid "View Open Tabs"
+msgstr "Visualize as guias Abrir"
+
+#: data/resources/ui/window.blp:178
+msgid "Start Searching"
+msgstr "Comece a pesquisar"
+
+#: data/com.ranfdev.Geopard.desktop.in.in:4
+msgid "A GTK 4 Gemini browser written in Rust"
+msgstr "Um navegador GTK 4 Gemini escrito em ferrugem"
+
+#: data/com.ranfdev.Geopard.desktop.in.in:9
+msgid "Gnome;GTK;browser;gemini;rust;"
+msgstr "Gnome; gtk; navegador; gêmeos; ferrugem;"
+
+#: data/com.ranfdev.Geopard.gschema.xml.in:6
+msgid "Window width"
+msgstr "Largura da janela"
+
+#: data/com.ranfdev.Geopard.gschema.xml.in:10
+msgid "Window height"
+msgstr "Altura da janela"
+
+#: data/com.ranfdev.Geopard.gschema.xml.in:14
+msgid "Window maximized state"
+msgstr "Estado maximizado da janela"
+
+#: data/com.ranfdev.Geopard.gschema.xml.in:18
+msgid "Zoom"
+msgstr "Zoom"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:5
+msgid "Browse Gemini pages"
+msgstr "Navegue por páginas de Gêmeos"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:18
+msgid ""
+"Geopard is a browser for the Gemini protocol, that is, a lighter alternative "
+"to the web. Use Geopard to browse the space and reach hundreds of Gemini "
+"capsules! Read stories, download files, play games..."
+msgstr ""
+"Geopard é um navegador para o protocolo Gemini, ou seja, uma alternativa "
+"mais leve à web. Use Geopard para navegar no espaço e atingir centenas de "
+"cápsulas de Gêmeos! Leia histórias, baixe arquivos, jogue jogos ..."
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:21
+msgid "Features:"
+msgstr "Característicos:"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:24
+msgid ""
+"Colors! The browser will have a different color for each domain you visit."
+msgstr ""
+"Cores! O navegador terá uma cor diferente para cada domínio que você visita."
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:28
+msgid ""
+"Fast (async core + caching): Streams content by default. That means you can "
+"open pages even when you have connection speeds of Kb/s. It also caches "
+"pages in the history, so you can go back/forward in an instant"
+msgstr ""
+"Fast (núcleo assíncrono + cache): transmite o conteúdo por padrão. Isso "
+"significa que você pode abrir páginas mesmo quando tiver velocidades de "
+"conexão de KB/s. Ele também armazena em cache as páginas da história, para "
+"que você possa voltar/avançar em um instante"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:34
+msgid ""
+"Can download binary files: The download will start as soon as you open the "
+"corresponding link. You can always cancel it by opening another page."
+msgstr ""
+"Pode baixar arquivos binários: o download começará assim que você abrir o "
+"link correspondente. Você sempre pode cancelá -lo abrindo outra página."
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:89
+msgid ""
+"Updated to latest libadwaita and GTK to improve performance and "
+"compatibility, including the use of the new Adw.Dialog and Adw.Breakpoint "
+"widgets."
+msgstr ""
+"Atualizado para o mais recente Libadwaita e GTK para melhorar o desempenho e "
+"a compatibilidade, incluindo o uso dos widgets ADW.Dialog e Adw.breakpoint."
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:92
+msgid ""
+"Improved security by adding TOFU (Trust On First Use) website verification"
+msgstr ""
+"Segurança aprimorada, adicionando verificação do site TOFU (Trust no "
+"primeiro uso)"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:93
+msgid ""
+"Some native pages (\"input\" page and \"open link in external browser\" "
+"page) were persisting as overlay after opening a new link. Now the page "
+"navigation is fixed."
+msgstr ""
+"Algumas páginas nativas (página \"entrada\" e \"Link aberto no navegador "
+"externo\") estavam persistindo como sobreposição após a abertura de um novo "
+"link. Agora a navegação da página está corrigida."
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:96
+msgid "Many other small fixes and improvements."
+msgstr "Muitas outras pequenas correções e melhorias."
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:101
+msgid ""
+"Updated to latest libadwaita and GTK to improve performance and "
+"compatibility, including the use of the new Adw.TabOverview widget for "
+"improved tab management on small screens."
+msgstr ""
+"Atualizado para o mais recente Libadwaita e GTK para melhorar o desempenho e "
+"a compatibilidade, incluindo o uso do novo widget Adw.taboverview para "
+"melhorar o gerenciamento de guias em telas pequenas."
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:103
+msgid ""
+"Added support for opening files and gemini mime types from the command line."
+msgstr ""
+"Adicionado suporte para abrir arquivos e tipos de MIME Gemini na linha de "
+"comando."
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:104
+msgid ""
+"Added tab history menu on right click over arrows for easier navigation."
+msgstr ""
+"Adicionado menu Histórico da guia No botão direito do clique em Over Arrows "
+"para facilitar a navegação."
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:105
+msgid "Fixed issue with links without whitespace not working properly."
+msgstr ""
+"Corrigido o problema com links sem espaço em branco não funcionando "
+"corretamente."
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:106
+msgid "Moved scrollbar to the edge of the window for a cleaner UI."
+msgstr ""
+"Moveu a barra de rolagem para a borda da janela para uma interface do "
+"usuário mais limpa."
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:107
+msgid ""
+"Added tooltips for items in header bar to provide more information to users."
+msgstr ""
+"Adicionado dicas de ferramentas para itens na barra de cabeçalho para "
+"fornecer mais informações aos usuários."
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:108
+msgid ""
+"Added more information to the About window to give users a better idea of "
+"the project's."
+msgstr ""
+"Adicionado mais informações à janela sobre a janela para oferecer aos "
+"usuários uma idéia melhor do projeto."
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:109
+msgid "Various fixes and refactorings."
+msgstr "Várias correções e refatores."
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:114
+msgid "Added ability to reload the current page"
+msgstr "Capacidade adicionada para recarregar a página atual"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:115
+msgid "Nicer list items formatting"
+msgstr "Itens de lista mais agradável formatação"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:116
+msgid ""
+"Fixed annoying bug where selecting the text would sometimes transform a "
+"paragraph into a title, temporarily"
+msgstr ""
+"Corrigido o bug irritante ao se selecionar o texto às vezes transformava um "
+"parágrafo em um título, temporariamente"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:117
+msgid "Fixed crash when the app theme is overridden"
+msgstr "Falha fixa quando o tema do aplicativo é substituído"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:118
+msgid "Fixed unresponsiveness when a big page is loading"
+msgstr "Fixo não responsividade quando uma grande página está carregando"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:119
+msgid ""
+"Complete rewrite of the gemini parser to make it more robust and improve "
+"handling of edge cases"
+msgstr ""
+"Reescrita completa do analisador Gemini para torná -lo mais robusto e "
+"melhorar o manuseio de casos de borda"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:124
+msgid "Added more shortcuts"
+msgstr "Adicionado mais atalhos"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:125
+msgid "There's now a status bar showing the URL of hovered links"
+msgstr "Agora há uma barra de status mostrando o URL de links pairados"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:126
+msgid "Various code refactorings"
+msgstr "Vários refatores de código"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:131
+msgid "Relax download folder permissions to fix downloads not starting"
+msgstr ""
+"Relax download As permissões de pastas para corrigir downloads não iniciando"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:137
+msgid ""
+"Improved design, with completely new pages for downloads, input requests, "
+"external links, errors"
+msgstr ""
+"Design aprimorado, com páginas completamente novas para downloads, "
+"solicitações de entrada, links externos, erros"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:138
+msgid ""
+"Added more spacing between links to make them easier to click on small "
+"screens"
+msgstr ""
+"Adicionado mais espaçamento entre links para facilitar o clique em telas "
+"pequenas"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:139
+msgid ""
+"Added zoom functionality, via shortcuts or directly from the popover menu"
+msgstr ""
+"Funcionalidade de zoom adicionada, via atalhos ou diretamente do menu Popover"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:140
+msgid "Streaming button (alpha) for some audio/video file types"
+msgstr "Botão de streaming (alfa) para alguns tipos de arquivos de áudio/vídeo"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:146
+msgid "Changes"
+msgstr "Mudanças"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:148
+msgid "Fix downloads by granting access to download folder"
+msgstr "Corrigir downloads concedendo acesso à pasta de download"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:149
+msgid "Improve download progress handling"
+msgstr "Melhorar o download de manuseio de progresso"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:150
+msgid "Show close button on small window sizes"
+msgstr "Mostre o botão Fechar em pequenos tamanhos de janela"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:156
+msgid ""
+"This is the first working flatpak release. Some features (colors, caching) "
+"are missing."
+msgstr ""
+"Este é o primeiro lançamento de FlatPak que trabalha. Alguns recursos "
+"(cores, armazenamento em cache) estão faltando."
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:162
+msgid "First release on flathub! You get all the most important features"
+msgstr ""
+"Primeiro lançamento no Flathub! Você obtém todos os recursos mais importantes"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:164
+msgid "colors"
+msgstr "cores"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:165
+msgid "caching"
+msgstr "cache"
+
+#: data/com.ranfdev.Geopard.metainfo.xml.in.in:166
+msgid "search"
+msgstr "procurar"
