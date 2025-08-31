@@ -1,5 +1,5 @@
 project('geopard', 'rust',
-          version: '1.6.0',
+          version: '1.7.0',
           license: 'GPL-3.0-or-later',
     meson_version: '>= 0.62.0',
   default_options: ['warning_level=2',

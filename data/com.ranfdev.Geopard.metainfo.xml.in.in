@@ -85,6 +85,14 @@
   </custom>
 
   <releases>
+    <release version="1.7.0" date="2025-08-31">
+      <description>
+          <p>Updated GNOME SDK to 48</p>
+          <p>Fixed regression with updated libadwaita, causing a narrow text view</p>
+          <p>Many translations added</p>
+          <p>Window size is now saved on close</p>
+      </description>
+    </release>
     <release version="1.6.0" date="2024-07-03">
       <description>
           <p>Various small fixes</p>

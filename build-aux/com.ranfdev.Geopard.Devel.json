@@ -1,11 +1,11 @@
 {
-    "app-id" : "com.ranfdev.Geopard.Devel",
+    "id" : "com.ranfdev.Geopard.Devel",
     "runtime" : "org.gnome.Platform",
-    "runtime-version" : "47",
+    "runtime-version" : "48",
     "sdk" : "org.gnome.Sdk",
     "sdk-extensions" : [
         "org.freedesktop.Sdk.Extension.rust-stable",
-        "org.freedesktop.Sdk.Extension.llvm18"
+        "org.freedesktop.Sdk.Extension.llvm19"
     ],
     "command" : "geopard",
     "tags" : [
@@ -20,7 +20,7 @@
         "--filesystem=xdg-download"
     ],
     "build-options" : {
-        "append-path" : "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm18/bin",
+        "append-path" : "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm19/bin",
         "build-args" : [
             "--share=network"
         ],
@@ -35,16 +35,31 @@
     },
     "modules" : [
         {
-            "name" : "Geopard",
+            "name": "blueprint-compiler",
+            "buildsystem": "meson",
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://gitlab.gnome.org/jwestman/blueprint-compiler.git",
+                    "tag": "v0.18.0",
+		    "commit": "07c9c9df9cd1b6b4454ecba21ee58211e9144a4b"
+                }
+            ]
+        },
+        {
+            "name" : "geopard",
+            "builddir": true,
             "buildsystem" : "meson",
             "config-opts" : [
                 "-Dprofile=development"
             ],
+            "build-commands": [
+                "rm -rf subprojects/blueprint-compiler"
+            ],
             "sources" : [
                 {
-                    "type" : "git",
-                    "url" : "../",
-                    "branch" : "master"
+                    "type" : "dir",
+                    "path": "../"
                 }
             ]
         }

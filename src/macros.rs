@@ -1,14 +1,16 @@
 #[macro_export]
 macro_rules! self_action {
-    ($self:ident, $name:literal, $method:ident) => {
-        {
-            let this = &$self;
-            let action = gio::SimpleAction::new($name, None);
-            action.connect_activate(clone!(#[weak] this, move |_,_| this.$method()));
-            $self.add_action(&action);
-            action
-        }
-    }
+    ($self:ident, $name:literal, $method:ident) => {{
+        let this = &$self;
+        let action = gio::SimpleAction::new($name, None);
+        action.connect_activate(clone!(
+            #[weak]
+            this,
+            move |_, _| this.$method()
+        ));
+        $self.add_action(&action);
+        action
+    }};
 }
 
 #[macro_export]
