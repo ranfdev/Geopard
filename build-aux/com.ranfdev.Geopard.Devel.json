@@ -1,11 +1,11 @@
 {
     "app-id" : "com.ranfdev.Geopard.Devel",
     "runtime" : "org.gnome.Platform",
-    "runtime-version" : "47",
+    "runtime-version" : "48",
     "sdk" : "org.gnome.Sdk",
     "sdk-extensions" : [
         "org.freedesktop.Sdk.Extension.rust-stable",
-        "org.freedesktop.Sdk.Extension.llvm18"
+        "org.freedesktop.Sdk.Extension.llvm19"
     ],
     "command" : "geopard",
     "tags" : [
@@ -20,7 +20,7 @@
         "--filesystem=xdg-download"
     ],
     "build-options" : {
-        "append-path" : "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm18/bin",
+        "append-path" : "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm19/bin",
         "build-args" : [
             "--share=network"
         ],
