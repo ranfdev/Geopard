@@ -10,7 +10,7 @@ use futures::prelude::*;
 use glib::{clone, Properties};
 use gtk::subclass::prelude::*;
 use gtk::{gdk, gio, glib, CompositeTemplate, TemplateChild};
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use url::Url;
 
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
@@ -160,7 +160,22 @@ pub mod imp {
         }
     }
     impl WidgetImpl for Window {}
-    impl WindowImpl for Window {}
+    impl WindowImpl for Window {
+        fn close_request(&self) -> glib::Propagation {
+            debug!("Saving window geometry.");
+            let width = self.obj().default_size().0;
+            let height = self.obj().default_size().1;
+
+            self.settings.0.set_int("window-width", width).unwrap();
+            self.settings.0.set_int("window-height", height).unwrap();
+            self.settings
+                .0
+                .set_boolean("is-maximized", self.obj().is_maximized())
+                .unwrap();
+
+            glib::Propagation::Proceed
+        }
+    }
     impl ApplicationWindowImpl for Window {}
     impl AdwApplicationWindowImpl for Window {}
 }
@@ -179,6 +194,7 @@ impl Window {
         imp.config.replace(config);
         imp.zoom.borrow_mut().value = 1.0;
 
+        this.apply_window_geometry_settings();
         this.setup_css_providers();
         this.setup_history_buttons();
         this.setup_settings();
@@ -187,6 +203,13 @@ impl Window {
         this.setup_signals();
 
         this
+    }
+    fn apply_window_geometry_settings(&self) {
+        let imp = self.imp();
+
+        self.set_default_width(imp.settings.0.int("window-width"));
+        self.set_default_height(imp.settings.0.int("window-height"));
+        self.set_maximized(imp.settings.0.boolean("is-maximized"));
     }
     fn setup_settings(&self) {
         let imp = self.imp();
