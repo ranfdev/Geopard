@@ -1,4 +1,4 @@
-use gtk::{glib, gio};
+use gtk::{gio, glib};
 use once_cell::sync::Lazy;
 use url::Url;
 
@@ -68,9 +68,13 @@ pub fn open_uri_externally(uri: &str) {
 
 pub fn open_file_externally(path: &std::path::Path) {
     let file = gio::File::for_path(path);
-    gtk::FileLauncher::new(Some(&file)).launch(None::<&gtk::Window>, None::<&gio::Cancellable>, |res| {
-        if let Err(e) = res {
-            log::error!("error opening external file {:?}", e);
-        }
-    });
+    gtk::FileLauncher::new(Some(&file)).launch(
+        None::<&gtk::Window>,
+        None::<&gio::Cancellable>,
+        |res| {
+            if let Err(e) = res {
+                log::error!("error opening external file {:?}", e);
+            }
+        },
+    );
 }
