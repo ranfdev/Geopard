@@ -12,9 +12,9 @@ futures = "0.3.5"
 log = "0.4.0"
 url = "2.1.1"
 thiserror = "1.0.20"
-glib = "0.19"
+glib = "0.20"
 
 [dependencies.gio]
 package = "gio"
-version = "0.19"
+version = "0.20"
 features = ["v2_70"]
