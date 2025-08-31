@@ -1,7 +1,15 @@
-pub const APP_ID: &str = @APP_ID@;
-pub const _GETTEXT_PACKAGE: &str = @GETTEXT_PACKAGE@;
-pub const _LOCALEDIR: &str = @LOCALEDIR@;
-pub const _PKGDATADIR: &str = @PKGDATADIR@;
-pub const _PROFILE: &str = @PROFILE@;
-pub const RESOURCES_FILE: &str = concat!(@PKGDATADIR@, "/resources.gresource");
-pub const VERSION: &str = @VERSION@;
+pub const _ROOT_PATH: &str = "@ROOT_PATH@";
+pub const _PKGDATADIR: &str = "@PKGDATA_DIR@";
+pub const _LOCALEDIR: &str = "@LOCALE_DIR@";
+pub const _GETTEXT_PACKAGE: &str = "@GETTEXT_PACKAGE@";
+pub const RESOURCES_FILE: &str = concat!("@PKGDATA_DIR@", "/resources.gresource");
+
+pub const APP_ID: &str = "@APP_ID@";
+pub const _RELEASE_VER: &str = "@RELEASE_VER@";
+pub const VERSION: &str = "@VERSION@";
+pub const _PROFILE: &str = "@PROFILE@";
+
+pub const PROJECT_URL: &str = "@PROJECT_URL@";
+pub const REPO_URL: &str = "@REPO_URL@";
+pub const BUGTRACKER_URL: &str = "@BUGTRACKER_URL@";
+pub const DONATIONS_URL: &str = "@DONATIONS_URL@";
