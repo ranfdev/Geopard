@@ -2,7 +2,7 @@
 <schemalist>
   <schema path="/com/ranfdev/Geopard/" id="@app-id@" gettext-domain="@gettext-package@">
     <key name="window-width" type="i">
-      <default>600</default>
+      <default>720</default>
       <summary>Window width</summary>
     </key>
     <key name="window-height" type="i">
