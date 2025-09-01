@@ -129,21 +129,27 @@ fn main() {
         }
     });
 
-    application.set_accels_for_action("win.previous", &["<Alt>Left", "<Alt>KP_Left"]);
-    application.set_accels_for_action("win.next", &["<Alt>Right", "<Alt>KP_Right"]);
-    application.set_accels_for_action("win.reload", &["<Ctrl>r", "F5"]);
-    application.set_accels_for_action("win.show-bookmarks", &["<Ctrl>b"]);
-    application.set_accels_for_action("win.bookmark-current", &["<Ctrl>d"]);
-    application.set_accels_for_action("win.new-tab", &["<Ctrl>t"]);
-    application.set_accels_for_action("win.close-tab", &["<Ctrl>w"]);
-    application.set_accels_for_action("win.focus-url-bar", &["F6", "<Ctrl>L"]);
-    application.set_accels_for_action("win.zoom-in", &["<Ctrl>plus"]);
-    application.set_accels_for_action("win.zoom-out", &["<Ctrl>minus"]);
-    application.set_accels_for_action("win.reset-zoom", &["<Ctrl>0"]);
-    // I can't directly use the action `overview.open` because the application cannot see that action.
-    // Only widgets inside a `TabOverview` see that.
-    application.set_accels_for_action("win.open-overview", &["<Shift><Ctrl>o"]);
-    // FIXME: win.view-source
+    let shortcuts: &[(&'static str, &[&str])] = &[
+        ("win.previous", &["<Alt>Left", "<Alt>KP_Left"]),
+        ("win.next", &["<Alt>Right", "<Alt>KP_Right"]),
+        ("win.reload", &["<Ctrl>r", "F5"]),
+        ("win.show-bookmarks", &["<Ctrl>b"]),
+        ("win.bookmark-current", &["<Ctrl>d"]),
+        ("win.new-tab", &["<Ctrl>t"]),
+        ("win.close-tab", &["<Ctrl>w"]),
+        ("win.focus-url-bar", &["F6", "<Ctrl>L"]),
+        ("win.zoom-in", &["<Ctrl>plus"]),
+        ("win.zoom-out", &["<Ctrl>minus"]),
+        ("win.reset-zoom", &["<Ctrl>0"]),
+        // I can't directly use the action `overview.open` because the application cannot see that action.
+        // Only widgets inside a `TabOverview` see that.
+        ("win.open-overview", &["<Shift><Ctrl>o"]),
+        // FIXME: win.view-source
+    ];
+
+    for (action_name, accels) in shortcuts {
+        application.set_accels_for_action(action_name, accels);
+    }
 
     let ret = application.run();
     process::exit(ret.into());
