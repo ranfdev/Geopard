@@ -8,6 +8,7 @@ use anyhow::Context;
 use config::APP_ID;
 use futures::prelude::*;
 use glib::{clone, Properties};
+use gtk::gio::ActionEntry;
 use gtk::subclass::prelude::*;
 use gtk::{gdk, gio, glib, CompositeTemplate, TemplateChild};
 use log::{debug, error, info, warn};
@@ -16,7 +17,7 @@ use url::Url;
 use crate::common::{bookmarks_url, glibctx, BOOKMARK_FILE_PATH};
 use crate::session_provider::SessionProvider;
 use crate::widgets::tab::{HistoryItem, HistoryStatus, Tab};
-use crate::{build_config, config, self_action};
+use crate::{build_config, config};
 
 const ZOOM_CHANGE_FACTOR: f64 = 1.15;
 const ZOOM_MAX_FACTOR: f64 = 5.0;
@@ -81,8 +82,6 @@ pub mod imp {
         pub(crate) progress: PhantomData<f64>,
         pub(crate) scroll_ctrl: gtk::EventControllerScroll,
         pub(crate) mouse_prev_next_ctrl: gtk::GestureClick,
-        pub(crate) action_previous: RefCell<Option<gio::SimpleAction>>,
-        pub(crate) action_next: RefCell<Option<gio::SimpleAction>>,
         pub(crate) style_provider: RefCell<gtk::CssProvider>,
         #[property(get, set = Self::set_zoom, type = f64, member = value)]
         pub(crate) zoom: RefCell<Zoom>,
@@ -230,67 +229,89 @@ impl Window {
         );
     }
     fn setup_actions(&self) {
-        let imp = self.imp();
+        let a: fn(&str) -> gio::ActionEntryBuilder<_> = ActionEntry::builder;
 
-        let action_previous = self_action!(self, "previous", previous);
-        let action_next = self_action!(self, "next", next);
-        imp.action_previous.borrow_mut().replace(action_previous);
-        imp.action_next.borrow_mut().replace(action_next);
-
-        self_action!(self, "reload", reload);
-        self_action!(self, "new-tab", new_tab);
-        self_action!(self, "new-empty-tab", new_empty_tab);
-        self_action!(self, "show-bookmarks", show_bookmarks);
-        self_action!(self, "bookmark-current", bookmark_current);
-        self_action!(self, "close-tab", close_tab);
-        self_action!(self, "focus-url-bar", focus_url_bar);
-        self_action!(self, "shortcuts", present_shortcuts);
-        self_action!(self, "about", present_about);
-        self_action!(self, "focus-previous-tab", focus_previous_tab);
-        self_action!(self, "focus-next-tab", focus_next_tab);
-        self_action!(self, "zoom-in", zoom_in);
-        self_action!(self, "zoom-out", zoom_out);
-        self_action!(self, "reset-zoom", reset_zoom);
-        self_action!(self, "open-overview", open_overview);
-
-        let act_open_page = gio::SimpleAction::new("open-omni", Some(glib::VariantTy::STRING));
-        act_open_page.connect_activate(clone!(
-            #[weak(rename_to = this)]
-            self,
-            move |_, v| this.open_omni(v.unwrap().get::<String>().unwrap().as_str())
-        ));
-        self.add_action(&act_open_page);
-
-        let act_open_url = gio::SimpleAction::new("open-url", Some(glib::VariantTy::STRING));
-        act_open_url.connect_activate(clone!(
-            #[weak(rename_to = this)]
-            self,
-            move |_, v| this.open_url_str(v.unwrap().get::<String>().unwrap().as_str())
-        ));
-        self.add_action(&act_open_url);
-
-        let act_open_in_new_tab =
-            gio::SimpleAction::new("open-in-new-tab", Some(glib::VariantTy::STRING));
-        act_open_in_new_tab.connect_activate(clone!(
-            #[weak(rename_to = this)]
-            self,
-            move |_, v| this.open_in_new_tab(v.unwrap().get::<String>().unwrap().as_str())
-        ));
-        self.add_action(&act_open_in_new_tab);
-
-        let act_set_clipboard =
-            gio::SimpleAction::new("set-clipboard", Some(glib::VariantTy::STRING));
-        act_set_clipboard.connect_activate(clone!(
-            #[weak(rename_to = this)]
-            self,
-            move |_, v| {
-                this.set_clipboard(v.unwrap().get::<String>().unwrap().as_str());
-                this.imp()
-                    .toast_overlay
-                    .add_toast(adw::Toast::new("Copied to clipboard"));
-            }
-        ));
-        self.add_action(&act_set_clipboard);
+        let actions = vec![
+            a("previous")
+                .activate(move |this: &Window, _, _| this.previous())
+                .build(),
+            a("next")
+                .activate(move |this: &Window, _, _| this.next())
+                .build(),
+            a("reload")
+                .activate(move |this: &Window, _, _| this.reload())
+                .build(),
+            a("new-tab")
+                .activate(move |this: &Window, _, _| this.new_tab())
+                .build(),
+            a("new-empty-tab")
+                .activate(move |this: &Window, _, _| this.new_empty_tab())
+                .build(),
+            a("show-bookmarks")
+                .activate(move |this: &Window, _, _| this.show_bookmarks())
+                .build(),
+            a("bookmark-current")
+                .activate(move |this: &Window, _, _| this.bookmark_current())
+                .build(),
+            a("close-tab")
+                .activate(move |this: &Window, _, _| this.close_tab())
+                .build(),
+            a("focus-url-bar")
+                .activate(move |this: &Window, _, _| this.focus_url_bar())
+                .build(),
+            a("shortcuts")
+                .activate(move |this: &Window, _, _| this.present_shortcuts())
+                .build(),
+            a("about")
+                .activate(move |this: &Window, _, _| this.present_about())
+                .build(),
+            a("focus-previous-tab")
+                .activate(move |this: &Window, _, _| this.focus_previous_tab())
+                .build(),
+            a("focus-next-tab")
+                .activate(move |this: &Window, _, _| this.focus_next_tab())
+                .build(),
+            a("zoom-in")
+                .activate(move |this: &Window, _, _| this.zoom_in())
+                .build(),
+            a("zoom-out")
+                .activate(move |this: &Window, _, _| this.zoom_out())
+                .build(),
+            a("reset-zoom")
+                .activate(move |this: &Window, _, _| this.reset_zoom())
+                .build(),
+            a("open-overview")
+                .activate(move |this: &Window, _, _| this.open_overview())
+                .build(),
+            a("open-omni")
+                .parameter_type(Some(glib::VariantTy::STRING))
+                .activate(move |this: &Window, _, v| {
+                    this.open_omni(v.unwrap().get::<String>().unwrap().as_str())
+                })
+                .build(),
+            a("open-url")
+                .parameter_type(Some(glib::VariantTy::STRING))
+                .activate(move |this: &Window, _, v| {
+                    this.open_url_str(v.unwrap().get::<String>().unwrap().as_str())
+                })
+                .build(),
+            a("open-in-new-tab")
+                .parameter_type(Some(glib::VariantTy::STRING))
+                .activate(move |this: &Window, _, v| {
+                    this.open_in_new_tab(v.unwrap().get::<String>().unwrap().as_str())
+                })
+                .build(),
+            a("set-clipboard")
+                .parameter_type(Some(glib::VariantTy::STRING))
+                .activate(move |this: &Window, _, v| {
+                    this.set_clipboard(v.unwrap().get::<String>().unwrap().as_str());
+                    this.imp()
+                        .toast_overlay
+                        .add_toast(adw::Toast::new("Copied to clipboard"));
+                })
+                .build(),
+        ];
+        self.add_action_entries(actions.into_iter());
     }
     fn setup_signals(&self) {
         let imp = self.imp();
@@ -600,7 +621,7 @@ impl Window {
                     .build(),
                 tab.bind_property(
                     "history-status",
-                    imp.action_next.borrow().as_ref().unwrap(),
+                    &self.lookup_action("next").unwrap(),
                     "enabled",
                 )
                 .flags(glib::BindingFlags::SYNC_CREATE)
@@ -611,7 +632,7 @@ impl Window {
                 .build(),
                 tab.bind_property(
                     "history-status",
-                    imp.action_previous.borrow().as_ref().unwrap(),
+                    &self.lookup_action("previous").unwrap(),
                     "enabled",
                 )
                 .flags(glib::BindingFlags::SYNC_CREATE)

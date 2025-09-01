@@ -3,7 +3,6 @@ mod build_config;
 mod common;
 mod config;
 mod lossy_text_read;
-mod macros;
 mod session_provider;
 mod widgets;
 
