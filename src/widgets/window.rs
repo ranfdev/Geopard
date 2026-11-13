@@ -720,8 +720,11 @@ impl Window {
                 match Self::append_bookmark(&url).await {
                     Ok(_) => {
                         info!("{} saved to bookmarks", url);
+                        let toast = adw::Toast::new("Page added to bookmarks");
+                        adw::Toast::set_button_label(&toast, Some("View"));
+                        adw::Toast::set_action_name(&toast, Some("win.show-bookmarks"));
                         imp.toast_overlay
-                            .add_toast(adw::Toast::new("Page added to bookmarks"));
+                            .add_toast(toast);
                     }
                     Err(e) => {
                         error!("{}", e);
