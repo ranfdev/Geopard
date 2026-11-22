@@ -711,12 +711,12 @@ impl Window {
     }
     fn bookmark_current(&self) {
         let imp = self.imp();
-        let url = imp.url_bar.text().to_string();
 
         glibctx().spawn_local(clone!(
             #[weak]
             imp,
             async move {
+                let url = imp.url.borrow();
                 match Self::append_bookmark(&url).await {
                     Ok(_) => {
                         info!("{} saved to bookmarks", url);
