@@ -479,6 +479,28 @@ impl Window {
         ));
 
         self.add_controller(drop_target);
+        self.connect_url_notify(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |window| {
+                let bookmarks_url = format!(
+                    "file://{}",
+                    BOOKMARK_FILE_PATH.as_path().to_str().unwrap_or("")
+                );
+                if window.url() == bookmarks_url {
+                    this.set_bookmark_current_enabled(false);
+                } else {
+                    this.set_bookmark_current_enabled(true);
+                }
+            }
+        ));
+
+    }
+    fn set_bookmark_current_enabled(&self, enabled: bool) {
+        self.lookup_action("bookmark-current").map(|y| {
+            y.downcast_ref::<gio::SimpleAction>()
+                .map(|z| z.set_enabled(enabled))
+        });
     }
     fn setup_zoom_popover_item(&self) {
         let imp = self.imp();
