@@ -12,7 +12,7 @@ pub static DOWNLOAD_PATH: Lazy<std::path::PathBuf> = Lazy::new(|| {
     download_path
 });
 
-pub static ABOUT_PAGE: &str = std::include_str!("../../README.gemini");
+pub static ABOUT_PAGE: &str = std::include_str!("../../README.gmi");
 
 pub static DATA_DIR_PATH: Lazy<std::path::PathBuf> =
     Lazy::new(|| glib::user_data_dir().join("geopard"));
