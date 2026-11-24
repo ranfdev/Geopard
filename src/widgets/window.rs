@@ -479,6 +479,28 @@ impl Window {
         ));
 
         self.add_controller(drop_target);
+        self.connect_url_notify(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |window| {
+                let bookmarks_url = format!(
+                    "file://{}",
+                    BOOKMARK_FILE_PATH.as_path().to_str().unwrap_or("")
+                );
+                if window.url() == bookmarks_url {
+                    this.set_bookmark_current_enabled(false);
+                } else {
+                    this.set_bookmark_current_enabled(true);
+                }
+            }
+        ));
+
+    }
+    fn set_bookmark_current_enabled(&self, enabled: bool) {
+        self.lookup_action("bookmark-current").map(|y| {
+            y.downcast_ref::<gio::SimpleAction>()
+                .map(|z| z.set_enabled(enabled))
+        });
     }
     fn setup_zoom_popover_item(&self) {
         let imp = self.imp();
@@ -711,17 +733,20 @@ impl Window {
     }
     fn bookmark_current(&self) {
         let imp = self.imp();
-        let url = imp.url_bar.text().to_string();
 
         glibctx().spawn_local(clone!(
             #[weak]
             imp,
             async move {
+                let url = imp.url.borrow();
                 match Self::append_bookmark(&url).await {
                     Ok(_) => {
                         info!("{} saved to bookmarks", url);
+                        let toast = adw::Toast::new("Page added to bookmarks");
+                        adw::Toast::set_button_label(&toast, Some("View"));
+                        adw::Toast::set_action_name(&toast, Some("win.show-bookmarks"));
                         imp.toast_overlay
-                            .add_toast(adw::Toast::new("Page added to bookmarks"));
+                            .add_toast(toast);
                     }
                     Err(e) => {
                         error!("{}", e);
