@@ -1,15 +1,22 @@
-global_conf = configuration_data()
-global_conf.set_quoted('APP_ID', application_id)
-global_conf.set_quoted('PKGDATADIR', pkgdatadir)
-global_conf.set_quoted('PROFILE', profile)
-global_conf.set_quoted('VERSION', version + version_suffix)
-global_conf.set_quoted('GETTEXT_PACKAGE', gettext_package)
-global_conf.set_quoted('LOCALEDIR', localedir)
-
-config = configure_file(
+# Generate config module
+configure_file(
   input: 'build_config.rs.in',
   output: 'build_config.rs',
-  configuration: global_conf
+  configuration: configuration_data({
+    'APP_ID': APPLICATION_ID,
+    'ROOT_PATH': ROOT_PATH,
+    'RELEASE_VER': meson.project_version(),
+    'VERSION': meson.project_version() + VERSION_SUFFIX,
+    'PROFILE': get_option('profile'),
+    'PROJECT_URL': PROJECT_URL,
+    'REPO_URL': REPO_URL,
+    'BUGTRACKER_URL': BUGTRACKER_URL,
+    'DONATIONS_URL': DONATIONS_URL,
+    #'TRANSLATE_URL': TRANSLATE_URL,
+    'PKGDATA_DIR': PKGDATA_DIR,
+    'LOCALE_DIR': conf.get('LOCALE_DIR'),
+    'GETTEXT_PACKAGE': meson.project_name()
+  })
 )
 
 # Copy the config.rs output to the source directory.
@@ -39,19 +46,19 @@ endif
 
 cargo_env = [ 'CARGO_HOME=' + join_paths(meson.project_build_root(), 'cargo-home') ]
 
-cargo_build = custom_target(
+custom_target(
   'cargo-build',
   build_by_default: true,
   build_always_stale: true,
   output: meson.project_name(),
   console: true,
   install: true,
-  install_dir: bindir,
+  install_dir: BIN_DIR,
   depends: resources,
   command: [
     'env',
     cargo_env,
-    cargo, 'build',
+    cargo_bin, 'build',
     cargo_options,
     '&&',
     'cp', join_paths('src', rust_target, meson.project_name()), '@OUTPUT@',
